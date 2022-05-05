@@ -31,3 +31,6 @@ near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "reg
 
 # Register reward_token in the exchange in the contracts account whitelisted tokens
 near call $exchange_contract_id register_tokens '{ "token_ids" : [ "'$reward_token'" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
+
+# Register the contract in the pool 
+near call $exchange_contract_id mft_register '{ "token_id" : ":'$pool_id'", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
