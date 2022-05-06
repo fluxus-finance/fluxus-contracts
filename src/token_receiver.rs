@@ -102,6 +102,7 @@ impl MFTTokenReceiver for Contract {
 
         //call increment_shares to add the shares balance
         let amount_in_u128: u128 = amount.into();
+        // self.increment_user_shares(account_id, amount_in_u128);
         self.increment_shares(&sender_id, amount_in_u128);
 
         //stake_function to do all the stake process

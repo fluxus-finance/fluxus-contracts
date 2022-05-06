@@ -193,6 +193,19 @@ impl Contract {
     }
 
     #[private]
+    pub fn increment_user_shares(&mut self, account_id: AccountId, shares: Balance) {
+        let user_lps = self.user_shares.get(&account_id);
+
+        let mut prev_shares: Balance = 0;
+        if let Some(lps) = user_lps {
+            prev_shares = *lps;
+            self.user_shares.insert(account_id, prev_shares + shares);
+        } else {
+            self.user_shares.insert(account_id, shares);
+        };
+    }
+
+    #[private]
     #[payable]
     pub fn increment_shares(&mut self, account_id: &AccountId, shares: Balance) {
         //asset that the caller is the vault
@@ -503,40 +516,49 @@ impl Contract {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self) {
-        let (account_id, contract_id) = self.get_predecessor_and_current_account();
+    pub fn unstake(&mut self) -> Promise {
+        let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
         // TODO
         // require!(ACCOUNT_EXIST)
 
-        let user_lps = self.user_shares.get(&account_id);
+        let user_lps = self.user_shares.get(&caller_id);
 
-        let mut user_quantity_available_to_withdraw: u128 = 0;
+        let mut shares_available: u128 = 0;
         if let Some(lps) = user_lps {
-            Some(user_quantity_available_to_withdraw = *lps)
+            Some(shares_available = *lps)
         } else {
             None
         };
 
         assert!(
-            user_quantity_available_to_withdraw != 0,
+            shares_available != 0,
             "user does not have enough lps to withdraw"
         );
 
         // TODO: should be called only if the next operations were successful
-        self.user_shares.insert(account_id, 0);
-        let min_amounts: Vec<U128> = vec![U128(1000), U128(1000)];
+        self.user_shares.insert(caller_id.clone(), 0);
+
+        let amount: U128 = U128(shares_available);
 
         // Unstake shares/lps
         ext_farm::withdraw_seed(
             self.seed_id.clone(),
-            // hard-coded amount of lps removed from the farm
-            U128(user_quantity_available_to_withdraw).clone(),
+            amount.clone(),
             "".to_string(),
             self.farm_contract_id.parse().unwrap(), // contract account id
             1,                                      // yocto NEAR to attach
             Gas(180_000_000_000_000),               // gas to attach 108 -> 180_000_000_000_000
-        );
+        )
+        .then(ext_exchange::mft_transfer(
+            self.wrap_mft_token_id(self.pool_id.to_string()),
+            caller_id,
+            amount,
+            Some("".to_string()),
+            self.exchange_contract_id.parse().unwrap(),
+            1,
+            Gas(80_000_000_000_000),
+        ))
     }
 }
 

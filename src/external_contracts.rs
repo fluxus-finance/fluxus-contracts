@@ -64,6 +64,13 @@ pub trait RefExchange {
         amount: U128,
         msg: String,
     );
+    fn mft_transfer(
+        &mut self,
+        token_id: String,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+    );
     fn remove_liquidity(&mut self, pool_id: u64, shares: U128, min_amounts: Vec<U128>);
     fn withdraw(&mut self, token_id: String, amount: U128, unregister: Option<bool>);
 }
