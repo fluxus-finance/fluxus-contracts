@@ -12,8 +12,8 @@ use near_sdk::collections::{LookupMap, UnorderedSet};
 use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
-    assert_one_yocto, env, ext_contract, log, near_bindgen, require, AccountId, BorshStorageKey,
-    Gas, PanicOnDefault, Promise, PromiseResult,
+    assert_one_yocto, env, ext_contract, log, near_bindgen, require, AccountId, Balance,
+    BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseResult,
 };
 
 use crate::account_deposit::{Account, VAccount};
@@ -32,6 +32,7 @@ pub(crate) enum StorageKey {
     Accounts,
     Whitelist,
     AccountTokens { account_id: AccountId },
+    Shares { pool_id: u64 },
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -78,6 +79,7 @@ pub struct Contract {
     farm: String,
     pool_id: u64,
     seed_id: String,
+    shares: LookupMap<AccountId, Balance>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -168,7 +170,30 @@ impl Contract {
             farm,
             pool_id,
             seed_id: exchange_contract_id + "@" + &pool_id.to_string(),
+            shares: LookupMap::new(StorageKey::Shares { pool_id: pool_id }),
         }
+    }
+
+    #[private]
+    #[payable]
+    pub fn stake_function(&mut self, account_id: AccountId) {
+        let pool_id: String = ":".to_string() + &self.pool_id.to_string();
+        self.call_stake(
+            self.farm_contract_id.parse().unwrap(),
+            pool_id,
+            U128(self.shares.get(&account_id).unwrap_or(0)),
+            "".to_string(),
+        );
+    }
+
+    pub fn mint_shares(&mut self, account_id: &AccountId, shares: Balance) {
+        //asset that the caller is the vault
+        if shares == 0 {
+            return;
+        }
+        //add_to_collection(&mut self.shares, &account_id, shares);
+        let prev_value = self.shares.get(account_id).unwrap_or(0);
+        self.shares.insert(account_id, &(prev_value + shares));
     }
 
     /// Returns the number of shares some accountId has in the contract

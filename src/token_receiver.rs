@@ -51,3 +51,44 @@ impl FungibleTokenReceiver for Contract {
         PromiseOrValue::Value(U128(0))
     }
 }
+
+pub trait MFTTokenReceiver {
+    fn mft_on_transfer(
+        &mut self,
+        token_id: String,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
+}
+
+/// seed token deposit
+#[near_bindgen]
+impl MFTTokenReceiver for Contract {
+    /// Callback on receiving tokens by this contract.
+    fn mft_on_transfer(
+        &mut self,
+        token_id: String,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        let seed_id: String;
+
+        //Check: Is the token_id the vault's pool_id? If is not, send it back
+        assert_eq!(token_id, self.pool_id, "ERR_NOT_THE_POOL_ID");
+
+        //call mint_shares to add the shares balance
+        let amount: u128 = amount.into();
+        self.mint_shares(&sender_id, amount);
+
+        //Mft_transfer_call to send the shares back? or to send to farm
+
+        //stake_function to do all the stake process
+        self.stake_function(sender_id);
+
+        //Subtract the user's amount of shares
+
+        PromiseOrValue::Value(U128(0))
+    }
+}
