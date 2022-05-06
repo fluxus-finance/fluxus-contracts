@@ -108,8 +108,8 @@ impl MFTTokenReceiver for Contract {
         // increment total shares deposited by account
         self.increment_user_shares(&sender_id, amount_in_u128);
 
-        //stake_function to do all the stake process
-        self.stake_function(&sender_id);
+        // initiate stake process
+        self.stake(&sender_id);
 
         // This should be used in the callback of call_stake, to only decrement if the stake was successful
         self.decrement_shares(&sender_id, amount_in_u128);

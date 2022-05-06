@@ -176,9 +176,9 @@ impl Contract {
     }
 
     #[private]
-    pub fn stake_function(&self, account_id: &AccountId) {
-        log!("We are inside stake_function");
-        let pool_id: String = ":".to_string() + &self.pool_id.to_string();
+    pub fn stake(&self, account_id: &AccountId) {
+        log!("We are inside stake");
+        let pool_id: String = self.wrap_mft_token_id(self.pool_id.to_string());
         self.call_stake(
             self.farm_contract_id.parse().unwrap(),
             pool_id,
@@ -233,13 +233,9 @@ impl Contract {
     }
 
     #[private]
-    pub fn callback_withdraw_shares(
-        &mut self,
-        #[callback_result] mft_transfer_result: Result<String, PromiseError>,
-        account_id: &AccountId,
-    ) {
-        assert!(mft_transfer_result.is_ok());
-        self.shares.insert(account_id, &0u128);
+    pub fn callback_withdraw_shares(&mut self, account_id: AccountId) {
+        // assert!(mft_transfer_result.is_ok());
+        self.user_shares.insert(account_id.clone(), 0u128);
         log!("Now, {} has {} shares", account_id, 0);
     }
 
@@ -491,34 +487,6 @@ impl Contract {
         )
     }
 
-    /// Add liquidity to pool and stake
-    #[payable]
-    pub fn stake(&mut self) -> String {
-        let (account_id, contract_id) = self.get_predecessor_and_current_account();
-        let pool_id: u64 = self.pool_id;
-        ///////////////Adding liquidity, staking ///////////////
-        ext_self::call_get_pool_shares(
-            pool_id.clone(),
-            contract_id,
-            env::current_account_id(),
-            0,
-            Gas(18_000_000_000_000),
-        )
-        .then(ext_self::callback_update_user_balance(
-            account_id.clone(),
-            env::current_account_id(),
-            0,
-            Gas(5_000_000_000_000),
-        ))
-        .then(ext_self::callback_stake(
-            env::current_account_id(),
-            0,
-            Gas(90_000_000_000_000),
-        ));
-
-        String::from("Ok")
-    }
-
     #[private]
     pub fn callback_get_deposits(&self) -> Promise {
         assert!(self.check_promise(), "Previous tx failed.");
@@ -571,13 +539,13 @@ impl Contract {
             Some("".to_string()),
             self.exchange_contract_id.parse().unwrap(),
             1,
-            Gas(80_000_000_000_000),
+            Gas(50_000_000_000_000),
         ))
         .then(ext_self::callback_withdraw_shares(
             caller_id,
             contract_id,
             0,
-            Gas(30_000_000_000_000),
+            Gas(20_000_000_000_000),
         ))
     }
 }
