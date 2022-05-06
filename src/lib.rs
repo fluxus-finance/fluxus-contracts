@@ -175,8 +175,7 @@ impl Contract {
     }
 
     #[private]
-    #[payable]
-    pub fn stake_function(&mut self, account_id: AccountId) {
+    pub fn stake_function(&self, account_id: &AccountId) {
         log!("We are inside stake_function");
         let pool_id: String = ":".to_string() + &self.pool_id.to_string();
         self.call_stake(
@@ -188,9 +187,8 @@ impl Contract {
     }
 
     #[private]
-    #[payable]
     /// wrap token_id into correct format in MFT standard
-    pub fn wrap_mft_token_id(&mut self, token_id: &str) -> String {
+    pub fn wrap_mft_token_id(&self, token_id: &str) -> String {
         format!(":{}", token_id)
     }
 

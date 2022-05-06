@@ -1,7 +1,7 @@
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{ext_contract, PromiseOrValue};
-pub const GAS_FOR_FT_TRANSFER: Gas = 10_000_000_000_000.into();
+pub const GAS_FOR_FT_TRANSFER: Gas = Gas(10_000_000_000_000);
 
 use crate::*;
 
@@ -95,7 +95,7 @@ impl MFTTokenReceiver for Contract {
 
         log!("Lets dale");
         //Check: Is the token_id the vault's pool_id? If is not, send it back
-        assert_eq!(token_id, self.pool_id, "ERR_NOT_THE_POOL_ID");
+        assert_eq!(token_id, self.pool_id.to_string(), "ERR_NOT_THE_POOL_ID");
 
         //call mint_shares to add the shares balance
         let amount_in_u128: u128 = amount.into();
@@ -107,7 +107,7 @@ impl MFTTokenReceiver for Contract {
             sender_id.clone().try_into().unwrap(),
             amount.into(),
             None,
-            *"ref-finance-101.testnet".into(),
+            self.exchange_contract_id.parse().unwrap(),
             1, // one yocto near
             GAS_FOR_FT_TRANSFER,
         );
@@ -121,7 +121,7 @@ impl MFTTokenReceiver for Contract {
             GAS_FOR_FT_TRANSFER,
         );*/
         //stake_function to do all the stake process
-        self.stake_function(sender_id);
+        self.stake_function(&sender_id);
 
         //Subtract the user's amount of shares
         self.remove_shares(&sender_id, amount_in_u128);
