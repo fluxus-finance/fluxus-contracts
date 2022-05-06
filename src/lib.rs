@@ -188,8 +188,8 @@ impl Contract {
 
     #[private]
     /// wrap token_id into correct format in MFT standard
-    pub fn wrap_mft_token_id(&self, token_id: &str) -> String {
-        format!(":{}", token_id)
+    pub fn wrap_mft_token_id(&self, token_id: String) -> String {
+        format!(":{:?}", token_id)
     }
 
     #[private]

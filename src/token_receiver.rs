@@ -103,7 +103,7 @@ impl MFTTokenReceiver for Contract {
 
         //Mft_transfer_call to send the shares back? or to send to farm
         ext_multi_fungible_token::mft_transfer(
-            self.wrap_mft_token_id(&token_id),
+            self.wrap_mft_token_id(token_id.to_string()),
             sender_id.clone().try_into().unwrap(),
             amount.into(),
             None,
