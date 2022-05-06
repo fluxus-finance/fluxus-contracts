@@ -177,6 +177,7 @@ impl Contract {
     #[private]
     #[payable]
     pub fn stake_function(&mut self, account_id: AccountId) {
+        log!("We are inside stake_function");
         let pool_id: String = ":".to_string() + &self.pool_id.to_string();
         self.call_stake(
             self.farm_contract_id.parse().unwrap(),
@@ -186,6 +187,15 @@ impl Contract {
         );
     }
 
+    #[private]
+    #[payable]
+    /// wrap token_id into correct format in MFT standard
+    pub fn wrap_mft_token_id(&mut self, token_id: &str) -> String {
+        format!(":{}", token_id)
+    }
+
+    #[private]
+    #[payable]
     pub fn mint_shares(&mut self, account_id: &AccountId, shares: Balance) {
         //asset that the caller is the vault
         if shares == 0 {
@@ -193,7 +203,16 @@ impl Contract {
         }
         //add_to_collection(&mut self.shares, &account_id, shares);
         let prev_value = self.shares.get(account_id).unwrap_or(0);
+        log!("Now, the {} has {} shares", account_id, prev_value + shares);
         self.shares.insert(account_id, &(prev_value + shares));
+    }
+
+    #[private]
+    #[payable]
+    pub fn remove_shares(&mut self, account_id: &AccountId, shares: Balance) {
+        let prev_value = self.shares.get(account_id).unwrap_or(0);
+        log!("Now, the {} has {} shares", account_id, prev_value - shares);
+        self.shares.insert(account_id, &(prev_value - shares));
     }
 
     /// Returns the number of shares some accountId has in the contract
@@ -242,15 +261,6 @@ impl Contract {
             self.exchange_contract_id.parse().unwrap(), // contract account id
             0,                                          // yocto NEAR to attach
             Gas(10_000_000_000_000),                    // gas to attach
-        )
-    }
-
-    /// Call the ref metadata function.
-    pub fn call_metadata(&self) -> Promise {
-        ext_exchange::metadata(
-            self.exchange_contract_id.parse().unwrap(), // contract account id
-            0,                                          // yocto NEAR to attach
-            Gas(3_000_000_000_000),                     // gas to attach
         )
     }
 

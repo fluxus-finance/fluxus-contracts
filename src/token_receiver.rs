@@ -1,6 +1,7 @@
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{ext_contract, PromiseOrValue};
+pub const GAS_FOR_FT_TRANSFER: Gas = 10_000_000_000_000.into();
 
 use crate::*;
 
@@ -27,6 +28,23 @@ pub trait RefExchange {
         amount: U128,
     );
     fn metadata(&mut self);
+}
+
+/// TODO: this should be in the near_standard_contracts
+#[ext_contract(ext_fungible_token)]
+pub trait FungibleToken {
+    fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>);
+}
+
+#[ext_contract(ext_multi_fungible_token)]
+pub trait MultiFungibleToken {
+    fn mft_transfer(
+        &mut self,
+        token_id: String,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+    );
 }
 
 #[near_bindgen]
@@ -75,19 +93,38 @@ impl MFTTokenReceiver for Contract {
     ) -> PromiseOrValue<U128> {
         let seed_id: String;
 
+        log!("Lets dale");
         //Check: Is the token_id the vault's pool_id? If is not, send it back
         assert_eq!(token_id, self.pool_id, "ERR_NOT_THE_POOL_ID");
 
         //call mint_shares to add the shares balance
-        let amount: u128 = amount.into();
-        self.mint_shares(&sender_id, amount);
+        let amount_in_u128: u128 = amount.into();
+        self.mint_shares(&sender_id, amount_in_u128);
 
         //Mft_transfer_call to send the shares back? or to send to farm
-
+        ext_multi_fungible_token::mft_transfer(
+            self.wrap_mft_token_id(&token_id),
+            sender_id.clone().try_into().unwrap(),
+            amount.into(),
+            None,
+            *"ref-finance-101.testnet".into(),
+            1, // one yocto near
+            GAS_FOR_FT_TRANSFER,
+        );
+        /*
+        ext_fungible_token::ft_transfer(
+            sender_id.clone().try_into().unwrap(),
+            amount.into(),
+            None,
+            seed_id.into(),
+            1, // one yocto near
+            GAS_FOR_FT_TRANSFER,
+        );*/
         //stake_function to do all the stake process
         self.stake_function(sender_id);
 
         //Subtract the user's amount of shares
+        self.remove_shares(&sender_id, amount_in_u128);
 
         PromiseOrValue::Value(U128(0))
     }
