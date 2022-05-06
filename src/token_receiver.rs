@@ -100,15 +100,18 @@ impl MFTTokenReceiver for Contract {
             "ERR_NOT_THE_POOL_ID"
         );
 
-        //call increment_shares to add the shares balance
         let amount_in_u128: u128 = amount.into();
-        // self.increment_user_shares(account_id, amount_in_u128);
+
+        // increment current shares deposited by account
         self.increment_shares(&sender_id, amount_in_u128);
+
+        // increment total shares deposited by account
+        self.increment_user_shares(&sender_id, amount_in_u128);
 
         //stake_function to do all the stake process
         self.stake_function(&sender_id);
 
-        //Subtract the user's amount of shares
+        // This should be used in the callback of call_stake, to only decrement if the stake was successful
         self.decrement_shares(&sender_id, amount_in_u128);
 
         PromiseOrValue::Value(U128(0))

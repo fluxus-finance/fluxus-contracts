@@ -95,6 +95,7 @@ pub trait Callbacks {
     );
     fn callback_update_user_balance(&mut self, account_id: AccountId) -> String;
     fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
+    fn callback_withdraw_shares(&mut self, account_id: AccountId);
     fn callback_get_deposits(&self) -> Promise;
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
@@ -193,20 +194,25 @@ impl Contract {
     }
 
     #[private]
-    pub fn increment_user_shares(&mut self, account_id: AccountId, shares: Balance) {
+    pub fn increment_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
         let user_lps = self.user_shares.get(&account_id);
 
         let mut prev_shares: Balance = 0;
         if let Some(lps) = user_lps {
+            // TODO: improve log
+            // log!("");
             prev_shares = *lps;
-            self.user_shares.insert(account_id, prev_shares + shares);
+            self.user_shares
+                .insert(account_id.clone(), prev_shares + shares);
         } else {
-            self.user_shares.insert(account_id, shares);
+            // TODO: improve log
+            // log!("");
+            self.user_shares.insert(account_id.clone(), shares);
         };
     }
 
     #[private]
-    #[payable]
+    #[payable] // why payable?
     pub fn increment_shares(&mut self, account_id: &AccountId, shares: Balance) {
         //asset that the caller is the vault
         if shares == 0 {
@@ -214,16 +220,27 @@ impl Contract {
         }
         //add_to_collection(&mut self.shares, &account_id, shares);
         let prev_value = self.shares.get(account_id).unwrap_or(0);
-        log!("Now, the {} has {} shares", account_id, prev_value + shares);
+        log!("Now, {} has {} shares", account_id, prev_value + shares);
         self.shares.insert(account_id, &(prev_value + shares));
     }
 
     #[private]
-    #[payable]
+    #[payable] // why payable?
     pub fn decrement_shares(&mut self, account_id: &AccountId, shares: Balance) {
         let prev_value = self.shares.get(account_id).unwrap_or(0);
-        log!("Now, the {} has {} shares", account_id, prev_value - shares);
+        log!("Now, {} has {} shares", account_id, prev_value - shares);
         self.shares.insert(account_id, &(prev_value - shares));
+    }
+
+    #[private]
+    pub fn callback_withdraw_shares(
+        &mut self,
+        #[callback_result] mft_transfer_result: Result<String, PromiseError>,
+        account_id: &AccountId,
+    ) {
+        assert!(mft_transfer_result.is_ok());
+        self.shares.insert(account_id, &0u128);
+        log!("Now, {} has {} shares", account_id, 0);
     }
 
     /// Returns the number of shares some accountId has in the contract
@@ -533,11 +550,8 @@ impl Contract {
 
         assert!(
             shares_available != 0,
-            "user does not have enough lps to withdraw"
+            "User does not have enough lps to withdraw"
         );
-
-        // TODO: should be called only if the next operations were successful
-        self.user_shares.insert(caller_id.clone(), 0);
 
         let amount: U128 = U128(shares_available);
 
@@ -552,12 +566,18 @@ impl Contract {
         )
         .then(ext_exchange::mft_transfer(
             self.wrap_mft_token_id(self.pool_id.to_string()),
-            caller_id,
+            caller_id.clone(),
             amount,
             Some("".to_string()),
             self.exchange_contract_id.parse().unwrap(),
             1,
             Gas(80_000_000_000_000),
+        ))
+        .then(ext_self::callback_withdraw_shares(
+            caller_id,
+            contract_id,
+            0,
+            Gas(30_000_000_000_000),
         ))
     }
 }
