@@ -194,7 +194,7 @@ impl Contract {
 
     #[private]
     #[payable]
-    pub fn mint_shares(&mut self, account_id: &AccountId, shares: Balance) {
+    pub fn increment_shares(&mut self, account_id: &AccountId, shares: Balance) {
         //asset that the caller is the vault
         if shares == 0 {
             return;
@@ -207,7 +207,7 @@ impl Contract {
 
     #[private]
     #[payable]
-    pub fn remove_shares(&mut self, account_id: &AccountId, shares: Balance) {
+    pub fn decrement_shares(&mut self, account_id: &AccountId, shares: Balance) {
         let prev_value = self.shares.get(account_id).unwrap_or(0);
         log!("Now, the {} has {} shares", account_id, prev_value - shares);
         self.shares.insert(account_id, &(prev_value - shares));
