@@ -95,7 +95,7 @@ pub trait Callbacks {
     );
     fn callback_update_user_balance(&mut self, account_id: AccountId) -> String;
     fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
-    fn callback_withdraw_shares(&mut self, account_id: AccountId);
+    fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance);
     fn callback_get_deposits(&self) -> Promise;
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
@@ -233,10 +233,15 @@ impl Contract {
     }
 
     #[private]
-    pub fn callback_withdraw_shares(&mut self, account_id: AccountId) {
+    pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance) {
         // assert!(mft_transfer_result.is_ok());
-        self.user_shares.insert(account_id.clone(), 0u128);
-        log!("Now, {} has {} shares", account_id, 0);
+        let prev_shares = self.user_shares.get(&account_id);
+        if let Some(shares) = prev_shares {
+            let new_shares = *shares - amount;
+            self.user_shares.insert(account_id.clone(), new_shares);
+        } else {
+            env::panic_str("AutoCompunder:: user shares not found");
+        };
     }
 
     /// Returns the number of shares some accountId has in the contract
@@ -501,12 +506,10 @@ impl Contract {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self) -> Promise {
+    pub fn unstake(&mut self, amount_withdrawal:Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
-
         // TODO
         // require!(ACCOUNT_EXIST)
-
         let user_lps = self.user_shares.get(&caller_id);
 
         let mut shares_available: u128 = 0;
@@ -520,8 +523,17 @@ impl Contract {
             shares_available != 0,
             "User does not have enough lps to withdraw"
         );
+        let amount = amount_withdrawal.unwrap_or(U128(shares_available));
+        log!("Unstake amount = {}", amount.0);
+        assert!(
+            amount.0 != 0,
+            "User is trying to withdraw 0 shares"
+        );
 
-        let amount: U128 = U128(shares_available);
+        assert!(
+            shares_available >= amount.0,
+            "User is trying to withdrawal {} and only has {}", amount.0, shares_available
+        );
 
         // Unstake shares/lps
         ext_farm::withdraw_seed(
@@ -543,6 +555,7 @@ impl Contract {
         ))
         .then(ext_self::callback_withdraw_shares(
             caller_id,
+            amount.clone().0,
             contract_id,
             0,
             Gas(20_000_000_000_000),
