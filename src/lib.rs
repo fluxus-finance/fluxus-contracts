@@ -79,6 +79,7 @@ pub struct Contract {
     farm: String,
     pool_id: u64,
     seed_id: String,
+    seed_min_deposit: U128,
     shares: LookupMap<AccountId, Balance>,
 }
 // Functions that we need to call like a callback.
@@ -138,6 +139,7 @@ impl Contract {
         wrap_near_contract_id: String,
         farm_id: u64,
         pool_id: u64,
+        seed_min_deposit: U128,
     ) -> Self {
         let farm: String =
             exchange_contract_id.clone() + "@" + &pool_id.to_string() + "#" + &farm_id.to_string();
@@ -171,6 +173,7 @@ impl Contract {
             farm,
             pool_id,
             seed_id: exchange_contract_id + "@" + &pool_id.to_string(),
+            seed_min_deposit,
             shares: LookupMap::new(StorageKey::Shares { pool_id: pool_id }),
         }
     }
@@ -185,12 +188,6 @@ impl Contract {
             U128(self.shares.get(&account_id).unwrap_or(0)),
             "".to_string(),
         );
-    }
-
-    #[private]
-    /// wrap token_id into correct format in MFT standard
-    pub fn wrap_mft_token_id(&self, token_id: String) -> String {
-        format!(":{}", token_id)
     }
 
     #[private]
@@ -506,7 +503,7 @@ impl Contract {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self, amount_withdrawal:Option<U128>) -> Promise {
+    pub fn unstake(&mut self, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
         // TODO
         // require!(ACCOUNT_EXIST)
@@ -525,14 +522,13 @@ impl Contract {
         );
         let amount = amount_withdrawal.unwrap_or(U128(shares_available));
         log!("Unstake amount = {}", amount.0);
-        assert!(
-            amount.0 != 0,
-            "User is trying to withdraw 0 shares"
-        );
+        assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
 
         assert!(
             shares_available >= amount.0,
-            "User is trying to withdrawal {} and only has {}", amount.0, shares_available
+            "User is trying to withdrawal {} and only has {}",
+            amount.0,
+            shares_available
         );
 
         // Unstake shares/lps
