@@ -248,6 +248,7 @@ impl Contract {
 
     #[private]
     pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance) {
+        assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
         let prev_shares = self.user_shares.get(&account_id);
         if let Some(shares) = prev_shares {
@@ -430,6 +431,12 @@ impl Contract {
             PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
         };
 
+        let amount: u128 = shares.parse::<u128>().unwrap();
+        assert!(
+            amount >= self.seed_min_deposit.into(),
+            "ERR_NOT_ENOUGH_SHARES_TO_STAKE"
+        );
+
         //Concatenate ":" with pool id because ref's testnet contract need an argument like this. Ex -> :193
         //For Mainnet, probability it is not necessary concatenate the ":"
         let pool_id: String = ":".to_string() + &self.pool_id.to_string();
@@ -437,7 +444,7 @@ impl Contract {
         self.call_stake(
             self.farm_contract_id.parse().unwrap(),
             pool_id,
-            U128(shares.parse::<u128>().unwrap()),
+            U128(amount),
             "".to_string(),
         );
     }
