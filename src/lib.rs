@@ -147,9 +147,6 @@ impl Contract {
         let farm: String =
             exchange_contract_id.clone() + "@" + &pool_id.to_string() + "#" + &farm_id.to_string();
 
-        // let mut last_reward_amount: HashMap<String, u128> = HashMap::new();
-        // last_reward_amount.insert(farm.clone(), 0);
-
         let mut allowed_accounts: Vec<AccountId> = Vec::new();
         allowed_accounts.push(env::current_account_id());
 
