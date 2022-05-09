@@ -150,6 +150,7 @@ impl Contract {
         let (token1_min_out, token2_min_out): (U128, U128) = tokens;
 
         //Actualization of reward amount
+        // TODO: move to callback_swaps
         self.last_reward_amount = 0;
 
         ext_self::call_swap(
@@ -162,6 +163,7 @@ impl Contract {
             0,
             Gas(40_000_000_000_000),
         )
+        // TODO: should use and
         .then(ext_self::call_swap(
             pool_id_to_swap2,
             token_in2,
@@ -171,7 +173,7 @@ impl Contract {
             contract_id.clone(),
             0,
             Gas(40_000_000_000_000),
-        ))
+        )) // TODO: should use a callback to assert that both tx succeeded
     }
 
     /// Get amount of tokens available then stake it

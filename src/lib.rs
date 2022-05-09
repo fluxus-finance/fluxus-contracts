@@ -179,17 +179,14 @@ impl Contract {
     }
 
     #[private]
-    pub fn stake(&self, account_id: &AccountId) -> Promise {
+    pub fn stake(&self, account_id: &AccountId, shares: u128) -> Promise {
         let (_, contract) = self.get_predecessor_and_current_account();
         let token_id: String = self.wrap_mft_token_id(self.pool_id.to_string());
-        let user_shares: u128 = self.shares.get(&account_id).unwrap_or(0);
-
-        assert_ne!(user_shares, 0u128, "ERR_STAKE_0_AMOUNT");
 
         ext_exchange::mft_transfer_call(
             self.farm_contract_id.parse().unwrap(),
             token_id,
-            U128(user_shares),
+            U128(shares),
             "".to_string(),
             self.exchange_contract_id.parse().unwrap(),
             1,
@@ -197,7 +194,7 @@ impl Contract {
         )
         .then(ext_self::callback_stake_result(
             account_id.clone(),
-            user_shares,
+            shares,
             contract,
             0,
             Gas(10_000_000_000_000),
@@ -205,11 +202,13 @@ impl Contract {
     }
 
     #[private]
-    pub fn callback_stake_result(&mut self, account_id: AccountId, shares: u128) {
+    pub fn callback_stake_result(&mut self, account_id: AccountId, shares: u128) -> String {
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
 
-        // This should be used in the callback of call_stake, to only decrement if the stake was successful
-        self.decrement_shares(&account_id, shares);
+        // increment total shares deposited by account
+        self.increment_user_shares(&account_id, shares);
+
+        format!("The {} added {} to {}", account_id, shares, self.pool_id)
     }
 
     #[private]

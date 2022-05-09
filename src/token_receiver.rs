@@ -105,14 +105,8 @@ impl MFTTokenReceiver for Contract {
             "ERR_BELOW_MIN_DEPOSIT"
         );
 
-        // increment current shares deposited by account
-        self.increment_shares(&sender_id, amount_in_u128);
-
-        // increment total shares deposited by account
-        self.increment_user_shares(&sender_id, amount_in_u128);
-
         // initiate stake process
-        self.stake(&sender_id);
+        self.stake(&sender_id, amount_in_u128);
 
         PromiseOrValue::Value(U128(0))
     }
