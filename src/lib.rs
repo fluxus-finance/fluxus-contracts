@@ -98,6 +98,7 @@ pub trait Callbacks {
     fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
     fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance);
     fn callback_get_deposits(&self) -> Promise;
+    fn callback_get_return(&self) -> U128;
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
     fn callback_stake_result(&mut self, account_id: AccountId, shares: u128);
@@ -211,6 +212,64 @@ impl Contract {
 
         // This should be used in the callback of call_stake, to only decrement if the stake was successful
         self.decrement_shares(&account_id, shares);
+    }
+
+    pub fn get_tokens_return(&self) -> Promise {
+        let id: AccountId = env::current_account_id();
+        ext_exchange::get_return(
+            self.pool_id_token1_reward,
+            self.reward_token.parse().unwrap(),
+            U128(1000000000000000000),
+            self.pool_token1.parse().unwrap(),
+            self.exchange_contract_id.parse().unwrap(),
+            0,
+            Gas(10_000_000_000_000),
+        )
+        .and(ext_exchange::get_return(
+            self.pool_id_token2_reward,
+            self.reward_token.parse().unwrap(),
+            U128(1000000000000000000),
+            self.pool_token2.parse().unwrap(),
+            self.exchange_contract_id.parse().unwrap(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+        .then(ext_self::callback_get_return(
+            id,
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_get_return(
+        &self,
+        #[callback_result] token1_out: Result<U128, PromiseError>,
+        #[callback_result] token2_out: Result<U128, PromiseError>,
+    ) -> (u128, u128) {
+        assert!(token1_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
+        assert!(token2_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
+
+        let mut amount_token1: u128;
+        let mut amount_token2: u128;
+
+        if let Ok(s) = token1_out.as_ref() {
+            let val: u128 = s.0;
+            require!(val > 0u128);
+            amount_token1 = val;
+        } else {
+            env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_1")
+        }
+
+        if let Ok(s) = token2_out.as_ref() {
+            let val: u128 = s.0;
+            require!(val > 0u128);
+            amount_token2 = val;
+        } else {
+            env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_2")
+        }
+
+        (amount_token1, amount_token2)
     }
 
     #[private]
