@@ -100,6 +100,7 @@ pub trait Callbacks {
     fn callback_get_deposits(&self) -> Promise;
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
+    fn callback_stake_result(&mut self, account_id: AccountId, shares: u128);
     fn swap_to_auto(&mut self, farm_id: String);
     fn stake_and_liquidity_auto(&mut self, account_id: AccountId);
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
@@ -179,28 +180,48 @@ impl Contract {
     }
 
     #[private]
-    pub fn stake(&self, account_id: &AccountId) {
-        log!("We are inside stake");
-        let pool_id: String = self.wrap_mft_token_id(self.pool_id.to_string());
-        self.call_stake(
+    pub fn stake(&self, account_id: &AccountId) -> Promise {
+        let (_, contract) = self.get_predecessor_and_current_account();
+        let token_id: String = self.wrap_mft_token_id(self.pool_id.to_string());
+        let user_shares: u128 = self.shares.get(&account_id).unwrap_or(0);
+
+        assert_ne!(user_shares, 0u128, "ERR_STAKE_0_AMOUNT");
+
+        ext_exchange::mft_transfer_call(
             self.farm_contract_id.parse().unwrap(),
-            pool_id,
-            U128(self.shares.get(&account_id).unwrap_or(0)),
+            token_id,
+            U128(user_shares),
             "".to_string(),
-        );
+            self.exchange_contract_id.parse().unwrap(),
+            1,
+            Gas(80_000_000_000_000),
+        )
+        .then(ext_self::callback_stake_result(
+            account_id.clone(),
+            user_shares,
+            contract,
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_stake_result(&mut self, account_id: AccountId, shares: u128) {
+        assert!(self.check_promise(), "ERR_STAKE_FAILED");
+
+        // This should be used in the callback of call_stake, to only decrement if the stake was successful
+        self.decrement_shares(&account_id, shares);
     }
 
     #[private]
     pub fn increment_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let user_lps = self.user_shares.get(&account_id);
+        let user_lps = self.user_shares.get(account_id).unwrap_or(&0);
 
-        let mut prev_shares: Balance = 0;
-        if let Some(lps) = user_lps {
+        if *user_lps > 0 {
             // TODO: improve log
             // log!("");
-            prev_shares = *lps;
-            self.user_shares
-                .insert(account_id.clone(), prev_shares + shares);
+            let new_balance: u128 = *user_lps + shares;
+            self.user_shares.insert(account_id.clone(), new_balance);
         } else {
             // TODO: improve log
             // log!("");
@@ -209,20 +230,16 @@ impl Contract {
     }
 
     #[private]
-    #[payable] // why payable?
     pub fn increment_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        //asset that the caller is the vault
         if shares == 0 {
             return;
         }
-        //add_to_collection(&mut self.shares, &account_id, shares);
         let prev_value = self.shares.get(account_id).unwrap_or(0);
         log!("Now, {} has {} shares", account_id, prev_value + shares);
         self.shares.insert(account_id, &(prev_value + shares));
     }
 
     #[private]
-    #[payable] // why payable?
     pub fn decrement_shares(&mut self, account_id: &AccountId, shares: Balance) {
         let prev_value = self.shares.get(account_id).unwrap_or(0);
         log!("Now, {} has {} shares", account_id, prev_value - shares);
