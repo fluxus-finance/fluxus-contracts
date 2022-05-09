@@ -14,11 +14,11 @@ source .env
 # near call manager_v1.croncat.testnet create_task '{"contract_id": "'$CONTRACT_NAME'", "function_id": "auto_function_2","cadence": "* */2 * * * *","recurring": true,"deposit": "0","gas": 240000000000000}' --accountId $CONTRACT_NAME --amount 1 --gas 300000000000000
 
 #### Functions managed by auto-compound
-near call $CONTRACT_NAME claim_reward '{}' --accountId $CONTRACT_NAME --gas $total_gas --depositYocto 1
+near call $CONTRACT_NAME claim_reward '{}' --accountId $CONTRACT_NAME --gas $total_gas
 
 near call $CONTRACT_NAME withdraw_of_reward '{}' --accountId $CONTRACT_NAME --gas $total_gas --depositYocto 1
 
-near call $CONTRACT_NAME autocompounds_swap '{}' --accountId $CONTRACT_NAME --gas $total_gas 
+near call $CONTRACT_NAME autocompounds_swap '{}' --accountId $CONTRACT_NAME --gas $total_gas --depositYocto 1 
 
-near call $CONTRACT_NAME autocompounds_liquidity_and_stake '{}' --accountId $CONTRACT_NAME --gas $total_gas 
+# near call $CONTRACT_NAME autocompounds_liquidity_and_stake '{}' --accountId $CONTRACT_NAME --gas $total_gas 
 
