@@ -4,6 +4,19 @@ echo $CONTRACT_NAME
 source .env
 echo $username
 
-#### Swap, add liquidity, save new lp user balance, stake, claim, withdraw
-near call $CONTRACT_NAME stake '{}' --accountId $username --gas 300000000000000 --deposit 0.01
+#### Get shares from pool
+near call $exchange_contract_id get_pool_shares '{ "pool_id": '$pool_id', "account_id" : "'$username'" }' --accountId $CONTRACT_NAME
 
+### Get previously staked shares
+near call $farm_contract_id list_user_seeds '{ "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME
+
+#### Register the farm in the pool
+# near call $exchange_contract_id mft_register '{"token_id":":410", "account_id": "'$farm_contract_id'"}' --account_id=$farm_contract_id --deposit 1
+#### Add shares to contract and stake on farm
+# near call $exchange_contract_id mft_transfer_call '{"token_id": ":'$pool_id'", "receiver_id": "'$CONTRACT_NAME'", "amount": "58308432884564701", "msg": "" }' --accountId $username --gas $total_gas --depositYocto 1
+
+# ### Should have the previous amount plus the user shares
+near call $farm_contract_id list_user_seeds '{ "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME
+
+# ### Should be the same amount as passed in mft_transfer_call
+near call $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'"}' --accountId $CONTRACT_NAME --gas $total_gas

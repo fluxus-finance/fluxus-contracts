@@ -1,6 +1,7 @@
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{ext_contract, PromiseOrValue};
+pub const GAS_FOR_FT_TRANSFER: Gas = Gas(10_000_000_000_000);
 
 use crate::*;
 
@@ -29,6 +30,23 @@ pub trait RefExchange {
     fn metadata(&mut self);
 }
 
+/// TODO: this should be in the near_standard_contracts
+#[ext_contract(ext_fungible_token)]
+pub trait FungibleToken {
+    fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>);
+}
+
+#[ext_contract(ext_multi_fungible_token)]
+pub trait MultiFungibleToken {
+    fn mft_transfer(
+        &mut self,
+        token_id: String,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+    );
+}
+
 #[near_bindgen]
 impl FungibleTokenReceiver for Contract {
     /// Callback on receiving tokens by this contract.
@@ -48,6 +66,54 @@ impl FungibleTokenReceiver for Contract {
         );
         let token_in = env::predecessor_account_id();
         self.internal_deposit(&sender_id, &token_in, amount.into());
+        PromiseOrValue::Value(U128(0))
+    }
+}
+
+pub trait MFTTokenReceiver {
+    fn mft_on_transfer(
+        &mut self,
+        token_id: String,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
+}
+
+/// seed token deposit
+#[near_bindgen]
+impl MFTTokenReceiver for Contract {
+    /// Callback on receiving tokens by this contract.
+    fn mft_on_transfer(
+        &mut self,
+        token_id: String,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        let seed_id: String;
+
+        //Check: Is the token_id the vault's pool_id? If is not, send it back
+        assert_eq!(
+            token_id,
+            self.wrap_mft_token_id(self.pool_id.to_string()),
+            "ERR_NOT_THE_POOL_ID"
+        );
+
+        let amount_in_u128: u128 = amount.into();
+
+        // increment current shares deposited by account
+        self.increment_shares(&sender_id, amount_in_u128);
+
+        // increment total shares deposited by account
+        self.increment_user_shares(&sender_id, amount_in_u128);
+
+        // initiate stake process
+        self.stake(&sender_id);
+
+        // This should be used in the callback of call_stake, to only decrement if the stake was successful
+        self.decrement_shares(&sender_id, amount_in_u128);
+
         PromiseOrValue::Value(U128(0))
     }
 }
