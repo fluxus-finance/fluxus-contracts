@@ -214,12 +214,12 @@ impl Contract {
         self.decrement_shares(&account_id, shares);
     }
 
-    pub fn get_tokens_return(&self) -> Promise {
+    pub fn get_tokens_return(&self, amount_token_1: U128, amount_token_2: U128) -> Promise {
         let id: AccountId = env::current_account_id();
         ext_exchange::get_return(
             self.pool_id_token1_reward,
             self.reward_token.parse().unwrap(),
-            U128(1000000000000000000),
+            amount_token_1,
             self.pool_token1.parse().unwrap(),
             self.exchange_contract_id.parse().unwrap(),
             0,
@@ -228,7 +228,7 @@ impl Contract {
         .and(ext_exchange::get_return(
             self.pool_id_token2_reward,
             self.reward_token.parse().unwrap(),
-            U128(1000000000000000000),
+            amount_token_2,
             self.pool_token2.parse().unwrap(),
             self.exchange_contract_id.parse().unwrap(),
             0,
