@@ -64,7 +64,7 @@ pub struct Contract {
     allowed_accounts: Vec<AccountId>,
     whitelisted_tokens: UnorderedSet<AccountId>,
     state: RunningState,
-    last_reward_amount: HashMap<String, u128>,
+    last_reward_amount: u128,
     users_total_near_deposited: HashMap<AccountId, u128>,
     pool_token1: String,
     pool_token2: String,
@@ -102,9 +102,10 @@ pub trait Callbacks {
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
     fn callback_stake_result(&mut self, account_id: AccountId, shares: u128);
-    fn swap_to_auto(&mut self, farm_id: String);
+    fn swap_to_auto(&mut self, amount_in_1: U128, amount_in_2: U128);
     fn stake_and_liquidity_auto(&mut self, account_id: AccountId);
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
+    fn get_tokens_return_then_swap(&self, amount_token_1: U128, amount_token_2: U128) -> Promise;
 }
 
 #[near_bindgen]
@@ -146,8 +147,8 @@ impl Contract {
         let farm: String =
             exchange_contract_id.clone() + "@" + &pool_id.to_string() + "#" + &farm_id.to_string();
 
-        let mut last_reward_amount: HashMap<String, u128> = HashMap::new();
-        last_reward_amount.insert(farm.clone(), 0);
+        // let mut last_reward_amount: HashMap<String, u128> = HashMap::new();
+        // last_reward_amount.insert(farm.clone(), 0);
 
         let mut allowed_accounts: Vec<AccountId> = Vec::new();
         allowed_accounts.push(env::current_account_id());
@@ -155,7 +156,7 @@ impl Contract {
         Self {
             owner_id: owner_id,
             user_shares: HashMap::new(),
-            last_reward_amount,
+            last_reward_amount: 0u128,
             protocol_shares,
             accounts: LookupMap::new(StorageKey::Accounts),
             allowed_accounts,
@@ -212,33 +213,6 @@ impl Contract {
 
         // This should be used in the callback of call_stake, to only decrement if the stake was successful
         self.decrement_shares(&account_id, shares);
-    }
-
-    pub fn get_tokens_return(&self, amount_token_1: U128, amount_token_2: U128) -> Promise {
-        let id: AccountId = env::current_account_id();
-        ext_exchange::get_return(
-            self.pool_id_token1_reward,
-            self.reward_token.parse().unwrap(),
-            amount_token_1,
-            self.pool_token1.parse().unwrap(),
-            self.exchange_contract_id.parse().unwrap(),
-            0,
-            Gas(10_000_000_000_000),
-        )
-        .and(ext_exchange::get_return(
-            self.pool_id_token2_reward,
-            self.reward_token.parse().unwrap(),
-            amount_token_2,
-            self.pool_token2.parse().unwrap(),
-            self.exchange_contract_id.parse().unwrap(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
-        .then(ext_self::callback_get_return(
-            id,
-            0,
-            Gas(10_000_000_000_000),
-        ))
     }
 
     #[private]

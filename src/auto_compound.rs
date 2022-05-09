@@ -66,78 +66,104 @@ impl Contract {
         //Storing reward amount
         let amount_in_u128: u128 = amount.into();
 
-        let residue: u128 = *self.last_reward_amount.get(&self.farm.to_string()).unwrap();
-        self.last_reward_amount
-            .insert(self.farm.to_string(), amount_in_u128 + residue);
+        let residue: u128 = self.last_reward_amount;
+        self.last_reward_amount = amount_in_u128 + residue;
 
         amount
     }
 
     /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
     #[payable]
-    pub fn autocompounds_swap(&mut self) {
-        /* TODO:
-            a) Add callback to handle failed txs
-            b) Send all tokens to exchange, instead of 0.01 each iteration
-        */
+    pub fn autocompounds_swap(&mut self) -> Promise {
         self.check_autocompounds_caller();
-        let (_, contract_id) = self.get_predecessor_and_current_account();
+
+        let amount_in = U128(self.last_reward_amount / 2);
 
         ext_reward_token::ft_transfer_call(
             self.exchange_contract_id.parse().unwrap(), // receiver_id,
-            self.last_reward_amount
-                .get(&self.farm.clone())
-                .unwrap()
-                .to_string(), //Amount after withdraw the rewards
+            self.last_reward_amount.to_string(),        //Amount after withdraw the rewards
             "".to_string(),
             self.reward_token.parse().unwrap(),
-            1,                       // yocto NEAR to attach
-            Gas(45_000_000_000_000), // gas to attach (between 40 and 60)
+            1,
+            Gas(45_000_000_000_000),
         )
-        // Get auto_compounder's deposit
-        .then(ext_self::callback_get_deposits(
-            contract_id.clone(),
+        .then(ext_self::get_tokens_return_then_swap(
+            amount_in,
+            amount_in,
+            env::current_account_id(),
             0,
-            Gas(20_000_000_000_000),
+            Gas(200_000_000_000_000),
         ))
-        // Swap ref tokens and atualize the reward amount
+    }
+
+    pub fn get_tokens_return_then_swap(
+        &self,
+        amount_token_1: U128,
+        amount_token_2: U128,
+    ) -> Promise {
+        ext_exchange::get_return(
+            self.pool_id_token1_reward,
+            self.reward_token.parse().unwrap(),
+            amount_token_1,
+            self.pool_token1.parse().unwrap(),
+            self.exchange_contract_id.parse().unwrap(),
+            0,
+            Gas(10_000_000_000_000),
+        )
+        .and(ext_exchange::get_return(
+            self.pool_id_token2_reward,
+            self.reward_token.parse().unwrap(),
+            amount_token_2,
+            self.pool_token2.parse().unwrap(),
+            self.exchange_contract_id.parse().unwrap(),
+            0,
+            Gas(10_000_000_000_000),
+        )) // Swap ref tokens and atualize the reward amount
         .then(ext_self::swap_to_auto(
-            self.farm.clone(),
-            env::current_account_id(), // contract account id
-            0,                         // yocto NEAR to attach
-            Gas(140_500_000_000_000),  // gas to attach
-        ));
+            amount_token_1,
+            amount_token_2,
+            env::current_account_id(),
+            0,
+            Gas(141_000_000_000_000),
+        ))
     }
 
     /// Swap the auto-compound rewards
     #[private]
     #[payable]
-    pub fn swap_to_auto(&mut self) {
-        assert_eq!(env::promise_results_count(), 1, "ERR_TOO_MANY_RESULTS");
-        let is_tokens = match env::promise_result(0) {
-            PromiseResult::NotReady => unreachable!(),
-            PromiseResult::Successful(tokens) => {
-                if let Ok(is_tokens) =
-                    near_sdk::serde_json::from_slice::<HashMap<AccountId, U128>>(&tokens)
-                {
-                    is_tokens
-                } else {
-                    env::panic_str("ERR_WRONG_VAL_RECEIVED")
-                }
-            }
-            PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
-        };
+    pub fn swap_to_auto(
+        &mut self,
+        #[callback_result] token1_out: Result<U128, PromiseError>,
+        #[callback_result] token2_out: Result<U128, PromiseError>,
+        amount_in_1: U128,
+        amount_in_2: U128,
+    ) -> Promise {
+        assert!(token1_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
+        assert!(token2_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
+
+        let mut amount_token1: u128;
+        let mut amount_token2: u128;
+
+        if let Ok(s) = token1_out.as_ref() {
+            let val: u128 = s.0;
+            require!(val > 0u128);
+            amount_token1 = val;
+        } else {
+            env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_1")
+        }
+
+        if let Ok(s) = token2_out.as_ref() {
+            let val: u128 = s.0;
+            require!(val > 0u128);
+            amount_token2 = val;
+        } else {
+            env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_2")
+        }
 
         let (_, contract_id) = self.get_predecessor_and_current_account();
 
-        let token_out3 = self.reward_token.to_string();
-        let mut quantity_of_token = U128(0);
-
-        for (key, val) in is_tokens.iter() {
-            if key.to_string() == token_out3 {
-                quantity_of_token = *val
-            };
-        }
+        // let min_amount_out_1 = U128(0);
+        // let min_amount_out_2 = U128(0);
 
         let pool_id_to_swap1 = self.pool_id_token1_reward;
         let pool_id_to_swap2 = self.pool_id_token2_reward;
@@ -145,33 +171,30 @@ impl Contract {
         let token_in2 = self.reward_token.parse().unwrap();
         let token_out1 = self.pool_token1.parse().unwrap();
         let token_out2 = self.pool_token2.parse().unwrap();
-        let min_amount_out = U128(0);
-        let quantity_of_token: u128 = quantity_of_token.into();
-        let amount_in = Some(U128(quantity_of_token / 2));
+
+        //Actualization of reward amount
+        self.last_reward_amount = 0;
 
         ext_self::call_swap(
             pool_id_to_swap1,
             token_in1,
             token_out1,
-            amount_in,
-            min_amount_out,
+            Some(amount_in_1),
+            U128(amount_token1),
             contract_id.clone(),
             0,
-            Gas(60_000_000_000_000),
+            Gas(40_000_000_000_000),
         )
         .then(ext_self::call_swap(
             pool_id_to_swap2,
             token_in2,
             token_out2,
-            amount_in,
-            min_amount_out,
+            Some(amount_in_2),
+            U128(amount_token2),
             contract_id.clone(),
             0,
-            Gas(60_000_000_000_000),
-        ));
-
-        //Actualization of reward amount
-        self.last_reward_amount.insert(self.farm.clone(), 0);
+            Gas(40_000_000_000_000),
+        ))
     }
 
     /// Get amount of tokens available then stake it
