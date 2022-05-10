@@ -79,6 +79,7 @@ pub struct Contract {
     farm: String,
     pool_id: u64,
     seed_id: String,
+    seed_min_deposit: U128,
     shares: LookupMap<AccountId, Balance>,
 }
 // Functions that we need to call like a callback.
@@ -95,10 +96,11 @@ pub trait Callbacks {
     );
     fn callback_update_user_balance(&mut self, account_id: AccountId) -> String;
     fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
-    fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance);
+    fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance, shares_available: Balance);
     fn callback_get_deposits(&self) -> Promise;
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
+    fn callback_stake_result(&mut self, account_id: AccountId, shares: u128);
     fn swap_to_auto(&mut self, farm_id: String);
     fn stake_and_liquidity_auto(&mut self, account_id: AccountId);
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
@@ -138,6 +140,7 @@ impl Contract {
         wrap_near_contract_id: String,
         farm_id: u64,
         pool_id: u64,
+        seed_min_deposit: U128,
     ) -> Self {
         let farm: String =
             exchange_contract_id.clone() + "@" + &pool_id.to_string() + "#" + &farm_id.to_string();
@@ -171,39 +174,54 @@ impl Contract {
             farm,
             pool_id,
             seed_id: exchange_contract_id + "@" + &pool_id.to_string(),
+            seed_min_deposit,
             shares: LookupMap::new(StorageKey::Shares { pool_id: pool_id }),
         }
     }
 
     #[private]
-    pub fn stake(&self, account_id: &AccountId) {
-        log!("We are inside stake");
-        let pool_id: String = self.wrap_mft_token_id(self.pool_id.to_string());
-        self.call_stake(
+    pub fn stake(&self, account_id: &AccountId) -> Promise {
+        let (_, contract) = self.get_predecessor_and_current_account();
+        let token_id: String = self.wrap_mft_token_id(self.pool_id.to_string());
+        let user_shares: u128 = self.shares.get(&account_id).unwrap_or(0);
+
+        assert_ne!(user_shares, 0u128, "ERR_STAKE_0_AMOUNT");
+
+        ext_exchange::mft_transfer_call(
             self.farm_contract_id.parse().unwrap(),
-            pool_id,
-            U128(self.shares.get(&account_id).unwrap_or(0)),
+            token_id,
+            U128(user_shares),
             "".to_string(),
-        );
+            self.exchange_contract_id.parse().unwrap(),
+            1,
+            Gas(80_000_000_000_000),
+        )
+        .then(ext_self::callback_stake_result(
+            account_id.clone(),
+            user_shares,
+            contract,
+            0,
+            Gas(10_000_000_000_000),
+        ))
     }
 
     #[private]
-    /// wrap token_id into correct format in MFT standard
-    pub fn wrap_mft_token_id(&self, token_id: String) -> String {
-        format!(":{}", token_id)
+    pub fn callback_stake_result(&mut self, account_id: AccountId, shares: u128) {
+        assert!(self.check_promise(), "ERR_STAKE_FAILED");
+
+        // This should be used in the callback of call_stake, to only decrement if the stake was successful
+        self.decrement_shares(&account_id, shares);
     }
 
     #[private]
     pub fn increment_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let user_lps = self.user_shares.get(&account_id);
+        let user_lps = self.user_shares.get(account_id).unwrap_or(&0);
 
-        let mut prev_shares: Balance = 0;
-        if let Some(lps) = user_lps {
+        if *user_lps > 0 {
             // TODO: improve log
             // log!("");
-            prev_shares = *lps;
-            self.user_shares
-                .insert(account_id.clone(), prev_shares + shares);
+            let new_balance: u128 = *user_lps + shares;
+            self.user_shares.insert(account_id.clone(), new_balance);
         } else {
             // TODO: improve log
             // log!("");
@@ -212,20 +230,16 @@ impl Contract {
     }
 
     #[private]
-    #[payable] // why payable?
     pub fn increment_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        //asset that the caller is the vault
         if shares == 0 {
             return;
         }
-        //add_to_collection(&mut self.shares, &account_id, shares);
         let prev_value = self.shares.get(account_id).unwrap_or(0);
         log!("Now, {} has {} shares", account_id, prev_value + shares);
         self.shares.insert(account_id, &(prev_value + shares));
     }
 
     #[private]
-    #[payable] // why payable?
     pub fn decrement_shares(&mut self, account_id: &AccountId, shares: Balance) {
         let prev_value = self.shares.get(account_id).unwrap_or(0);
         log!("Now, {} has {} shares", account_id, prev_value - shares);
@@ -233,15 +247,11 @@ impl Contract {
     }
 
     #[private]
-    pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance) {
+    pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance, shares_available: Balance) {
+        assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
-        let prev_shares = self.user_shares.get(&account_id);
-        if let Some(shares) = prev_shares {
-            let new_shares = *shares - amount;
-            self.user_shares.insert(account_id.clone(), new_shares);
-        } else {
-            env::panic_str("AutoCompunder:: user shares not found");
-        };
+        let new_shares = shares_available - amount;
+        self.user_shares.insert(account_id.clone(), new_shares);
     }
 
     /// Returns the number of shares some accountId has in the contract
@@ -416,6 +426,12 @@ impl Contract {
             PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
         };
 
+        let amount: u128 = shares.parse::<u128>().unwrap();
+        assert!(
+            amount >= self.seed_min_deposit.into(),
+            "ERR_NOT_ENOUGH_SHARES_TO_STAKE"
+        );
+
         //Concatenate ":" with pool id because ref's testnet contract need an argument like this. Ex -> :193
         //For Mainnet, probability it is not necessary concatenate the ":"
         let pool_id: String = ":".to_string() + &self.pool_id.to_string();
@@ -423,7 +439,7 @@ impl Contract {
         self.call_stake(
             self.farm_contract_id.parse().unwrap(),
             pool_id,
-            U128(shares.parse::<u128>().unwrap()),
+            U128(amount),
             "".to_string(),
         );
     }
@@ -506,7 +522,7 @@ impl Contract {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self, amount_withdrawal:Option<U128>) -> Promise {
+    pub fn unstake(&mut self, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
         // TODO
         // require!(ACCOUNT_EXIST)
@@ -525,14 +541,13 @@ impl Contract {
         );
         let amount = amount_withdrawal.unwrap_or(U128(shares_available));
         log!("Unstake amount = {}", amount.0);
-        assert!(
-            amount.0 != 0,
-            "User is trying to withdraw 0 shares"
-        );
+        assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
 
         assert!(
             shares_available >= amount.0,
-            "User is trying to withdrawal {} and only has {}", amount.0, shares_available
+            "User is trying to withdrawal {} and only has {}",
+            amount.0,
+            shares_available
         );
 
         // Unstake shares/lps
@@ -556,6 +571,7 @@ impl Contract {
         .then(ext_self::callback_withdraw_shares(
             caller_id,
             amount.clone().0,
+            shares_available,
             contract_id,
             0,
             Gas(20_000_000_000_000),

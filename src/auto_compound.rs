@@ -281,20 +281,7 @@ impl Contract {
                 vec.insert(account.clone(), *val);
             }
 
-            /*  TODO: improve or justify the difficulty of iterating then inserting
-                Cant write everything here because it is not possible to use self.user_shares.iter() and, after it, use self.user_shares.insert(account, new_user_balance);
-                Is it a rust limitation maybe?
-            */
-            /* TODO: does this need to be a promise?
-                    there is no crosscontract call inside of it, a method call would satisfy
-            */
-            ext_self::balance_update(
-                vec,
-                shares.clone(),
-                env::current_account_id(),
-                1,
-                Gas(5_000_000_000_000),
-            );
+            self.balance_update(vec, shares.clone());
         };
         shares
     }

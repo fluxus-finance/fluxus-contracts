@@ -33,6 +33,7 @@ impl Contract {
     }
 
     /// Checks if predecessor_account_id is either the contract or the owner of the contract
+    /// TODO: rename method to is_owner()
     #[private]
     pub(crate) fn check_permission(&self) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
@@ -43,6 +44,7 @@ impl Contract {
     }
 
     /// Checks if account_id is either the caller account or the contract
+    /// TODO: rename method to is_caller()
     #[private]
     pub(crate) fn check_caller(&self, account_id: AccountId) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
@@ -53,6 +55,7 @@ impl Contract {
     }
 
     /// Checks if the caller account is in allowed_accounts
+    /// TODO: rename method to is_allowed_account()
     #[private]
     pub(crate) fn check_autocompounds_caller(&self) {
         let caller_acc_id: &AccountId = &env::predecessor_account_id();
@@ -93,6 +96,22 @@ impl Contract {
 
     pub fn contract_version(&self) -> String {
         String::from(env!("CARGO_PKG_VERSION"))
+    }
+
+    #[private]
+    /// wrap token_id into correct format in MFT standard
+    pub fn wrap_mft_token_id(&self, token_id: String) -> String {
+        format!(":{}", token_id)
+    }
+
+    pub fn update_seed_min_deposit(&mut self, min_deposit: U128) -> U128 {
+        self.check_permission();
+        self.seed_min_deposit = min_deposit;
+        self.seed_min_deposit
+    }
+
+    pub fn get_seed_min_deposit(&self) -> U128 {
+        self.seed_min_deposit
     }
 
     #[private]
