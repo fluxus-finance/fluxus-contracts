@@ -96,7 +96,7 @@ pub trait Callbacks {
     );
     fn callback_update_user_balance(&mut self, account_id: AccountId) -> String;
     fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
-    fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance);
+    fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance, shares_available: Balance);
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_return(&self) -> (U128, U128);
     fn callback_stake(&mut self);
@@ -276,16 +276,11 @@ impl Contract {
     }
 
     #[private]
-    pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance) {
+    pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance, shares_available: Balance) {
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
-        let prev_shares = self.user_shares.get(&account_id);
-        if let Some(shares) = prev_shares {
-            let new_shares = *shares - amount;
-            self.user_shares.insert(account_id.clone(), new_shares);
-        } else {
-            env::panic_str("AutoCompunder:: user shares not found");
-        };
+        let new_shares = shares_available - amount;
+        self.user_shares.insert(account_id.clone(), new_shares);
     }
 
     /// Returns the number of shares some accountId has in the contract
@@ -605,6 +600,7 @@ impl Contract {
         .then(ext_self::callback_withdraw_shares(
             caller_id,
             amount.clone().0,
+            shares_available,
             contract_id,
             0,
             Gas(20_000_000_000_000),
