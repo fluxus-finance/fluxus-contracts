@@ -55,6 +55,13 @@ pub trait RefExchange {
     fn metadata(&mut self);
     fn storage_deposit(&mut self, account_id: AccountId);
     fn get_deposits(&mut self, account_id: AccountId);
+    fn get_return(
+        &self,
+        pool_id: u64,
+        token_in: AccountId,
+        amount_in: U128,
+        token_out: AccountId,
+    ) -> U128;
     fn add_liquidity(&mut self, pool_id: u64, amounts: Vec<U128>, min_amounts: Option<Vec<U128>>);
     fn swap(&mut self, actions: Vec<SwapAction>, referral_id: Option<AccountId>);
     fn mft_transfer_call(

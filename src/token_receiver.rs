@@ -91,8 +91,6 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        let seed_id: String;
-
         //Check: Is the token_id the vault's pool_id? If is not, send it back
         assert_eq!(
             token_id,
@@ -102,17 +100,13 @@ impl MFTTokenReceiver for Contract {
 
         let amount_in_u128: u128 = amount.into();
 
-        // increment current shares deposited by account
-        self.increment_shares(&sender_id, amount_in_u128);
-
-        // increment total shares deposited by account
-        self.increment_user_shares(&sender_id, amount_in_u128);
+        assert!(
+            amount_in_u128 >= self.seed_min_deposit.into(),
+            "ERR_BELOW_MIN_DEPOSIT"
+        );
 
         // initiate stake process
-        self.stake(&sender_id);
-
-        // This should be used in the callback of call_stake, to only decrement if the stake was successful
-        self.decrement_shares(&sender_id, amount_in_u128);
+        self.stake(&sender_id, amount_in_u128);
 
         PromiseOrValue::Value(U128(0))
     }
