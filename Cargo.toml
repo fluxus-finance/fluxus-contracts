@@ -1,6 +1,6 @@
 [package]
 name = "auto_compounder"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Pollum"]
 edition = "2021"
 
