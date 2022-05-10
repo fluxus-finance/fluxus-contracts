@@ -279,13 +279,8 @@ impl Contract {
     pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance) {
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
-        let prev_shares = self.user_shares.get(&account_id);
-        if let Some(shares) = prev_shares {
-            let new_shares = *shares - amount;
-            self.user_shares.insert(account_id.clone(), new_shares);
-        } else {
-            env::panic_str("AutoCompunder:: user shares not found");
-        };
+
+        self.user_shares.insert(account_id.clone(), 0u128);
     }
 
     /// Returns the number of shares some accountId has in the contract
@@ -373,6 +368,9 @@ impl Contract {
                 // Distribute rewards for users with 10^-10% of the auto_compounder or more 
                 (((new_shares_quantity * TEN_TO_THE_POWER_OF_12) as f64 * (val as f64 / total as f64))).floor() as u128 / TEN_TO_THE_POWER_OF_12;
             let new_user_balance = val + extra_shares_for_user;
+
+            log!("{} had {} and now has {}", account, val, new_user_balance);
+
             self.user_shares.insert(account, new_user_balance);
         }
     }
@@ -556,7 +554,7 @@ impl Contract {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self, amount_withdrawal: Option<U128>) -> Promise {
+    pub fn unstake(&mut self, amount_withdrawal: Option<U128>) {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
         // TODO
         // require!(ACCOUNT_EXIST)
@@ -573,42 +571,40 @@ impl Contract {
             shares_available != 0,
             "User does not have enough lps to withdraw"
         );
-        let amount = amount_withdrawal.unwrap_or(U128(shares_available));
-        log!("Unstake amount = {}", amount.0);
-        assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
 
-        assert!(
-            shares_available >= amount.0,
-            "User is trying to withdrawal {} and only has {}",
-            amount.0,
+        log!(
+            "{} is trying to withdraw {} shares",
+            caller_id,
             shares_available
         );
 
+        let amount: U128 = U128(shares_available);
+
         // Unstake shares/lps
-        ext_farm::withdraw_seed(
-            self.seed_id.clone(),
-            amount.clone(),
-            "".to_string(),
-            self.farm_contract_id.parse().unwrap(), // contract account id
-            1,                                      // yocto NEAR to attach
-            Gas(180_000_000_000_000),               // gas to attach 108 -> 180_000_000_000_000
-        )
-        .then(ext_exchange::mft_transfer(
-            self.wrap_mft_token_id(self.pool_id.to_string()),
-            caller_id.clone(),
-            amount,
-            Some("".to_string()),
-            self.exchange_contract_id.parse().unwrap(),
-            1,
-            Gas(50_000_000_000_000),
-        ))
-        .then(ext_self::callback_withdraw_shares(
-            caller_id,
-            amount.clone().0,
-            contract_id,
-            0,
-            Gas(20_000_000_000_000),
-        ))
+        // ext_farm::withdraw_seed(
+        //     self.seed_id.clone(),
+        //     amount.clone(),
+        //     "".to_string(),
+        //     self.farm_contract_id.parse().unwrap(), // contract account id
+        //     1,                                      // yocto NEAR to attach
+        //     Gas(180_000_000_000_000),               // gas to attach 108 -> 180_000_000_000_000
+        // )
+        // .then(ext_exchange::mft_transfer(
+        //     self.wrap_mft_token_id(self.pool_id.to_string()),
+        //     caller_id.clone(),
+        //     amount.clone(),
+        //     Some("".to_string()),
+        //     self.exchange_contract_id.parse().unwrap(),
+        //     1,
+        //     Gas(50_000_000_000_000),
+        // ))
+        // .then(ext_self::callback_withdraw_shares(
+        //     caller_id,
+        //     amount.clone().0,
+        //     contract_id,
+        //     0,
+        //     Gas(20_000_000_000_000),
+        // ))
     }
 }
 

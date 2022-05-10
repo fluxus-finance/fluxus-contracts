@@ -246,37 +246,39 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // Stage 6: Auto-compound calls
     ///////////////////////////////////////////////////////////////////////////
 
-    // let res = contract
-    //     .call(&worker, "claim_reward")
-    //     .args_json(serde_json::json!({}))?
-    //     .gas(TOTAL_GAS)
-    //     .transact()
-    //     .await?;
-    // println!("claim_reward {:#?}\n", res);
+    let res = contract
+        .call(&worker, "claim_reward")
+        .args_json(serde_json::json!({}))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    println!("claim_reward {:#?}\n", res);
 
-    // let res = contract
-    //     .call(&worker, "withdraw_of_reward")
-    //     .args_json(serde_json::json!({}))?
-    //     .gas(TOTAL_GAS)
-    //     .transact()
-    //     .await?;
-    // println!("withdraw_of_reward {:#?}\n", res);
+    let res = contract
+        .call(&worker, "withdraw_of_reward")
+        .args_json(serde_json::json!({}))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    println!("withdraw_of_reward {:#?}\n", res);
 
-    // let res = contract
-    //     .call(&worker, "autocompounds_swap")
-    //     .args_json(serde_json::json!({}))?
-    //     .gas(TOTAL_GAS)
-    //     .transact()
-    //     .await?;
-    // println!("autocompounds_swap {:#?}\n", res);
+    let res = contract
+        .call(&worker, "autocompounds_swap")
+        .args_json(serde_json::json!({}))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    println!("autocompounds_swap {:#?}\n", res);
 
-    // let res = contract
-    //     .call(&worker, "autocompounds_liquidity_and_stake")
-    //     .args_json(serde_json::json!({}))?
-    //     .gas(TOTAL_GAS)
-    //     .transact()
-    //     .await?;
-    // println!("autocompounds_liquidity_and_stake {:#?}\n", res);
+    let res = contract
+        .call(&worker, "autocompounds_liquidity_and_stake")
+        .args_json(serde_json::json!({}))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    println!("autocompounds_liquidity_and_stake {:#?}\n", res);
+
+    utils::log_farm_seeds(&contract, &farm, &worker).await?;
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 7: Withdraw from Vault

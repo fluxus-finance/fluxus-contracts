@@ -126,6 +126,7 @@ impl Contract {
                         env::log_str("Check_promise successful");
                         return true;
                     }
+                    PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
                     _ => return false,
                 };
             }

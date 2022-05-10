@@ -6,7 +6,9 @@ use workspaces::network::Sandbox;
 use workspaces::prelude::*;
 use workspaces::{prelude::*, testnet, DevNetwork};
 use workspaces::{Account, AccountId, Contract, Network, Worker};
-const TOTAL_GAS: u64 = 300_000_000_000_000;
+
+pub const TOTAL_GAS: u64 = 300_000_000_000_000;
+pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000;
 
 type FarmId = String;
 type SeedId = String;
@@ -85,6 +87,7 @@ pub async fn deploy_full_vault_contract(
             "wrap_near_contract_id": CONTRACT_ID_WNEAR_TESTNET,
             "farm_id": farm_id,
             "pool_id": pool_id,
+            "seed_min_deposit": U128(MIN_SEED_DEPOSIT)
         }))?
         .transact()
         .await?;
@@ -238,7 +241,8 @@ pub async fn deploy_farm(
                 "start_at": 0,
                 "reward_per_session": reward_per_session,
                 "session_interval": 60
-            }
+            },
+            "min_deposit": Some(U128(MIN_SEED_DEPOSIT))
         }))?
         .deposit(parse_near!("0.1 N"))
         .gas(parse_gas!("200 Tgas") as u64)
@@ -510,9 +514,9 @@ pub async fn register_into_contracts(
         account
             .call(&worker, &contract_id, "storage_deposit")
             .args_json(serde_json::json!({
-                "registration_only": true,
+                "registration_only": false,
             }))?
-            .deposit(parse_near!("0.00125 N"))
+            .deposit(parse_near!("1 N"))
             .transact()
             .await?;
     }
@@ -533,5 +537,20 @@ pub async fn get_pool_info(
 
     println!("get pool {:#?}\n", res);
 
+    Ok(())
+}
+
+pub async fn log_farm_seeds(
+    auto_compounder: &Contract,
+    farm: &Contract,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<()> {
+    let res = farm
+        .call(&worker, "list_user_seeds")
+        .args_json(serde_json::json!({ "account_id": auto_compounder.id().to_string() }))?
+        .transact()
+        .await?;
+
+    println!("list_user_seeds {:#?}", res);
     Ok(())
 }
