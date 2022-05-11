@@ -96,7 +96,12 @@ pub trait Callbacks {
     );
     fn callback_update_user_balance(&mut self, account_id: AccountId) -> String;
     fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
-    fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance, shares_available: Balance);
+    fn callback_withdraw_shares(
+        &mut self,
+        account_id: AccountId,
+        amount: Balance,
+        shares_available: Balance,
+    );
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_return(&self) -> (U128, U128);
     fn callback_stake(&mut self);
@@ -276,7 +281,12 @@ impl Contract {
     }
 
     #[private]
-    pub fn callback_withdraw_shares(&mut self, account_id: AccountId, amount: Balance, shares_available: Balance) {
+    pub fn callback_withdraw_shares(
+        &mut self,
+        account_id: AccountId,
+        amount: Balance,
+        shares_available: Balance,
+    ) {
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
         let new_shares = shares_available - amount;
@@ -609,11 +619,21 @@ impl Contract {
 }
 
 /// Internal methods implementation.
+#[near_bindgen]
 impl Contract {
     fn assert_contract_running(&self) {
         match self.state {
             RunningState::Running => (),
             _ => env::panic_str("E51: contract paused"),
         };
+    }
+
+    pub fn update_contract_state(&mut self, state: RunningState) -> String {
+        self.state = state;
+        format!("{} is {}", env::current_account_id(), self.state)
+    }
+
+    pub fn get_contract_state(&self) -> String {
+        format!("{} is {}", env::current_account_id(), self.state)
     }
 }

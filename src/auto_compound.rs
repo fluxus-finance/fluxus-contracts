@@ -4,6 +4,7 @@ use crate::*;
 impl Contract {
     /// Function to claim the reward from the farm contract
     pub fn claim_reward(&mut self) {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         ext_farm::claim_reward_by_seed(
@@ -17,6 +18,7 @@ impl Contract {
     /// Function to claim the reward from the farm contract
     #[payable]
     pub fn withdraw_of_reward(&mut self) {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         let token_id: AccountId = self.reward_token.parse().unwrap();
@@ -75,6 +77,7 @@ impl Contract {
     #[private]
     #[payable]
     pub fn autocompounds_swap(&mut self) -> Promise {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         let amount_in = U128(self.last_reward_amount / 2);
@@ -179,6 +182,7 @@ impl Contract {
     /// Get amount of tokens available then stake it
     #[payable]
     pub fn autocompounds_liquidity_and_stake(&mut self) {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         ext_exchange::get_deposits(

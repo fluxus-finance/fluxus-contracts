@@ -34,3 +34,6 @@ near call $exchange_contract_id register_tokens '{ "token_ids" : [ "'$reward_tok
 
 # Register the contract in the pool 
 near call $exchange_contract_id mft_register '{ "token_id" : ":'$pool_id'", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
+
+# Update contract to Paused, making stake and auto-compound unavailable
+# near call $CONTRACT_NAME update_contract_state '{ "state": "Paused" }' --accountId $CONTRACT_NAME
