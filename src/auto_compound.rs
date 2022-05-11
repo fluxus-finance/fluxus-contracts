@@ -112,7 +112,7 @@ impl Contract {
             self.pool_id_token1_reward,
             self.reward_token.parse().unwrap(),
             amount_token_1,
-            self.pool_token1.parse().unwrap(),
+            self.token1_address.parse().unwrap(),
             self.exchange_contract_id.parse().unwrap(),
             0,
             Gas(10_000_000_000_000),
@@ -121,7 +121,7 @@ impl Contract {
             self.pool_id_token2_reward,
             self.reward_token.parse().unwrap(),
             amount_token_2,
-            self.pool_token2.parse().unwrap(),
+            self.token2_address.parse().unwrap(),
             self.exchange_contract_id.parse().unwrap(),
             0,
             Gas(10_000_000_000_000),
@@ -147,8 +147,8 @@ impl Contract {
         let pool_id_to_swap2 = self.pool_id_token2_reward;
         let token_in1 = self.reward_token.parse().unwrap();
         let token_in2 = self.reward_token.parse().unwrap();
-        let token_out1 = self.pool_token1.parse().unwrap();
-        let token_out2 = self.pool_token2.parse().unwrap();
+        let token_out1 = self.token1_address.parse().unwrap();
+        let token_out2 = self.token2_address.parse().unwrap();
 
         let (token1_min_out, token2_min_out): (U128, U128) = tokens;
 
@@ -222,8 +222,8 @@ impl Contract {
         };
 
         let pool_id_to_add_liquidity = self.pool_id;
-        let token_out1 = self.pool_token1.to_string();
-        let token_out2 = self.pool_token2.to_string();
+        let token_out1 = self.token1_address.to_string();
+        let token_out2 = self.token2_address.to_string();
         let mut quantity_of_token1 = U128(0);
         let mut quantity_of_token2 = U128(0);
 

@@ -57,25 +57,66 @@ const TEN_TO_THE_POWER_OF_12: u128 = 1000000000000;
 #[near_bindgen]
 #[derive(BorshSerialize, BorshDeserialize, PanicOnDefault)]
 pub struct Contract {
+    // Account address that have authority to update the contract state
     owner_id: AccountId,
+
+    // Struct that maps addresses to its currents shares added plus the received
+    // from the auto-compound strategy
     user_shares: HashMap<AccountId, u128>,
+
+    // Keeps tracks of how much shares the contract gained from the auto-compound
     protocol_shares: u128,
+
+    // Keeps tracks of accounts that send coins to this contract
     accounts: LookupMap<AccountId, VAccount>,
+
+    // Keeps track of address that have permission to call auto-compound related methods
     allowed_accounts: Vec<AccountId>,
+
+    // Keeps track of tokens that the contracts can receive
     whitelisted_tokens: UnorderedSet<AccountId>,
+
+    // State is used to update the contract to a Paused/Running state
     state: RunningState,
+
+    // Used to keep track of the rewards received from the farm during auto-compound cycle
     last_reward_amount: u128,
+
+    // TODO: do we still need this?
+    // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
     users_total_near_deposited: HashMap<AccountId, u128>,
-    pool_token1: String,
-    pool_token2: String,
+
+    // Address of the first token used by pool
+    token1_address: String,
+
+    // Address of the token used by the pool
+    token2_address: String,
+
+    // Pool used to swap the reward received by the token used to add liquidity
     pool_id_token1_reward: u64,
+
+    // Pool used to swap the reward received by the token used to add liquidity
     pool_id_token2_reward: u64,
+
+    // Address of the reward token given by the farm
     reward_token: String,
+
+    // Contract address of the exchange used
     exchange_contract_id: String,
+
+    // Contract address of the farm used
     farm_contract_id: String,
+
+    // Farm used to auto-compound
     farm: String,
+
+    // Pool used to add liquidity and farming
     pool_id: u64,
+
+    // Format expected by the farm to claim and withdraw rewards
     seed_id: String,
+
+    // Min LP amount accepted by the farm for stake
     seed_min_deposit: U128,
 }
 // Functions that we need to call like a callback.
@@ -117,8 +158,8 @@ impl Contract {
     ///
     /// - `owner_id` - the account id that owns the contract
     /// - `protocol_shares` - the number of shares the contract starts/has
-    /// - `pool_token1` - First pool token
-    /// - `pool_token2` - Second pool token
+    /// - `token1_address` - First pool token
+    /// - `token2_address` - Second pool token
     /// - `pool_id_token1_reward` - Pool_id of a pool that is token1-reward
     /// - `pool_id_token2_reward` - Pool_id of a pool that is token2-reward
     /// - `reward_token` - Reward given by the farm
@@ -129,8 +170,8 @@ impl Contract {
     pub fn new(
         owner_id: AccountId,
         protocol_shares: u128,
-        pool_token1: String,
-        pool_token2: String,
+        token1_address: String,
+        token2_address: String,
         pool_id_token1_reward: u64,
         pool_id_token2_reward: u64,
         reward_token: String,
@@ -156,8 +197,8 @@ impl Contract {
             whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
             state: RunningState::Running,
             users_total_near_deposited: HashMap::new(),
-            pool_token1: pool_token1,
-            pool_token2: pool_token2,
+            token1_address: token1_address,
+            token2_address: token2_address,
             pool_id_token1_reward: pool_id_token1_reward,
             pool_id_token2_reward: pool_id_token2_reward,
             reward_token: reward_token,
