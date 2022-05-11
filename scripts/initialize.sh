@@ -9,10 +9,9 @@ echo $reward_token
 #### Initialize contract
 near call $CONTRACT_NAME new '{"owner_id":"'$username'", "protocol_shares": 0,
 "pool_token1": "'$pool_token1'", "pool_token2": "'$pool_token2'", 
-"pool_id_token1_wrap": '$pool_id_token1_wrap', "pool_id_token2_wrap": '$pool_id_token2_wrap', 
 "pool_id_token1_reward": '$pool_id_token1_reward', "pool_id_token2_reward": '$pool_id_token2_reward', "reward_token": "'$reward_token'",
 "exchange_contract_id": "'$exchange_contract_id'", "farm_contract_id": "'$farm_contract_id'", 
-"wrap_near_contract_id": "'$wrap_near_contract_id'", "farm_id": '$farm_id', "pool_id": '$pool_id', "seed_min_deposit": "1000000000000000000"}' --accountId $username
+"farm_id": '$farm_id', "pool_id": '$pool_id', "seed_min_deposit": "1000000000000000000"}' --accountId $username
 
 
 #### Register contract 

@@ -68,19 +68,15 @@ pub struct Contract {
     users_total_near_deposited: HashMap<AccountId, u128>,
     pool_token1: String,
     pool_token2: String,
-    pool_id_token1_wrap: u64,
-    pool_id_token2_wrap: u64,
     pool_id_token1_reward: u64,
     pool_id_token2_reward: u64,
     reward_token: String,
-    wrap_near_contract_id: String,
     exchange_contract_id: String,
     farm_contract_id: String,
     farm: String,
     pool_id: u64,
     seed_id: String,
     seed_min_deposit: U128,
-    shares: LookupMap<AccountId, Balance>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -123,8 +119,6 @@ impl Contract {
     /// - `protocol_shares` - the number of shares the contract starts/has
     /// - `pool_token1` - First pool token
     /// - `pool_token2` - Second pool token
-    /// - `pool_id_token1_wrap` - Pool_id of a pool that is token1-wnear
-    /// - `pool_id_token2_wrap` - Pool_id of a pool that is token2-wnear
     /// - `pool_id_token1_reward` - Pool_id of a pool that is token1-reward
     /// - `pool_id_token2_reward` - Pool_id of a pool that is token2-reward
     /// - `reward_token` - Reward given by the farm
@@ -137,14 +131,11 @@ impl Contract {
         protocol_shares: u128,
         pool_token1: String,
         pool_token2: String,
-        pool_id_token1_wrap: u64,
-        pool_id_token2_wrap: u64,
         pool_id_token1_reward: u64,
         pool_id_token2_reward: u64,
         reward_token: String,
         exchange_contract_id: String,
         farm_contract_id: String,
-        wrap_near_contract_id: String,
         farm_id: u64,
         pool_id: u64,
         seed_min_deposit: U128,
@@ -167,19 +158,15 @@ impl Contract {
             users_total_near_deposited: HashMap::new(),
             pool_token1: pool_token1,
             pool_token2: pool_token2,
-            pool_id_token1_wrap: pool_id_token1_wrap,
-            pool_id_token2_wrap: pool_id_token2_wrap,
             pool_id_token1_reward: pool_id_token1_reward,
             pool_id_token2_reward: pool_id_token2_reward,
             reward_token: reward_token,
             exchange_contract_id: exchange_contract_id.clone(),
             farm_contract_id: farm_contract_id.clone(),
-            wrap_near_contract_id,
             farm,
             pool_id,
             seed_id: exchange_contract_id + "@" + &pool_id.to_string(),
             seed_min_deposit,
-            shares: LookupMap::new(StorageKey::Shares { pool_id: pool_id }),
         }
     }
 
@@ -261,23 +248,6 @@ impl Contract {
             // log!("");
             self.user_shares.insert(account_id.clone(), shares);
         };
-    }
-
-    #[private]
-    pub fn increment_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        if shares == 0 {
-            return;
-        }
-        let prev_value = self.shares.get(account_id).unwrap_or(0);
-        log!("Now, {} has {} shares", account_id, prev_value + shares);
-        self.shares.insert(account_id, &(prev_value + shares));
-    }
-
-    #[private]
-    pub fn decrement_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let prev_value = self.shares.get(account_id).unwrap_or(0);
-        log!("Now, {} has {} shares", account_id, prev_value - shares);
-        self.shares.insert(account_id, &(prev_value - shares));
     }
 
     #[private]
@@ -475,6 +445,7 @@ impl Contract {
         //For Mainnet, probability it is not necessary concatenate the ":"
         let pool_id: String = ":".to_string() + &self.pool_id.to_string();
 
+        // TODO: Should call it right away and then use a callback to check the result
         self.call_stake(
             self.farm_contract_id.parse().unwrap(),
             pool_id,
