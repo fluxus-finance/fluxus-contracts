@@ -11,3 +11,6 @@ source .env
 
 #### consult min deposit for seed
 # near view $farm_contract_id get_seed_info '{ "seed_id": "'$exchange_contract_id'@'$pool_id'" }'
+
+#### Get the current contract state
+near view $CONTRACT_NAME get_contract_state
