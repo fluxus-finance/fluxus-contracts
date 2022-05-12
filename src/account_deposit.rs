@@ -469,3 +469,110 @@ impl Contract {
         ))
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::{testing_env, VMContext};
+
+    fn get_context() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    pub fn to_account_id(value: &str) -> AccountId {
+        value.parse().unwrap()
+    }
+
+    fn create_account() -> Account {
+        let account_struct = Account::new(&to_account_id("fluxus.near"));
+        account_struct
+    }
+
+    #[test]
+    fn test_account_initialization() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut account = create_account();
+
+        // Initialized account has none token registered
+        assert_eq!(account.get_tokens(), vec![]);
+        account.register(&vec![to_account_id("usn.near")]);
+        assert_eq!(account.get_tokens(), vec![to_account_id("usn.near")]);
+
+        // Register token and check current balance, defaults to 0
+        let usn_balance: Option<Balance> = account.get_balance(&to_account_id("usn.near"));
+        assert_eq!(usn_balance.unwrap_or(1u128), 0u128);
+    }
+
+    #[test]
+    fn test_account_deposit_and_withdraw() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut account = create_account();
+
+        // Initialized account has none token registered
+        assert_eq!(account.get_tokens(), vec![]);
+        account.register(&vec![to_account_id("usn.near")]);
+        assert_eq!(account.get_tokens(), vec![to_account_id("usn.near")]);
+
+        // Deposit balance to token
+        account.deposit(&to_account_id("usn.near"), 10u128);
+        let usn_balance: Option<Balance> = account.get_balance(&to_account_id("usn.near"));
+        assert_eq!(usn_balance.unwrap_or(1u128), 10u128);
+
+        // deposit_with_storage_check withdraw
+        account.withdraw(&to_account_id("usn.near"), 10u128);
+        let usn_balance: Option<Balance> = account.get_balance(&to_account_id("usn.near"));
+        assert_eq!(usn_balance.unwrap_or(1u128), 0u128);
+    }
+
+    #[test]
+    fn test_account_register_unregister() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut account = create_account();
+
+        // Register and unregister token without modifying its balance
+        account.register(&vec![to_account_id("usn.near")]);
+        account.register(&vec![to_account_id("wnear.near")]);
+        assert_eq!(
+            account.get_tokens(),
+            vec![to_account_id("usn.near"), to_account_id("wnear.near")]
+        );
+        let wnear_balance: Option<Balance> = account.get_balance(&to_account_id("wnear.near"));
+        assert_eq!(wnear_balance.unwrap_or(1u128), 0u128);
+        account.unregister(&to_account_id("wnear.near"));
+        assert_eq!(account.get_tokens(), vec![to_account_id("usn.near")]);
+    }
+
+    #[test]
+    fn test_account_withdraw() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut account = create_account();
+
+        // assert no storage is available until near is added
+        assert_eq!(account.storage_available(), 0u128);
+        account.deposit_with_storage_check(&to_account_id("uxu.near"), 10u128);
+        let uxu_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
+        assert_eq!(uxu_balance.unwrap_or(0u128), 0u128);
+
+        account.near_amount = 100000000000000000000000u128;
+        assert_ne!(account.storage_available(), 0u128);
+
+        // deposit token with balance
+        account.deposit_with_storage_check(&to_account_id("uxu.near"), 10u128);
+        let uxu_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
+        assert_eq!(uxu_balance.unwrap_or(1u128), 10u128);
+    }
+}

@@ -133,3 +133,140 @@ impl Contract {
         }
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::testing_env;
+
+    fn get_context() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    pub fn to_account_id(value: &str) -> AccountId {
+        value.parse().unwrap()
+    }
+
+    fn create_contract() -> Contract {
+        let contract = Contract::new(
+            to_account_id("auto_compounder.near"),
+            0u128,
+            String::from("eth.near"),
+            String::from("dai.near"),
+            0,
+            1,
+            String::from("usn.near"),
+            String::from(""),
+            String::from(""),
+            0,
+            0,
+            U128(100),
+        );
+
+        contract
+    }
+
+    #[test]
+    fn test_pool_to_token_id() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let contract = create_contract();
+
+        assert_eq!(
+            contract.wrap_mft_token_id(String::from("100")),
+            String::from(":100")
+        );
+        assert_ne!(
+            contract.wrap_mft_token_id(String::from("100")),
+            String::from("100")
+        );
+    }
+
+    #[test]
+    fn test_update_minimum_deposit() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut contract = create_contract();
+
+        assert_eq!(contract.get_seed_min_deposit(), U128(100));
+
+        contract.update_seed_min_deposit(U128(1000));
+        assert_eq!(contract.get_seed_min_deposit(), U128(1000));
+    }
+
+    #[test]
+    fn test_whitelisted_tokens() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut contract = create_contract();
+
+        assert_eq!(contract.get_whitelisted_tokens(), vec![]);
+
+        contract.extend_whitelisted_tokens(vec![to_account_id("usn.near")]);
+        assert_eq!(
+            contract.get_whitelisted_tokens(),
+            vec![to_account_id("usn.near")]
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_allowed_accounts() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut contract = create_contract();
+
+        assert_eq!(
+            contract.get_allowed_accounts(),
+            vec![to_account_id("auto_compounder.near")]
+        );
+
+        contract.add_allowed_account(to_account_id("manager.near"));
+        assert_eq!(
+            contract.get_allowed_accounts(),
+            vec![
+                to_account_id("auto_compounder.near"),
+                to_account_id("manager.near")
+            ]
+        );
+
+        contract.remove_allowed_account(to_account_id("auto_compounder.near"));
+        assert_eq!(
+            contract.get_allowed_accounts(),
+            vec![to_account_id("manager.near")]
+        );
+
+        // should panic because there is no auto_compounder.near in the vector after it was removed
+        contract.remove_allowed_account(to_account_id("auto_compounder.near"));
+    }
+
+    // TODO: update predecessor_account_id and current_account_id to properly test
+    // #[test]
+    // #[should_panic]
+    // fn test_callers_checks() {
+    //     let mut context = get_context();
+    //     testing_env!(context.build());
+
+    //     let mut contract = create_contract();
+
+    //     contract.check_autocompounds_caller();
+    //     contract.check_permission();
+
+    //     testing_env!(context
+    //         .predecessor_account_id(to_account_id("mesto.near"))
+    //         .current_account_id(to_account_id("mesto.near"))
+    //         .build());
+
+    //     contract.check_permission();
+    // }
+}
