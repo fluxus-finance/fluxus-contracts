@@ -555,7 +555,7 @@ mod tests {
     }
 
     #[test]
-    fn test_account_withdraw() {
+    fn test_account_deposit_with_balance() {
         let context = get_context();
         testing_env!(context.build());
 
