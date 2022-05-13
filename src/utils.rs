@@ -58,7 +58,10 @@ impl Contract {
     /// TODO: rename method to is_allowed_account()
     #[private]
     pub(crate) fn check_autocompounds_caller(&self) {
+        let contract = env::current_account_id();
+
         let caller_acc_id: &AccountId = &env::predecessor_account_id();
+
         let mut is_allowed: bool = false;
 
         for account in &self.allowed_accounts {
@@ -250,23 +253,36 @@ mod tests {
         contract.remove_allowed_account(to_account_id("auto_compounder.near"));
     }
 
-    // TODO: update predecessor_account_id and current_account_id to properly test
-    // #[test]
-    // #[should_panic]
-    // fn test_callers_checks() {
-    //     let mut context = get_context();
-    //     testing_env!(context.build());
+    #[test]
+    fn test_callers_checks() {
+        let mut context = get_context();
+        testing_env!(context.build());
 
-    //     let mut contract = create_contract();
+        let mut contract = create_contract();
 
-    //     contract.check_autocompounds_caller();
-    //     contract.check_permission();
+        // both contract and owner (caller) have permissions
+        contract.check_autocompounds_caller();
+        contract.check_permission();
+        contract.check_caller(to_account_id("auto_compounder.near"));
 
-    //     testing_env!(context
-    //         .predecessor_account_id(to_account_id("mesto.near"))
-    //         .current_account_id(to_account_id("mesto.near"))
-    //         .build());
+        // update caller to a different value
+        testing_env!(context
+            .predecessor_account_id(to_account_id("fluxus.near"))
+            .build());
 
-    //     contract.check_permission();
-    // }
+        // https://doc.rust-lang.org/std/panic/fn.catch_unwind.html
+        // should panic because the caller is not present in allowed_accounts
+        let result = std::panic::catch_unwind(|| contract.check_autocompounds_caller());
+        assert!(result.is_err());
+
+        // should panic because the caller is not the contract or the owner of the contract
+        let result = std::panic::catch_unwind(|| contract.check_permission());
+        assert!(result.is_err());
+
+        // should panic because the caller is not the contract or the account being consulted
+        let result = std::panic::catch_unwind(|| {
+            contract.check_caller(to_account_id("fluxus_finance.near"))
+        });
+        assert!(result.is_err());
+    }
 }
