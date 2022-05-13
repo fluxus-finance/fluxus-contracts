@@ -58,8 +58,6 @@ impl Contract {
     /// TODO: rename method to is_allowed_account()
     #[private]
     pub(crate) fn check_autocompounds_caller(&self) {
-        let contract = env::current_account_id();
-
         let caller_acc_id: &AccountId = &env::predecessor_account_id();
 
         let mut is_allowed: bool = false;
