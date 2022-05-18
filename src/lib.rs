@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
+use uint::construct_uint;
 
 use near_contract_standards::storage_management::{
     StorageBalance, StorageBalanceBounds, StorageManagement,
@@ -148,6 +149,12 @@ pub trait Callbacks {
     fn stake_and_liquidity_auto(&mut self, account_id: AccountId);
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(&self, amount_token_1: U128, amount_token_2: U128) -> Promise;
+}
+const F: u128 = 100000000000000000000000000000; // rename this const
+
+construct_uint! {
+    /// 256-bit unsigned integer.
+    pub struct U256(4);
 }
 
 #[near_bindgen]
@@ -376,21 +383,31 @@ impl Contract {
     /// Update user balances based on the user's percentage in the contract.
     #[private]
     #[payable]
-    pub fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String) {
-        let new_shares_quantity = shares.parse::<u128>().unwrap();
-        log!("new_shares_quantity is equal to {}", new_shares_quantity,);
+    pub fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares_reward: String) {
+        let shares_reward = shares_reward.parse::<u128>().unwrap();
+        log!("new_shares_quantity is equal to {}", shares_reward);
 
         let mut total: u128 = 0;
         for (_, val) in vec.clone() {
             total = total + val
         }
+
+        let mut shares_distributed: U256 = U256::from(0u128);
+
         for (account, val) in vec {
-            let extra_shares_for_user: u128 =
-                // Distribute rewards for users with 10^-10% of the auto_compounder or more 
-                (((new_shares_quantity * TEN_TO_THE_POWER_OF_12) as f64 * (val as f64 / total as f64))).floor() as u128 / TEN_TO_THE_POWER_OF_12;
-            let new_user_balance = val + extra_shares_for_user;
-            self.user_shares.insert(account, new_user_balance);
+            let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
+
+            let casted_reward = U256::from(shares_reward) * acc_percentage;
+
+            let earned_shares: U256 = casted_reward / U256::from(F);
+
+            shares_distributed += earned_shares;
+
+            let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
         }
+
+        let residue: u128 = shares_reward - shares_distributed.as_u128();
+        println!("Shares residue: {}", residue);
     }
 
     /// Ref function to add liquidity in the pool.
