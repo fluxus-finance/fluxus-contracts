@@ -382,7 +382,6 @@ impl Contract {
 
     /// Update user balances based on the user's percentage in the contract.
     #[private]
-    #[payable]
     pub fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares_reward: String) {
         let shares_reward = shares_reward.parse::<u128>().unwrap();
         log!("new_shares_quantity is equal to {}", shares_reward);
@@ -404,10 +403,12 @@ impl Contract {
             shares_distributed += earned_shares;
 
             let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
+
+            self.user_shares.insert(account, new_user_balance);
         }
 
         let residue: u128 = shares_reward - shares_distributed.as_u128();
-        println!("Shares residue: {}", residue);
+        log!("Shares residue: {}", residue);
     }
 
     /// Ref function to add liquidity in the pool.
@@ -664,5 +665,88 @@ impl Contract {
 
     pub fn get_contract_state(&self) -> String {
         format!("{} is {}", env::current_account_id(), self.state)
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use std::hash::Hash;
+
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::testing_env;
+
+    fn get_context() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    pub fn to_account_id(value: &str) -> AccountId {
+        value.parse().unwrap()
+    }
+
+    fn create_contract() -> Contract {
+        let contract = Contract::new(
+            to_account_id("auto_compounder.near"),
+            0u128,
+            String::from("eth.near"),
+            String::from("dai.near"),
+            0,
+            1,
+            String::from("usn.near"),
+            String::from(""),
+            String::from(""),
+            0,
+            0,
+            U128(100),
+        );
+
+        contract
+    }
+
+    #[test]
+    fn test_balance_update() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut contract = create_contract();
+
+        let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
+
+        let acc1 = to_account_id("alice.near");
+        let shares1 = near.clone();
+
+        let acc2 = to_account_id("bob.near");
+        let shares2 = near.clone() * 3;
+
+        // add initial balance for accounts
+        contract.user_shares.insert(acc1.clone(), shares1);
+        contract.user_shares.insert(acc2.clone(), shares2);
+
+        // replicate vec to be used in the balance_update
+        let mut user_shares: HashMap<AccountId, u128> = HashMap::new();
+        user_shares.insert(acc1.clone(), shares1);
+        user_shares.insert(acc2.clone(), shares2);
+
+        // distribute shares between accounts
+        contract.balance_update(user_shares, near.to_string());
+
+        // assert account 1 earned 25% from reward shares
+        let acc1_updated_shares = contract.user_shares.get(&acc1).unwrap();
+        assert_eq!(
+            *acc1_updated_shares, 1250000000000000000000000u128,
+            "ERR_BALANCE_UPDATE"
+        );
+
+        // assert account 2 earned 75% from reward shares
+        let acc2_updated_shares = contract.user_shares.get(&acc2).unwrap();
+        assert_eq!(
+            *acc2_updated_shares, 3750000000000000000000000u128,
+            "ERR_BALANCE_UPDATE"
+        );
     }
 }
