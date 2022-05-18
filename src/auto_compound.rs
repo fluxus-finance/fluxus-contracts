@@ -4,6 +4,7 @@ use crate::*;
 impl Contract {
     /// Function to claim the reward from the farm contract
     pub fn claim_reward(&mut self) {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         ext_farm::claim_reward_by_seed(
@@ -17,6 +18,7 @@ impl Contract {
     /// Function to claim the reward from the farm contract
     #[payable]
     pub fn withdraw_of_reward(&mut self) {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         let token_id: AccountId = self.reward_token.parse().unwrap();
@@ -75,6 +77,7 @@ impl Contract {
     #[private]
     #[payable]
     pub fn autocompounds_swap(&mut self) -> Promise {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         let amount_in = U128(self.last_reward_amount / 2);
@@ -109,7 +112,7 @@ impl Contract {
             self.pool_id_token1_reward,
             self.reward_token.parse().unwrap(),
             amount_token_1,
-            self.pool_token1.parse().unwrap(),
+            self.token1_address.parse().unwrap(),
             self.exchange_contract_id.parse().unwrap(),
             0,
             Gas(10_000_000_000_000),
@@ -118,7 +121,7 @@ impl Contract {
             self.pool_id_token2_reward,
             self.reward_token.parse().unwrap(),
             amount_token_2,
-            self.pool_token2.parse().unwrap(),
+            self.token2_address.parse().unwrap(),
             self.exchange_contract_id.parse().unwrap(),
             0,
             Gas(10_000_000_000_000),
@@ -144,8 +147,8 @@ impl Contract {
         let pool_id_to_swap2 = self.pool_id_token2_reward;
         let token_in1 = self.reward_token.parse().unwrap();
         let token_in2 = self.reward_token.parse().unwrap();
-        let token_out1 = self.pool_token1.parse().unwrap();
-        let token_out2 = self.pool_token2.parse().unwrap();
+        let token_out1 = self.token1_address.parse().unwrap();
+        let token_out2 = self.token2_address.parse().unwrap();
 
         let (token1_min_out, token2_min_out): (U128, U128) = tokens;
 
@@ -179,6 +182,7 @@ impl Contract {
     /// Get amount of tokens available then stake it
     #[payable]
     pub fn autocompounds_liquidity_and_stake(&mut self) {
+        self.assert_contract_running();
         self.check_autocompounds_caller();
 
         ext_exchange::get_deposits(
@@ -218,8 +222,8 @@ impl Contract {
         };
 
         let pool_id_to_add_liquidity = self.pool_id;
-        let token_out1 = self.pool_token1.to_string();
-        let token_out2 = self.pool_token2.to_string();
+        let token_out1 = self.token1_address.to_string();
+        let token_out2 = self.token2_address.to_string();
         let mut quantity_of_token1 = U128(0);
         let mut quantity_of_token2 = U128(0);
 
@@ -277,13 +281,13 @@ impl Contract {
         };
 
         if shares.parse::<u128>().unwrap() > 0 {
-            let mut vec: HashMap<AccountId, u128> = HashMap::new();
+            let mut total_shares: u128 = 0;
 
-            for (account, val) in self.user_shares.iter() {
-                vec.insert(account.clone(), *val);
+            for (_, val) in self.user_shares.iter() {
+                total_shares += *val;
             }
 
-            self.balance_update(vec, shares.clone());
+            self.balance_update(total_shares, shares.clone());
         };
         shares
     }

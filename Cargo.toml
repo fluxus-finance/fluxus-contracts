@@ -1,6 +1,6 @@
 [package]
 name = "auto_compounder"
-version = "0.1.0"
+version = "0.1.4"
 authors = ["Pollum"]
 edition = "2021"
 
@@ -14,6 +14,7 @@ near-contract-standards = { git = "https://github.com/near/near-sdk-rs", tag = "
 futures = "0.3"
 log = "0.4"
 console_log = { version = "0.2", optional = true }
+uint = "0.8"
 
 
 [dev-dependencies]

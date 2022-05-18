@@ -91,6 +91,8 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        self.assert_contract_running();
+
         //Check: Is the token_id the vault's pool_id? If is not, send it back
         assert_eq!(
             token_id,
