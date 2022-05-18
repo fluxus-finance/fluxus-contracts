@@ -382,18 +382,13 @@ impl Contract {
 
     /// Update user balances based on the user's percentage in the contract.
     #[private]
-    pub fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares_reward: String) {
+    pub fn balance_update(&mut self, total: u128, shares_reward: String) {
         let shares_reward = shares_reward.parse::<u128>().unwrap();
         log!("new_shares_quantity is equal to {}", shares_reward);
 
-        let mut total: u128 = 0;
-        for (_, val) in vec.clone() {
-            total = total + val
-        }
-
         let mut shares_distributed: U256 = U256::from(0u128);
 
-        for (account, val) in vec {
+        for (account, val) in self.user_shares.clone() {
             let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
 
             let casted_reward = U256::from(shares_reward) * acc_percentage;
@@ -727,13 +722,10 @@ mod tests {
         contract.user_shares.insert(acc1.clone(), shares1);
         contract.user_shares.insert(acc2.clone(), shares2);
 
-        // replicate vec to be used in the balance_update
-        let mut user_shares: HashMap<AccountId, u128> = HashMap::new();
-        user_shares.insert(acc1.clone(), shares1);
-        user_shares.insert(acc2.clone(), shares2);
+        let total_shares: u128 = shares1 + shares2;
 
         // distribute shares between accounts
-        contract.balance_update(user_shares, near.to_string());
+        contract.balance_update(total_shares, near.to_string());
 
         // assert account 1 earned 25% from reward shares
         let acc1_updated_shares = contract.user_shares.get(&acc1).unwrap();

@@ -281,13 +281,13 @@ impl Contract {
         };
 
         if shares.parse::<u128>().unwrap() > 0 {
-            let mut vec: HashMap<AccountId, u128> = HashMap::new();
+            let mut total_shares: u128 = 0;
 
-            for (account, val) in self.user_shares.iter() {
-                vec.insert(account.clone(), *val);
+            for (_, val) in self.user_shares.iter() {
+                total_shares += *val;
             }
 
-            self.balance_update(vec, shares.clone());
+            self.balance_update(total_shares, shares.clone());
         };
         shares
     }
