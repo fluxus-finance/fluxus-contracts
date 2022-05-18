@@ -75,16 +75,13 @@ pub async fn deploy_full_vault_contract(
         .args_json(serde_json::json!({
             "owner_id": contract.id().clone(),
             "protocol_shares": 0u128,
-            "pool_token1": token1.id().to_string(),
-            "pool_token2": token2.id().to_string(),
-            "pool_id_token1_wrap": pool_id_token1_wrap,
-            "pool_id_token2_wrap": pool_id_token2_wrap,
+            "token1_address": token1.id().to_string(),
+            "token2_address": token2.id().to_string(),
             "pool_id_token1_reward": pool_id_token1_reward,
             "pool_id_token2_reward": pool_id_token2_reward,
             "reward_token": reward_token.id().to_string(),
             "exchange_contract_id": CONTRACT_ID_REF_EXC,
             "farm_contract_id": CONTRACT_ID_FARM,
-            "wrap_near_contract_id": CONTRACT_ID_WNEAR_TESTNET,
             "farm_id": farm_id,
             "pool_id": pool_id,
             "seed_min_deposit": U128(MIN_SEED_DEPOSIT)

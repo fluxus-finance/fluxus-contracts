@@ -586,7 +586,7 @@ impl Contract {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self, amount_withdrawal: Option<U128>) {
+    pub fn unstake(&mut self, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
         // TODO
         // require!(ACCOUNT_EXIST)
@@ -613,30 +613,31 @@ impl Contract {
         let amount: U128 = U128(shares_available);
 
         // Unstake shares/lps
-        // ext_farm::withdraw_seed(
-        //     self.seed_id.clone(),
-        //     amount.clone(),
-        //     "".to_string(),
-        //     self.farm_contract_id.parse().unwrap(), // contract account id
-        //     1,                                      // yocto NEAR to attach
-        //     Gas(180_000_000_000_000),               // gas to attach 108 -> 180_000_000_000_000
-        // )
-        // .then(ext_exchange::mft_transfer(
-        //     self.wrap_mft_token_id(self.pool_id.to_string()),
-        //     caller_id.clone(),
-        //     amount.clone(),
-        //     Some("".to_string()),
-        //     self.exchange_contract_id.parse().unwrap(),
-        //     1,
-        //     Gas(50_000_000_000_000),
-        // ))
-        // .then(ext_self::callback_withdraw_shares(
-        //     caller_id,
-        //     amount.clone().0,
-        //     contract_id,
-        //     0,
-        //     Gas(20_000_000_000_000),
-        // ))
+        ext_farm::withdraw_seed(
+            self.seed_id.clone(),
+            amount.clone(),
+            "".to_string(),
+            self.farm_contract_id.parse().unwrap(), // contract account id
+            1,                                      // yocto NEAR to attach
+            Gas(180_000_000_000_000),               // gas to attach 108 -> 180_000_000_000_000
+        )
+        .then(ext_exchange::mft_transfer(
+            self.wrap_mft_token_id(self.pool_id.to_string()),
+            caller_id.clone(),
+            amount.clone(),
+            Some("".to_string()),
+            self.exchange_contract_id.parse().unwrap(),
+            1,
+            Gas(50_000_000_000_000),
+        ))
+        .then(ext_self::callback_withdraw_shares(
+            caller_id,
+            amount.clone().0,
+            shares_available,
+            contract_id,
+            0,
+            Gas(20_000_000_000_000),
+        ))
     }
 }
 
