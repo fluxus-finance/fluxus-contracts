@@ -742,3 +742,197 @@ mod tests {
         );
     }
 }
+
+
+
+mod tests {
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::{testing_env, VMContext};
+
+    fn get_context() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .attached_deposit(1000000000000000000000000u128)
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    fn get_context_user_1() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .attached_deposit(1000000000000000000000000u128)
+            .current_account_id(to_account_id("user1.near"))
+            .signer_account_id(to_account_id("user1.near"))
+            .predecessor_account_id(to_account_id("user1.near"));
+        builder
+    }
+
+    fn get_context_user_2() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .attached_deposit(1000000000000000000000000u128)
+            .current_account_id(to_account_id("user2.near"))
+            .signer_account_id(to_account_id("user2.near"))
+            .predecessor_account_id(to_account_id("user2.near"));
+        builder
+    }
+
+    fn get_context_yocto() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .attached_deposit(1u128)
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    pub fn to_account_id(value: &str) -> AccountId {
+        value.parse().unwrap()
+    }
+
+    fn create_contract() -> Contract {
+        let contract = Contract::new(
+            to_account_id("auto_compounder.near"),
+            0u128,
+            String::from("eth.near"),
+            String::from("dai.near"),
+            0,
+            1,
+            String::from("usn.near"),
+            String::from(""),
+            String::from(""),
+            0,
+            0,
+            U128(100),
+        );
+
+        contract
+    }
+
+    #[test]
+    fn test_increment_and_get_user_shares() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut contract = create_contract();
+        let what_is_deposited =
+            contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        let shares_deposited = 10_u128;
+        contract.increment_user_shares(
+            &to_account_id("auto_compounder.near"),
+            shares_deposited.clone(),
+        );
+        let user_shares = contract.get_user_shares(to_account_id("auto_compounder.near"));
+        //Is the contract storing the correct amount?
+        assert_eq!(shares_deposited.to_string(), user_shares.unwrap());
+    }
+
+    #[test]
+    fn test_user_total_near_deposited() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut contract = create_contract();
+        let what_is_deposited =
+            contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        let deposited = contract.user_total_near_deposited(to_account_id("auto_compounder.near"));
+        assert_eq!("1000000000000000000000000".to_string(), deposited.unwrap());
+    }
+
+    #[test]
+    fn test_get_user_storage_state() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut contract = create_contract();
+        let what_is_deposited =
+            contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        let storage_state = contract
+            .get_user_storage_state(to_account_id("auto_compounder.near"))
+            .unwrap();
+        assert_eq!(U128(1000000000000000000000000), storage_state.deposit);
+        assert_eq!(U128(1020000000000000000000), storage_state.usage);
+    }
+
+    #[test]
+    fn test_balance_update() {
+        //Creating users
+        let context_owner = get_context();
+        testing_env!(context_owner.build());
+
+        let context_user_1 = get_context_user_1();
+        testing_env!(context_user_1.build());
+
+        let context_user_2 = get_context_user_2();
+        testing_env!(context_user_2.build());
+
+        let mut contract = create_contract();
+
+        //Depositing in the contract
+        contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+        contract.storage_deposit(Some(to_account_id("user1.near")), Some(false));
+        contract.storage_deposit(Some(to_account_id("user2.near")), Some(false));
+
+        contract.increment_user_shares(&to_account_id("auto_compounder.near"), 100_u128);
+        contract.increment_user_shares(&to_account_id("user1.near"), 100_u128);
+        contract.increment_user_shares(&to_account_id("user2.near"), 100_u128);
+
+        let mut vec: HashMap<AccountId, u128> = HashMap::new();
+
+        for (account, val) in contract.user_shares.iter() {
+            vec.insert(account.clone(), *val);
+        }
+
+        contract.balance_update(vec, "100".to_string());
+
+        let owner_shares = contract
+            .get_user_shares(to_account_id("auto_compounder.near"))
+            .unwrap()
+            .to_string();
+        let user1_shares = contract
+            .get_user_shares(to_account_id("user1.near"))
+            .unwrap()
+            .to_string();
+        let user2_shares = contract
+            .get_user_shares(to_account_id("user2.near"))
+            .unwrap()
+            .to_string();
+
+        assert_eq!(owner_shares, "133".to_string());
+        assert_eq!(user1_shares, "133".to_string());
+        assert_eq!(user2_shares, "133".to_string());
+    }
+
+    #[test]
+    fn test_get_deposits() {
+        let context_owner = get_context();
+        testing_env!(context_owner.build());
+        let mut contract = create_contract();
+        contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        let owner_deposits = contract.get_deposits(to_account_id("auto_compounder.near"));
+
+        let mut none = HashMap::new();
+
+        assert_eq!(owner_deposits, none);
+    }
+
+    #[test]
+    fn test_contract_state() {
+        let context_owner = get_context();
+        testing_env!(context_owner.build());
+        let mut contract = create_contract();
+
+        contract.assert_contract_running();
+        let state = contract.get_contract_state();
+        assert_eq!(state, "auto_compounder.near is Running".to_string());
+
+        contract.update_contract_state(RunningState::Paused);
+        let state = contract.get_contract_state();
+        assert_eq!(state, "auto_compounder.near is Paused".to_string());
+    }
+}

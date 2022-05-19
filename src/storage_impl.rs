@@ -140,3 +140,140 @@ impl StorageManagement for Contract {
             })
     }
 }
+
+
+
+mod tests {
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::{testing_env, VMContext};
+
+    fn get_context() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .attached_deposit(1000000000000000000000000u128)
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    fn get_context_yocto() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .attached_deposit(1u128)
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    pub fn to_account_id(value: &str) -> AccountId {
+        value.parse().unwrap()
+    }
+
+    fn create_contract() -> Contract {
+        let contract = Contract::new(
+            to_account_id("auto_compounder.near"),
+            0u128,
+            String::from("eth.near"),
+            String::from("dai.near"),
+            0,
+            1,
+            String::from("usn.near"),
+            String::from(""),
+            String::from(""),
+            0,
+            0,
+            U128(100),
+        );
+
+        contract
+    }
+
+    #[test]
+    fn test_storage() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut contract = create_contract();
+        //Is it storing the amount?
+        let what_was_deposited = StorageBalance {
+            total: U128(1000000000000000000000000),
+            available: U128(998980000000000000000000),
+        };
+        let what_is_deposited =
+            contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        //Is the contract storing the correct amount?
+        assert_eq!(what_is_deposited.total, what_was_deposited.total);
+
+        //Is the contract getting a part?
+        assert_eq!(
+            u128::from(what_is_deposited.available),
+            u128::from(what_was_deposited.total) - 1020000000000000000000_u128
+        );
+    }
+
+    #[test]
+    fn test_unstorage() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut contract = create_contract();
+        let what_was_deposited = StorageBalance {
+            total: U128(1000000000000000000000000),
+            available: U128(998980000000000000000000),
+        };
+        let what_is_supposed_to_rest = StorageBalance {
+            total: U128(1020000000000000000000),
+            available: U128(0),
+        };
+        let what_is_deposited =
+            contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        let rest = contract.storage_withdraw(Some(what_was_deposited.available));
+
+        //Is the contract doing withdraw correctly?
+        assert_eq!(rest.total, what_is_supposed_to_rest.total);
+        assert_eq!(rest.available, what_is_supposed_to_rest.available);
+    }
+
+    #[test]
+    fn test_storage_balance_of() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut contract = create_contract();
+        //Is it storing the amount?
+        let what_was_deposited = StorageBalance {
+            total: U128(1000000000000000000000000),
+            available: U128(998980000000000000000000),
+        };
+
+        let what_is_deposited =
+            contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        let balance = contract
+            .storage_balance_of(to_account_id("auto_compounder.near"))
+            .unwrap();
+
+        let total = balance.total;
+        let available = balance.available;
+
+        //Is the contract storing the correct amount?
+        assert_eq!(total, what_was_deposited.total);
+        assert_eq!(available, what_was_deposited.available);
+    }
+
+    #[test]
+    fn test_unregister() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut contract = create_contract();
+        let deposit =
+            contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
+
+        let context = get_context_yocto();
+        testing_env!(context.build());
+        let unregister = contract.storage_unregister(Some(true));
+        assert_eq!(unregister, true);
+    }
+}
