@@ -34,7 +34,6 @@ pub struct FarmInfo {
     pub beneficiary_reward: U128,
 }
 
-const CONTRACT_ID_WNEAR_TESTNET: &str = "wrap.testnet";
 const CONTRACT_ID_REF_EXC: &str = "exchange.ref-dev.testnet";
 const CONTRACT_ID_FARM: &str = "farm.leopollum.testnet";
 const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
@@ -58,8 +57,6 @@ pub async fn deploy_full_vault_contract(
     token1: &Contract,
     token2: &Contract,
     reward_token: &Contract,
-    pool_id_token1_wrap: u64,
-    pool_id_token2_wrap: u64,
     pool_id_token1_reward: u64,
     pool_id_token2_reward: u64,
     pool_id: u64,
@@ -68,7 +65,6 @@ pub async fn deploy_full_vault_contract(
 ) -> anyhow::Result<Contract> {
     let wasm = fs::read("res/auto_compounder.wasm").await?;
     let contract = worker.dev_deploy(&wasm).await?;
-    let wnear_id: AccountId = CONTRACT_ID_WNEAR_TESTNET.parse().unwrap();
 
     contract
         .call(&worker, "new")
@@ -95,7 +91,6 @@ pub async fn deploy_full_vault_contract(
         .args_json(serde_json::json!({
             "tokens":
                 vec![
-                    wnear_id.clone(),
                     token1.id().clone(),
                     token2.id().clone(),
                     reward_token.id().clone(),
@@ -133,7 +128,7 @@ pub async fn deploy_exchange(
         }))?
         .transact()
         .await?;
-    let wnear_id: AccountId = CONTRACT_ID_WNEAR_TESTNET.parse().unwrap();
+    // let wnear_id: AccountId = CONTRACT_ID_WNEAR_TESTNET.parse().unwrap();
 
     ref_finance
         .call(worker, "extend_whitelisted_tokens")
@@ -158,43 +153,6 @@ pub async fn deploy_exchange(
         .await?;
 
     Ok(ref_finance)
-}
-
-/// Pull down the WNear contract from mainnet and initialize it with our own metadata.
-pub async fn deploy_wnear(owner: &Account, worker: &Worker<Sandbox>) -> anyhow::Result<Contract> {
-    let testnet = workspaces::testnet().await?;
-
-    let wnear_id: AccountId = CONTRACT_ID_WNEAR_TESTNET.parse().unwrap();
-    let wnear = worker
-        .import_contract(&wnear_id, &testnet)
-        .transact()
-        .await?;
-
-    owner
-        .call(&worker, wnear.id(), "new")
-        .args_json(serde_json::json!({
-            "owner_id": owner.id(),
-            "total_supply": parse_near!("1,000,000,000 N"),
-        }))?
-        .transact()
-        .await?;
-
-    owner
-        .call(&worker, wnear.id(), "storage_deposit")
-        .args_json(serde_json::json!({
-            "account_id": owner.id().clone()
-        }))?
-        .deposit(parse_near!("0.00125 N"))
-        .transact()
-        .await?;
-
-    owner
-        .call(&worker, wnear.id(), "near_deposit")
-        .deposit(parse_near!("50 N"))
-        .transact()
-        .await?;
-
-    Ok(wnear)
 }
 
 pub async fn deploy_farm(
@@ -255,7 +213,7 @@ pub async fn deploy_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    println!("register farm into reward token -> {:#?}", res);
+    // println!("register farm into reward token -> {:#?}", res);
 
     let farm_id = format!("{}#0", seed_id);
     let amount: String = parse_near!("20 N").to_string();
@@ -270,7 +228,7 @@ pub async fn deploy_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    println!("ft_transfer_call -> {:#?}", res);
+    // println!("ft_transfer_call -> {:#?}", res);
 
     // TODO: require farm state is Running
 
@@ -388,37 +346,14 @@ pub async fn create_pools(
     token_1: &Contract,
     token_2: &Contract,
     token_reward: &Contract,
-    wnear: &Contract,
     worker: &Worker<impl Network>,
-) -> anyhow::Result<((u64, u64, u64, u64, u64))> {
+) -> anyhow::Result<((u64, u64, u64))> {
     let pool_token1_token2 = create_pool_with_liquidity(
         &owner,
         &exchange,
         maplit::hashmap! {
             token_1.id() => parse_near!("10 N"),
             token_2.id() => parse_near!("10 N"),
-        },
-        &worker,
-    )
-    .await?;
-
-    let pool_token1_wnear = create_pool_with_liquidity(
-        &owner,
-        &exchange,
-        maplit::hashmap! {
-            token_1.id() => parse_near!("10 N"),
-            wnear.id() => parse_near!("10 N"),
-        },
-        &worker,
-    )
-    .await?;
-
-    let pool_token2_wnear = create_pool_with_liquidity(
-        &owner,
-        &exchange,
-        maplit::hashmap! {
-            token_2.id() => parse_near!("10 N"),
-            wnear.id() => parse_near!("10 N"),
         },
         &worker,
     )
@@ -445,13 +380,7 @@ pub async fn create_pools(
         &worker,
     )
     .await?;
-    Ok((
-        pool_token1_token2,
-        pool_token1_wnear,
-        pool_token2_wnear,
-        pool_token1_reward,
-        pool_token2_reward,
-    ))
+    Ok((pool_token1_token2, pool_token1_reward, pool_token2_reward))
 }
 
 /// Create our own custom Fungible Token contract and setup the initial state.
@@ -555,37 +484,59 @@ pub async fn log_farm_seeds(
 pub async fn transfer_tokens(
     from: &Account,
     to: &Account,
-    token: &Contract,
-    amount: String,
+    tokens: HashMap<&AccountId, u128>,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<()> {
-    let res = to
-        .call(&worker, token.id(), "storage_deposit")
-        .args_json(serde_json::json!({
-            "registration_only": false,
-        }))?
-        .gas(TOTAL_GAS)
-        .deposit(parse_near!("1 N"))
-        .transact()
-        .await?;
-    println!("storage_deposit {:#?}\n", res);
+    for (token, amount) in tokens.iter() {
+        let res = to
+            .call(&worker, token, "storage_deposit")
+            .args_json(serde_json::json!({
+                "registration_only": false,
+            }))?
+            .gas(TOTAL_GAS)
+            .deposit(parse_near!("1 N"))
+            .transact()
+            .await?;
+        // println!("storage_deposit {:#?}\n", res);
 
-    let res = from
-        .call(&worker, token.id(), "ft_transfer")
-        .args_json(serde_json::json!({
-            "receiver_id": to.id(),
-            "amount":  amount,
-            "msg": Some(""),
-        }))?
-        .gas(TOTAL_GAS)
-        .deposit(parse_near!("1 yN"))
-        .transact()
-        .await?;
-    println!("ft_transfer {:#?}\n", res);
+        let res = from
+            .call(&worker, token, "ft_transfer")
+            .args_json(serde_json::json!({
+                "receiver_id": to.id(),
+                "amount":  amount.to_string(),
+                "msg": Some(""),
+            }))?
+            .gas(TOTAL_GAS)
+            .deposit(parse_near!("1 yN"))
+            .transact()
+            .await?;
+        // println!("ft_transfer {:#?}\n", res);
+    }
 
     Ok(())
 }
 
-pub fn str_to_u128(amount: String) -> u128 {
+pub fn str_to_u128(amount: &String) -> u128 {
     amount.parse::<u128>().unwrap()
+}
+
+pub async fn get_pool_shares(
+    account: &Account,
+    exchange: &Contract,
+    pool_id: u64,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<String> {
+    let res = account
+        .call(&worker, exchange.id(), "get_pool_shares")
+        .args_json(serde_json::json!({
+            "pool_id": pool_id,
+            "account_id": account.id().to_string()
+        }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    // println!("get_pool_shares {:#?}\n", res);
+
+    let shares: String = res.json()?;
+    Ok(shares)
 }
