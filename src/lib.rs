@@ -604,13 +604,16 @@ impl Contract {
             "User does not have enough lps to withdraw"
         );
 
-        log!(
-            "{} is trying to withdraw {} shares",
-            caller_id,
+        let amount = amount_withdrawal.unwrap_or(U128(shares_available));
+        log!("Unstake amount = {}", amount.0);
+        assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
+
+        assert!(
+            shares_available >= amount.0,
+            "User is trying to withdrawal {} and only has {}",
+            amount.0,
             shares_available
         );
-
-        let amount: U128 = U128(shares_available);
 
         // Unstake shares/lps
         ext_farm::withdraw_seed(
