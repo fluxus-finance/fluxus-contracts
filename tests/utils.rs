@@ -551,3 +551,41 @@ pub async fn log_farm_seeds(
     println!("list_user_seeds {:#?}", res);
     Ok(())
 }
+
+pub async fn transfer_tokens(
+    from: &Account,
+    to: &Account,
+    token: &Contract,
+    amount: String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<()> {
+    let res = to
+        .call(&worker, token.id(), "storage_deposit")
+        .args_json(serde_json::json!({
+            "registration_only": false,
+        }))?
+        .gas(TOTAL_GAS)
+        .deposit(parse_near!("1 N"))
+        .transact()
+        .await?;
+    println!("storage_deposit {:#?}\n", res);
+
+    let res = from
+        .call(&worker, token.id(), "ft_transfer")
+        .args_json(serde_json::json!({
+            "receiver_id": to.id(),
+            "amount":  amount,
+            "msg": Some(""),
+        }))?
+        .gas(TOTAL_GAS)
+        .deposit(parse_near!("1 yN"))
+        .transact()
+        .await?;
+    println!("ft_transfer {:#?}\n", res);
+
+    Ok(())
+}
+
+pub fn str_to_u128(amount: String) -> u128 {
+    amount.parse::<u128>().unwrap()
+}
