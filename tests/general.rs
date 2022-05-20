@@ -226,6 +226,15 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .await?;
     // println!("mft_transfer_call {:#?}\n", res);
 
+    let owner_shares_on_contract = get_user_shares(&contract, &owner, &worker).await?;
+
+    // assert that contract received the correct number of shares
+    assert_eq!(
+        owner_shares_on_contract,
+        utils::str_to_u128(&initial_owner_shares),
+        "ERR"
+    );
+
     ///////////////////////////////////////////////////////////////////////////
     // Stage 6: Fast forward in the future
     ///////////////////////////////////////////////////////////////////////////
@@ -294,6 +303,15 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .transact()
         .await?;
     // println!("mft_transfer_call {:#?}\n", res);
+
+    let account1_shares_on_contract = get_user_shares(&contract, &account_1, &worker).await?;
+
+    // assert that contract received the correct number of shares
+    assert_eq!(
+        account1_shares_on_contract,
+        utils::str_to_u128(&account1_initial_shares),
+        "ERR"
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 9: Fast forward in the future
