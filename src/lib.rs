@@ -603,6 +603,7 @@ impl Contract {
             shares_available != 0,
             "User does not have enough lps to withdraw"
         );
+
         let amount = amount_withdrawal.unwrap_or(U128(shares_available));
         log!("Unstake amount = {}", amount.0);
         assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
@@ -626,7 +627,7 @@ impl Contract {
         .then(ext_exchange::mft_transfer(
             self.wrap_mft_token_id(self.pool_id.to_string()),
             caller_id.clone(),
-            amount,
+            amount.clone(),
             Some("".to_string()),
             self.exchange_contract_id.parse().unwrap(),
             1,
