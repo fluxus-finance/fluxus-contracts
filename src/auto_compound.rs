@@ -74,7 +74,6 @@ impl Contract {
     }
 
     /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
-    #[private]
     #[payable]
     pub fn autocompounds_swap(&mut self) -> Promise {
         self.assert_contract_running();
