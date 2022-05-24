@@ -87,7 +87,7 @@ impl Contract {
             "".to_string(),
             self.reward_token.parse().unwrap(),
             1,
-            Gas(45_000_000_000_000),
+            Gas(40_000_000_000_000),
         )
         .then(ext_self::get_tokens_return(
             amount_in,
@@ -101,7 +101,7 @@ impl Contract {
             amount_in,
             env::current_account_id(),
             0,
-            Gas(141_000_000_000_000),
+            Gas(100_000_000_000_000),
         ))
     }
 
