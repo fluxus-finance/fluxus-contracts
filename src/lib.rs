@@ -28,6 +28,16 @@ use external_contracts::*;
 
 mod utils;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct AutoCompounderInfo {
+    farm: String,
+    pool_id: String,
+    token_id: String,
+    seed_id: String,
+    minimum_deposit: U128,
+}
+
 #[derive(BorshStorageKey, BorshSerialize)]
 pub(crate) enum StorageKey {
     Accounts,
@@ -641,6 +651,17 @@ impl Contract {
             0,
             Gas(20_000_000_000_000),
         ))
+    }
+
+    pub fn get_contract_info(self) -> AutoCompounderInfo {
+        let token_id = self.wrap_mft_token_id(self.pool_id.to_string());
+        AutoCompounderInfo {
+            farm: self.farm,
+            pool_id: self.pool_id.to_string(),
+            token_id,
+            seed_id: self.seed_id,
+            minimum_deposit: self.seed_min_deposit,
+        }
     }
 }
 

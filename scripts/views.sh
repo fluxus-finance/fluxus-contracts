@@ -13,4 +13,7 @@ source .env
 # near view $farm_contract_id get_seed_info '{ "seed_id": "'$exchange_contract_id'@'$pool_id'" }'
 
 #### Get the current contract state
-near view $CONTRACT_NAME get_contract_state
+# near view $CONTRACT_NAME get_contract_state
+
+#### Get contract infos, such as farm, token_id and minimum_deposit
+near view $CONTRACT_NAME get_contract_info
