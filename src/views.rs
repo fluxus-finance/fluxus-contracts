@@ -3,15 +3,15 @@ use crate::*;
 #[near_bindgen]
 impl Contract {
     /// Returns the number of shares some accountId has in the contract
-    pub fn get_user_shares(&self, account_id: AccountId) -> Option<String> {
-        // self.check_caller(account_id.clone());
-        let user_shares = self.user_shares.get(&account_id);
-        if let Some(account) = user_shares {
-            Some(account.to_string())
-        } else {
-            None
-        }
-    }
+    // pub fn get_user_shares(&self, account_id: AccountId) -> Option<String> {
+    //     // self.check_caller(account_id.clone());
+    //     let user_shares = self.user_shares.get(&account_id);
+    //     if let Some(account) = user_shares {
+    //         Some(account.to_string())
+    //     } else {
+    //         None
+    //     }
+    // }
 
     /// Function that return the user`s near storage.
     pub fn get_user_storage_state(&self, account_id: AccountId) -> Option<RefStorageState> {
@@ -56,9 +56,9 @@ impl Contract {
         self.whitelisted_tokens.to_vec()
     }
 
-    pub fn get_seed_min_deposit(&self) -> U128 {
-        self.seed_min_deposit
-    }
+    // pub fn get_seed_min_deposit(&self) -> U128 {
+    //     self.seed_min_deposit
+    // }
 
     /// Returns the total amount of near that was deposited
     /// TODO: remove this if not necessary
@@ -69,5 +69,13 @@ impl Contract {
         } else {
             None
         }
+    }
+
+    pub fn get_auto_compounders(self) -> Vec<AutoCompounder> {
+        self.compounders
+    }
+
+    pub fn get_allowed_tokens(self) -> Vec<String> {
+        self.token_ids
     }
 }

@@ -18,3 +18,10 @@
 
 #### Auto-compounder staked shares
 `near view farm_contract_id list_user_seeds '{ "account_id": "AUTO_COMPOUNDER_ID" }'` 
+
+
+
+## Safe Architecture
+
+Vec<AutoCompounder> -> { Auto1, Auto2, Auto3 }
+Map<String, AutoCompounder> -> { {":17", Auto1}, {":410", Auto2}}

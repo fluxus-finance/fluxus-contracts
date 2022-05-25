@@ -28,6 +28,13 @@ use external_contracts::*;
 
 mod utils;
 
+mod auto_compounder;
+use auto_compounder::*;
+
+mod actions_of_compounder;
+
+mod views;
+
 #[derive(BorshStorageKey, BorshSerialize)]
 pub(crate) enum StorageKey {
     Accounts,
@@ -118,6 +125,8 @@ pub struct Contract {
 
     // Min LP amount accepted by the farm for stake
     // seed_min_deposit: U128,
+    compounders: Vec<AutoCompounder>,
+    token_ids: Vec<String>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -143,11 +152,13 @@ pub trait Callbacks {
     fn callback_get_return(&self) -> (U128, U128);
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
-    fn callback_stake_result(&mut self, account_id: AccountId, shares: u128);
+    fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
     fn swap_to_auto(&mut self, amount_in_1: U128, amount_in_2: U128);
     fn stake_and_liquidity_auto(&mut self, account_id: AccountId);
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(&self, amount_token_1: U128, amount_token_2: U128) -> Promise;
+
+    // fn stake(&self, token_id: String, account_id: AccountId, shares: u128) -> Promise;
 }
 const F: u128 = 100000000000000000000000000000; // rename this const
 
@@ -175,21 +186,9 @@ impl Contract {
     #[init]
     pub fn new(
         owner_id: AccountId,
-        protocol_shares: u128,
-        token1_address: String,
-        token2_address: String,
-        pool_id_token1_reward: u64,
-        pool_id_token2_reward: u64,
-        reward_token: String,
         exchange_contract_id: String,
         farm_contract_id: String,
-        farm_id: u64,
-        pool_id: u64,
-        seed_min_deposit: U128,
     ) -> Self {
-        let farm: String =
-            exchange_contract_id.clone() + "@" + &pool_id.to_string() + "#" + &farm_id.to_string();
-
         let mut allowed_accounts: Vec<AccountId> = Vec::new();
         allowed_accounts.push(env::current_account_id());
 
@@ -202,6 +201,7 @@ impl Contract {
             allowed_accounts,
             whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
             state: RunningState::Running,
+            // TODO: remove this
             users_total_near_deposited: HashMap::new(),
             // token1_address: token1_address,
             // token2_address: token2_address,
@@ -214,6 +214,9 @@ impl Contract {
             // pool_id,
             // seed_id: exchange_contract_id + "@" + &pool_id.to_string(),
             // seed_min_deposit,
+            /// List of all the pools.
+            compounders: Vec::new(),
+            token_ids: Vec::new(),
         }
     }
 }
@@ -237,87 +240,87 @@ impl Contract {
     }
 
     /// wrap token_id into correct format in MFT standard
-    pub(crate) fn wrap_mft_token_id(&self, token_id: String) -> String {
+    pub(crate) fn wrap_mft_token_id(&self, token_id: &String) -> String {
         format!(":{}", token_id)
     }
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
-mod tests {
-    use std::hash::Hash;
+// #[cfg(all(test, not(target_arch = "wasm32")))]
+// mod tests {
+//     use std::hash::Hash;
 
-    use super::*;
-    use near_sdk::test_utils::VMContextBuilder;
-    use near_sdk::testing_env;
+//     use super::*;
+//     use near_sdk::test_utils::VMContextBuilder;
+//     use near_sdk::testing_env;
 
-    fn get_context() -> VMContextBuilder {
-        let mut builder = VMContextBuilder::new();
-        builder
-            .current_account_id(to_account_id("auto_compounder.near"))
-            .signer_account_id(to_account_id("auto_compounder.near"))
-            .predecessor_account_id(to_account_id("auto_compounder.near"));
-        builder
-    }
+//     fn get_context() -> VMContextBuilder {
+//         let mut builder = VMContextBuilder::new();
+//         builder
+//             .current_account_id(to_account_id("auto_compounder.near"))
+//             .signer_account_id(to_account_id("auto_compounder.near"))
+//             .predecessor_account_id(to_account_id("auto_compounder.near"));
+//         builder
+//     }
 
-    pub fn to_account_id(value: &str) -> AccountId {
-        value.parse().unwrap()
-    }
+//     pub fn to_account_id(value: &str) -> AccountId {
+//         value.parse().unwrap()
+//     }
 
-    fn create_contract() -> Contract {
-        let contract = Contract::new(
-            to_account_id("auto_compounder.near"),
-            0u128,
-            String::from("eth.near"),
-            String::from("dai.near"),
-            0,
-            1,
-            String::from("usn.near"),
-            String::from(""),
-            String::from(""),
-            0,
-            0,
-            U128(100),
-        );
+//     fn create_contract() -> Contract {
+//         let contract = Contract::new(
+//             to_account_id("auto_compounder.near"),
+//             0u128,
+//             String::from("eth.near"),
+//             String::from("dai.near"),
+//             0,
+//             1,
+//             String::from("usn.near"),
+//             String::from(""),
+//             String::from(""),
+//             0,
+//             0,
+//             U128(100),
+//         );
 
-        contract
-    }
+//         contract
+//     }
 
-    #[test]
-    fn test_balance_update() {
-        let context = get_context();
-        testing_env!(context.build());
+//     #[test]
+//     fn test_balance_update() {
+//         let context = get_context();
+//         testing_env!(context.build());
 
-        let mut contract = create_contract();
+//         let mut contract = create_contract();
 
-        let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
+//         let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
 
-        let acc1 = to_account_id("alice.near");
-        let shares1 = near.clone();
+//         let acc1 = to_account_id("alice.near");
+//         let shares1 = near.clone();
 
-        let acc2 = to_account_id("bob.near");
-        let shares2 = near.clone() * 3;
+//         let acc2 = to_account_id("bob.near");
+//         let shares2 = near.clone() * 3;
 
-        // add initial balance for accounts
-        contract.user_shares.insert(acc1.clone(), shares1);
-        contract.user_shares.insert(acc2.clone(), shares2);
+//         // add initial balance for accounts
+//         contract.user_shares.insert(acc1.clone(), shares1);
+//         contract.user_shares.insert(acc2.clone(), shares2);
 
-        let total_shares: u128 = shares1 + shares2;
+//         let total_shares: u128 = shares1 + shares2;
 
-        // distribute shares between accounts
-        contract.balance_update(total_shares, near.to_string());
+//         // distribute shares between accounts
+//         contract.balance_update(total_shares, near.to_string());
 
-        // assert account 1 earned 25% from reward shares
-        let acc1_updated_shares = contract.user_shares.get(&acc1).unwrap();
-        assert_eq!(
-            *acc1_updated_shares, 1250000000000000000000000u128,
-            "ERR_BALANCE_UPDATE"
-        );
+//         // assert account 1 earned 25% from reward shares
+//         let acc1_updated_shares = contract.user_shares.get(&acc1).unwrap();
+//         assert_eq!(
+//             *acc1_updated_shares, 1250000000000000000000000u128,
+//             "ERR_BALANCE_UPDATE"
+//         );
 
-        // assert account 2 earned 75% from reward shares
-        let acc2_updated_shares = contract.user_shares.get(&acc2).unwrap();
-        assert_eq!(
-            *acc2_updated_shares, 3750000000000000000000000u128,
-            "ERR_BALANCE_UPDATE"
-        );
-    }
-}
+//         // assert account 2 earned 75% from reward shares
+//         let acc2_updated_shares = contract.user_shares.get(&acc2).unwrap();
+//         assert_eq!(
+//             *acc2_updated_shares, 3750000000000000000000000u128,
+//             "ERR_BALANCE_UPDATE"
+//         );
+//     }
+// }
