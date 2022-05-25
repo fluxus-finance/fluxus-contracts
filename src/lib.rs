@@ -61,12 +61,12 @@ pub struct Contract {
     // Account address that have authority to update the contract state
     owner_id: AccountId,
 
-    // Struct that maps addresses to its currents shares added plus the received
-    // from the auto-compound strategy
-    user_shares: HashMap<AccountId, u128>,
+    // // Struct that maps addresses to its currents shares added plus the received
+    // // from the auto-compound strategy
+    // user_shares: HashMap<AccountId, u128>,
 
-    // Keeps tracks of how much shares the contract gained from the auto-compound
-    protocol_shares: u128,
+    // // Keeps tracks of how much shares the contract gained from the auto-compound
+    // protocol_shares: u128,
 
     // Keeps tracks of accounts that send coins to this contract
     accounts: LookupMap<AccountId, VAccount>,
@@ -81,44 +81,43 @@ pub struct Contract {
     state: RunningState,
 
     // Used to keep track of the rewards received from the farm during auto-compound cycle
-    last_reward_amount: u128,
+    // last_reward_amount: u128,
 
     // TODO: do we still need this?
     // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
     users_total_near_deposited: HashMap<AccountId, u128>,
 
     // Address of the first token used by pool
-    token1_address: String,
+    // token1_address: String,
 
     // Address of the token used by the pool
-    token2_address: String,
+    // token2_address: String,
 
     // Pool used to swap the reward received by the token used to add liquidity
-    pool_id_token1_reward: u64,
+    // pool_id_token1_reward: u64,
 
     // Pool used to swap the reward received by the token used to add liquidity
-    pool_id_token2_reward: u64,
+    // pool_id_token2_reward: u64,
 
     // Address of the reward token given by the farm
-    reward_token: String,
+    // reward_token: String,
 
     // Contract address of the exchange used
     exchange_contract_id: String,
 
     // Contract address of the farm used
     farm_contract_id: String,
-
     // Farm used to auto-compound
-    farm: String,
+    // farm: String,
 
     // Pool used to add liquidity and farming
-    pool_id: u64,
+    // pool_id: u64,
 
     // Format expected by the farm to claim and withdraw rewards
-    seed_id: String,
+    // seed_id: String,
 
     // Min LP amount accepted by the farm for stake
-    seed_min_deposit: U128,
+    // seed_min_deposit: U128,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -196,456 +195,39 @@ impl Contract {
 
         Self {
             owner_id: owner_id,
-            user_shares: HashMap::new(),
-            last_reward_amount: 0u128,
-            protocol_shares,
+            // user_shares: HashMap::new(),
+            // last_reward_amount: 0u128,
+            // protocol_shares,
             accounts: LookupMap::new(StorageKey::Accounts),
             allowed_accounts,
             whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
             state: RunningState::Running,
             users_total_near_deposited: HashMap::new(),
-            token1_address: token1_address,
-            token2_address: token2_address,
-            pool_id_token1_reward: pool_id_token1_reward,
-            pool_id_token2_reward: pool_id_token2_reward,
-            reward_token: reward_token,
+            // token1_address: token1_address,
+            // token2_address: token2_address,
+            // pool_id_token1_reward: pool_id_token1_reward,
+            // pool_id_token2_reward: pool_id_token2_reward,
+            // reward_token: reward_token,
             exchange_contract_id: exchange_contract_id.clone(),
             farm_contract_id: farm_contract_id.clone(),
-            farm,
-            pool_id,
-            seed_id: exchange_contract_id + "@" + &pool_id.to_string(),
-            seed_min_deposit,
+            // farm,
+            // pool_id,
+            // seed_id: exchange_contract_id + "@" + &pool_id.to_string(),
+            // seed_min_deposit,
         }
-    }
-
-    #[private]
-    pub fn stake(&self, account_id: &AccountId, shares: u128) -> Promise {
-        let (_, contract) = self.get_predecessor_and_current_account();
-        let token_id: String = self.wrap_mft_token_id(self.pool_id.to_string());
-
-        ext_exchange::mft_transfer_call(
-            self.farm_contract_id.parse().unwrap(),
-            token_id,
-            U128(shares),
-            "".to_string(),
-            self.exchange_contract_id.parse().unwrap(),
-            1,
-            Gas(80_000_000_000_000),
-        )
-        .then(ext_self::callback_stake_result(
-            account_id.clone(),
-            shares,
-            contract,
-            0,
-            Gas(10_000_000_000_000),
-        ))
-    }
-
-    #[private]
-    pub fn callback_stake_result(&mut self, account_id: AccountId, shares: u128) -> String {
-        assert!(self.check_promise(), "ERR_STAKE_FAILED");
-
-        // increment total shares deposited by account
-        self.increment_user_shares(&account_id, shares);
-
-        format!("The {} added {} to {}", account_id, shares, self.pool_id)
-    }
-
-    #[private]
-    pub fn callback_get_return(
-        &self,
-        #[callback_result] token1_out: Result<U128, PromiseError>,
-        #[callback_result] token2_out: Result<U128, PromiseError>,
-    ) -> (U128, U128) {
-        assert!(token1_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
-        assert!(token2_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
-
-        let mut amount_token1: u128;
-        let mut amount_token2: u128;
-
-        if let Ok(s) = token1_out.as_ref() {
-            let val: u128 = s.0;
-            require!(val > 0u128);
-            amount_token1 = val;
-        } else {
-            env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_1")
-        }
-
-        if let Ok(s) = token2_out.as_ref() {
-            let val: u128 = s.0;
-            require!(val > 0u128);
-            amount_token2 = val;
-        } else {
-            env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_2")
-        }
-
-        (U128(amount_token1), U128(amount_token2))
-    }
-
-    #[private]
-    pub fn increment_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let user_lps = self.user_shares.get(account_id).unwrap_or(&0);
-
-        if *user_lps > 0 {
-            // TODO: improve log
-            // log!("");
-            let new_balance: u128 = *user_lps + shares;
-            self.user_shares.insert(account_id.clone(), new_balance);
-        } else {
-            // TODO: improve log
-            // log!("");
-            self.user_shares.insert(account_id.clone(), shares);
-        };
-    }
-
-    #[private]
-    pub fn callback_withdraw_shares(
-        &mut self,
-        account_id: AccountId,
-        amount: Balance,
-        shares_available: Balance,
-    ) {
-        assert!(self.check_promise());
-        // assert!(mft_transfer_result.is_ok());
-        let new_shares = shares_available - amount;
-        self.user_shares.insert(account_id.clone(), new_shares);
-    }
-
-    /// Returns the number of shares some accountId has in the contract
-    pub fn get_user_shares(&self, account_id: AccountId) -> Option<String> {
-        // self.check_caller(account_id.clone());
-        let user_shares = self.user_shares.get(&account_id);
-        if let Some(account) = user_shares {
-            Some(account.to_string())
-        } else {
-            None
-        }
-    }
-
-    /// Returns the total amount of near that was deposited
-    pub fn user_total_near_deposited(&self, account_id: AccountId) -> Option<String> {
-        self.check_caller(account_id.clone());
-        let users_total_near_deposited = self.users_total_near_deposited.get(&account_id);
-        if let Some(quantity) = users_total_near_deposited {
-            Some(quantity.to_string())
-        } else {
-            None
-        }
-    }
-
-    /// Function that return the user`s near storage.
-    pub fn get_user_storage_state(&self, account_id: AccountId) -> Option<RefStorageState> {
-        self.check_caller(account_id.clone());
-        let acc = self.internal_get_account(&account_id);
-        if let Some(account) = acc {
-            Some(RefStorageState {
-                deposit: U128(account.near_amount),
-                usage: U128(account.storage_usage()),
-            })
-        } else {
-            None
-        }
-    }
-
-    /// Call the ref get_pool_shares function.
-    #[private]
-    pub fn call_get_pool_shares(&self, pool_id: u64, account_id: AccountId) -> Promise {
-        assert!(self.check_promise(), "Previous tx failed.");
-        ext_exchange::get_pool_shares(
-            pool_id,
-            account_id,
-            self.exchange_contract_id.parse().unwrap(), // contract account id
-            0,                                          // yocto NEAR to attach
-            Gas(10_000_000_000_000),                    // gas to attach
-        )
-    }
-
-    /// Call the ref user_register function.
-    pub fn call_user_register(&self, account_id: AccountId) -> Promise {
-        ext_exchange::storage_deposit(
-            account_id,
-            self.exchange_contract_id.parse().unwrap(), // contract account id
-            10000000000000000000000,                    // yocto NEAR to attach
-            Gas(3_000_000_000_000),                     // gas to attach
-        )
-    }
-
-    /// Call the ref get_deposits function.
-    fn call_get_deposits(&self, account_id: AccountId) -> Promise {
-        ext_exchange::get_deposits(
-            account_id,
-            self.exchange_contract_id.parse().unwrap(), // contract account id
-            1,                                          // yocto NEAR to attach
-            Gas(15_000_000_000_000),                    // gas to attach
-        )
-    }
-
-    /// Update user balances based on the user's percentage in the contract.
-    #[private]
-    pub fn balance_update(&mut self, total: u128, shares_reward: String) {
-        let shares_reward = shares_reward.parse::<u128>().unwrap();
-        log!("new_shares_quantity is equal to {}", shares_reward);
-
-        let mut shares_distributed: U256 = U256::from(0u128);
-
-        for (account, val) in self.user_shares.clone() {
-            let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
-
-            let casted_reward = U256::from(shares_reward) * acc_percentage;
-
-            let earned_shares: U256 = casted_reward / U256::from(F);
-
-            shares_distributed += earned_shares;
-
-            let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
-
-            self.user_shares.insert(account, new_user_balance);
-        }
-
-        let residue: u128 = shares_reward - shares_distributed.as_u128();
-        log!("Shares residue: {}", residue);
-    }
-
-    /// Ref function to add liquidity in the pool.
-    pub fn call_add_liquidity(
-        &self,
-        pool_id: u64,
-        amounts: Vec<U128>,
-        min_amounts: Option<Vec<U128>>,
-    ) -> Promise {
-        ext_exchange::add_liquidity(
-            pool_id,
-            amounts,
-            min_amounts,
-            self.exchange_contract_id.parse().unwrap(), // contract account id
-            970000000000000000000,                      // yocto NEAR to attach /////////////
-            Gas(30_000_000_000_000),                    // gas to attach
-        )
-    }
-
-    /// Ref function to stake the lps/shares.
-    pub fn call_stake(
-        &self,
-        receiver_id: AccountId,
-        token_id: String,
-        amount: U128,
-        msg: String,
-    ) -> Promise {
-        ext_exchange::mft_transfer_call(
-            receiver_id,
-            token_id,
-            amount,
-            msg,
-            self.exchange_contract_id.parse().unwrap(), // contract account id
-            1,                                          // yocto NEAR to attach
-            Gas(80_000_000_000_000),                    // gas to attach
-        )
-    }
-
-    /// Ref function to withdraw the rewards to exchange ref contract.
-    pub fn call_withdraw_reward(
-        &self,
-        token_id: String,
-        amount: U128,
-        unregister: String,
-    ) -> Promise {
-        ext_farm::withdraw_reward(
-            token_id,
-            amount,
-            unregister,
-            self.farm_contract_id.parse().unwrap(), // contract account id
-            1,                                      // yocto NEAR to attach
-            Gas(180_000_000_000_000),               // gas to attach
-        )
-    }
-
-    /// Function to return the user's deposit in the auto_compounder contract.
-    pub fn get_deposits(&self, account_id: AccountId) -> HashMap<AccountId, U128> {
-        let wrapped_account = self.internal_get_account(&account_id);
-        if let Some(account) = wrapped_account {
-            account
-                .get_tokens()
-                .iter()
-                .map(|token| (token.clone(), U128(account.get_balance(token).unwrap())))
-                .collect()
-        } else {
-            HashMap::new()
-        }
-    }
-
-    /// Receives shares from auto-compound and stake it
-    #[private]
-    pub fn callback_stake(&mut self) {
-        assert_eq!(env::promise_results_count(), 1, "ERR_TOO_MANY_RESULTS");
-        let shares = match env::promise_result(0) {
-            PromiseResult::NotReady => unreachable!(),
-            PromiseResult::Successful(tokens) => {
-                if let Ok(shares) = near_sdk::serde_json::from_slice::<String>(&tokens) {
-                    shares
-                } else {
-                    env::panic_str("ERR_WRONG_VAL_RECEIVED")
-                }
-            }
-            PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
-        };
-
-        let amount: u128 = shares.parse::<u128>().unwrap();
-        assert!(
-            amount >= self.seed_min_deposit.into(),
-            "ERR_NOT_ENOUGH_SHARES_TO_STAKE"
-        );
-
-        //Concatenate ":" with pool id because ref's testnet contract need an argument like this. Ex -> :193
-        //For Mainnet, probability it is not necessary concatenate the ":"
-        let pool_id: String = ":".to_string() + &self.pool_id.to_string();
-
-        // TODO: Should call it right away and then use a callback to check the result
-        self.call_stake(
-            self.farm_contract_id.parse().unwrap(),
-            pool_id,
-            U128(amount),
-            "".to_string(),
-        );
-    }
-
-    /// Change the user_balance and the auto_compounder balance of lps/shares
-    #[private]
-    pub fn callback_update_user_balance(
-        &mut self,
-        account_id: AccountId,
-        #[callback_result] shares: Result<String, PromiseError>,
-    ) -> String {
-        require!(shares.is_ok());
-
-        let protocol_shares_on_pool: u128 = match shares {
-            Ok(shares_) => shares_.parse::<u128>().unwrap(),
-            _ => env::panic_str("Unknown error occurred"),
-        };
-
-        let shares_added_to_pool = protocol_shares_on_pool - self.protocol_shares;
-        let user_shares = self.get_user_shares(account_id.clone());
-
-        if user_shares == None {
-            self.user_shares.insert(account_id.clone(), 0);
-        }
-
-        let mut new_user_balance: u128 = 0;
-
-        if protocol_shares_on_pool > self.protocol_shares {
-            if let Some(x) = self.get_user_shares(account_id.clone()) {
-                Some(new_user_balance = x.parse::<u128>().unwrap() + shares_added_to_pool)
-            } else {
-                None
-            };
-            self.user_shares.insert(account_id, new_user_balance);
-            log!("User_shares = {}", new_user_balance);
-        };
-        self.protocol_shares = protocol_shares_on_pool;
-
-        protocol_shares_on_pool.to_string()
-    }
-
-    /// Call the swap function in the exchange. It can be used by itself or as a callback.
-    #[private]
-    #[payable]
-    pub fn call_swap(
-        &mut self,
-        pool_id_to_swap: u64,
-        token_in: AccountId,
-        token_out: AccountId,
-        amount_in: Option<U128>,
-        min_amount_out: U128,
-    ) -> Promise {
-        assert!(self.check_promise(), "Previous tx failed.");
-        ext_exchange::swap(
-            vec![SwapAction {
-                pool_id: pool_id_to_swap,
-                token_in: token_in,
-                token_out: token_out,
-                amount_in: amount_in,
-                min_amount_out: min_amount_out,
-            }],
-            None,
-            self.exchange_contract_id.parse().unwrap(),
-            1,
-            Gas(20_000_000_000_000),
-        )
-    }
-
-    #[private]
-    pub fn callback_get_deposits(&self) -> Promise {
-        assert!(self.check_promise(), "Previous tx failed.");
-
-        let (_, contract_id) = self.get_predecessor_and_current_account();
-        ext_exchange::get_deposits(
-            contract_id,
-            self.exchange_contract_id.parse().unwrap(),
-            1,                       // yocto NEAR to attach
-            Gas(12_000_000_000_000), // gas to attach
-        )
-    }
-
-    /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self, amount_withdrawal: Option<U128>) -> Promise {
-        let (caller_id, contract_id) = self.get_predecessor_and_current_account();
-        // TODO
-        // require!(ACCOUNT_EXIST)
-        let user_lps = self.user_shares.get(&caller_id);
-
-        let mut shares_available: u128 = 0;
-        if let Some(lps) = user_lps {
-            Some(shares_available = *lps)
-        } else {
-            None
-        };
-
-        assert!(
-            shares_available != 0,
-            "User does not have enough lps to withdraw"
-        );
-
-        let amount = amount_withdrawal.unwrap_or(U128(shares_available));
-        log!("Unstake amount = {}", amount.0);
-        assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
-
-        assert!(
-            shares_available >= amount.0,
-            "User is trying to withdrawal {} and only has {}",
-            amount.0,
-            shares_available
-        );
-
-        // Unstake shares/lps
-        ext_farm::withdraw_seed(
-            self.seed_id.clone(),
-            amount.clone(),
-            "".to_string(),
-            self.farm_contract_id.parse().unwrap(), // contract account id
-            1,                                      // yocto NEAR to attach
-            Gas(180_000_000_000_000),               // gas to attach 108 -> 180_000_000_000_000
-        )
-        .then(ext_exchange::mft_transfer(
-            self.wrap_mft_token_id(self.pool_id.to_string()),
-            caller_id.clone(),
-            amount.clone(),
-            Some("".to_string()),
-            self.exchange_contract_id.parse().unwrap(),
-            1,
-            Gas(50_000_000_000_000),
-        ))
-        .then(ext_self::callback_withdraw_shares(
-            caller_id,
-            amount.clone().0,
-            shares_available,
-            contract_id,
-            0,
-            Gas(20_000_000_000_000),
-        ))
     }
 }
 
 /// Internal methods implementation.
 #[near_bindgen]
+impl Contract {
+    pub fn update_contract_state(&mut self, state: RunningState) -> String {
+        self.state = state;
+        format!("{} is {}", env::current_account_id(), self.state)
+    }
+}
+
+/// Internal methods that do not rely on blockchain interaction
 impl Contract {
     fn assert_contract_running(&self) {
         match self.state {
@@ -654,13 +236,9 @@ impl Contract {
         };
     }
 
-    pub fn update_contract_state(&mut self, state: RunningState) -> String {
-        self.state = state;
-        format!("{} is {}", env::current_account_id(), self.state)
-    }
-
-    pub fn get_contract_state(&self) -> String {
-        format!("{} is {}", env::current_account_id(), self.state)
+    /// wrap token_id into correct format in MFT standard
+    pub(crate) fn wrap_mft_token_id(&self, token_id: String) -> String {
+        format!(":{}", token_id)
     }
 }
 

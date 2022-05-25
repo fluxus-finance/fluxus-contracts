@@ -26,12 +26,6 @@ impl Contract {
         );
     }
 
-    /// Returns allowed_accounts
-    pub fn get_allowed_accounts(&self) -> Vec<AccountId> {
-        self.check_permission();
-        self.allowed_accounts.clone()
-    }
-
     /// Checks if predecessor_account_id is either the contract or the owner of the contract
     /// TODO: rename method to is_owner()
     #[private]
@@ -85,11 +79,6 @@ impl Contract {
         }
     }
 
-    /// Return the whitelisted tokens.
-    pub fn get_whitelisted_tokens(&self) -> Vec<AccountId> {
-        self.whitelisted_tokens.to_vec()
-    }
-
     #[private]
     pub fn get_predecessor_and_current_account(&self) -> (AccountId, AccountId) {
         (env::predecessor_account_id(), env::current_account_id())
@@ -97,22 +86,6 @@ impl Contract {
 
     pub fn contract_version(&self) -> String {
         String::from(env!("CARGO_PKG_VERSION"))
-    }
-
-    #[private]
-    /// wrap token_id into correct format in MFT standard
-    pub fn wrap_mft_token_id(&self, token_id: String) -> String {
-        format!(":{}", token_id)
-    }
-
-    pub fn update_seed_min_deposit(&mut self, min_deposit: U128) -> U128 {
-        self.check_permission();
-        self.seed_min_deposit = min_deposit;
-        self.seed_min_deposit
-    }
-
-    pub fn get_seed_min_deposit(&self) -> U128 {
-        self.seed_min_deposit
     }
 
     #[private]
