@@ -98,10 +98,7 @@ impl MFTTokenReceiver for Contract {
 
         let amount_in_u128: u128 = amount.into();
 
-        /*
-           TODO: get auto-compounder from token_id and check if amount > seed_min_amount
-        */
-
+        //Check: is the amount sent above or equal the minimum deposit?
         for compounder in self.compounders.clone() {
             let id = self.wrap_mft_token_id(&compounder.pool_id);
 

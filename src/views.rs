@@ -78,4 +78,8 @@ impl Contract {
     pub fn get_allowed_tokens(self) -> Vec<String> {
         self.token_ids
     }
+
+    pub fn get_tokens_and_autos(self) -> HashMap<String, AutoCompounder> {
+        self.seeds
+    }
 }

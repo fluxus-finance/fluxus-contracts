@@ -15,8 +15,10 @@ impl Contract {
         pool_id: String,
         seed_min_deposit: U128,
     ) {
-        let seed_id: String = format!("");
-        self.token_ids.push(self.wrap_mft_token_id(&pool_id));
+        let seed_id: String = format!("{}@{}", self.exchange_contract_id, pool_id);
+
+        let token_id = self.wrap_mft_token_id(&pool_id);
+        self.token_ids.push(token_id.clone());
 
         let compounder = AutoCompounder::new(
             token1_address,
@@ -30,6 +32,7 @@ impl Contract {
             seed_min_deposit,
         );
 
+        self.seeds.insert(token_id, compounder.clone());
         self.compounders.push(compounder);
     }
 
@@ -69,6 +72,16 @@ impl Contract {
         // TODO: should each auto-compounder store the amount each address have
         //      or should the contract store it?
         // increment_user_shares(&account_id, shares);
+        // self.user_shares.insert(account_id.clone(), new_shares);
+
+        let compounder = self
+            .seeds
+            .get_mut(&token_id)
+            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+        compounder
+            .user_shares
+            .insert(account_id.clone(), shares.clone());
 
         format!("The {} added {} to {}", account_id, shares, token_id)
     }
@@ -102,19 +115,6 @@ impl Contract {
     //     }
 
     //     (U128(amount_token1), U128(amount_token2))
-    // }
-
-    // #[private]
-    // pub fn callback_withdraw_shares(
-    //     &mut self,
-    //     account_id: AccountId,
-    //     amount: Balance,
-    //     shares_available: Balance,
-    // ) {
-    //     assert!(self.check_promise());
-    //     // assert!(mft_transfer_result.is_ok());
-    //     let new_shares = shares_available - amount;
-    //     self.user_shares.insert(account_id.clone(), new_shares);
     // }
 
     // /// Receives shares from auto-compound and stake it
@@ -202,63 +202,96 @@ impl Contract {
     //     )
     // }
 
-    // /// Withdraw user lps and send it to the contract.
-    // pub fn unstake(&mut self, amount_withdrawal: Option<U128>) -> Promise {
-    //     let (caller_id, contract_id) = self.get_predecessor_and_current_account();
-    //     // TODO
-    //     // require!(ACCOUNT_EXIST)
-    //     let user_lps = self.user_shares.get(&caller_id);
+    /// Withdraw user lps and send it to the contract.
+    pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
+        let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
-    //     let mut shares_available: u128 = 0;
-    //     if let Some(lps) = user_lps {
-    //         Some(shares_available = *lps)
-    //     } else {
-    //         None
-    //     };
+        // TODO: require that token_id exist
+        let compounder = self
+            .seeds
+            .get(&token_id)
+            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
-    //     assert!(
-    //         shares_available != 0,
-    //         "User does not have enough lps to withdraw"
-    //     );
+        // TODO require!(ACCOUNT_EXIST)
+        let user_shares = compounder
+            .user_shares
+            .get(&caller_id)
+            .expect("ERR_ACCOUNT_DOES_NOT_EXIST");
 
-    //     let amount = amount_withdrawal.unwrap_or(U128(shares_available));
-    //     log!("Unstake amount = {}", amount.0);
-    //     assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
+        let seed_id: String = compounder.seed_id.clone();
+        let shares_available: u128 = *user_shares;
 
-    //     assert!(
-    //         shares_available >= amount.0,
-    //         "User is trying to withdrawal {} and only has {}",
-    //         amount.0,
-    //         shares_available
-    //     );
+        // TODO: rewrite asserts
+        assert!(
+            shares_available != 0,
+            "User does not have enough lps to withdraw"
+        );
 
-    //     // Unstake shares/lps
-    //     ext_farm::withdraw_seed(
-    //         self.seed_id.clone(),
-    //         amount.clone(),
-    //         "".to_string(),
-    //         self.farm_contract_id.parse().unwrap(), // contract account id
-    //         1,                                      // yocto NEAR to attach
-    //         Gas(180_000_000_000_000),               // gas to attach 108 -> 180_000_000_000_000
-    //     )
-    //     .then(ext_exchange::mft_transfer(
-    //         self.wrap_mft_token_id(self.pool_id.to_string()),
-    //         caller_id.clone(),
-    //         amount.clone(),
-    //         Some("".to_string()),
-    //         self.exchange_contract_id.parse().unwrap(),
-    //         1,
-    //         Gas(50_000_000_000_000),
-    //     ))
-    //     .then(ext_self::callback_withdraw_shares(
-    //         caller_id,
-    //         amount.clone().0,
-    //         shares_available,
-    //         contract_id,
-    //         0,
-    //         Gas(20_000_000_000_000),
-    //     ))
-    // }
+        let amount = amount_withdrawal.unwrap_or(U128(shares_available));
+        log!("Unstake amount = {}", amount.0);
+        assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
+
+        assert!(
+            shares_available >= amount.0,
+            "User is trying to withdrawal {} and only has {}",
+            amount.0,
+            shares_available
+        );
+
+        // Unstake shares/lps
+        ext_farm::withdraw_seed(
+            seed_id,
+            amount.clone(),
+            "".to_string(),
+            self.farm_contract_id.parse().unwrap(),
+            1,
+            Gas(180_000_000_000_000),
+        )
+        .then(ext_exchange::mft_transfer(
+            token_id.clone(),
+            caller_id.clone(),
+            amount.clone(),
+            Some("".to_string()),
+            self.exchange_contract_id.parse().unwrap(),
+            1,
+            Gas(50_000_000_000_000),
+        ))
+        .then(ext_self::callback_withdraw_shares(
+            token_id,
+            caller_id,
+            amount.clone().0,
+            shares_available,
+            contract_id,
+            0,
+            Gas(20_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_withdraw_shares(
+        &mut self,
+        token_id: String,
+        account_id: AccountId,
+        amount: Balance,
+        shares_available: Balance,
+    ) {
+        assert!(self.check_promise());
+        // TODO: remove generic promise check
+        // assert!(mft_transfer_result.is_ok());
+
+        let mut compounder = self
+            .seeds
+            .get(&token_id)
+            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+        let new_shares: u128 = shares_available - amount;
+        // self.user_shares.insert(account_id.clone(), new_shares);
+
+        compounder
+            .user_shares
+            .clone()
+            .insert(account_id, new_shares);
+    }
 }
 
 /// Auto-compounder ref-exchange wrapper

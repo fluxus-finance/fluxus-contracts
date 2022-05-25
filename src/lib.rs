@@ -127,6 +127,7 @@ pub struct Contract {
     // seed_min_deposit: U128,
     compounders: Vec<AutoCompounder>,
     token_ids: Vec<String>,
+    seeds: HashMap<String, AutoCompounder>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -144,6 +145,7 @@ pub trait Callbacks {
     fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
     fn callback_withdraw_shares(
         &mut self,
+        token_id: String,
         account_id: AccountId,
         amount: Balance,
         shares_available: Balance,
@@ -217,6 +219,7 @@ impl Contract {
             /// List of all the pools.
             compounders: Vec::new(),
             token_ids: Vec::new(),
+            seeds: HashMap::new(),
         }
     }
 }
