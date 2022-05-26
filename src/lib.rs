@@ -216,14 +216,14 @@ impl Contract {
         format!("{} is {}", env::current_account_id(), self.state)
     }
 
-    pub fn update_exchange_contract(&mut self, contract: AccountId) {
+    pub fn update_exchange_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
-        self.exchange_contract_id = contract;
+        self.exchange_contract_id = contract_id;
     }
 
-    pub fn update_farm_contract(&mut self, contract: AccountId) {
+    pub fn update_farm_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
-        self.farm_contract_id = contract;
+        self.farm_contract_id = contract_id;
     }
 }
 
