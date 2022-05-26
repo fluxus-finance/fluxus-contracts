@@ -225,6 +225,23 @@ impl Contract {
         self.is_owner();
         self.farm_contract_id = contract_id;
     }
+
+    /// Returns allowed_accounts
+    pub fn get_allowed_accounts(&self) -> Vec<AccountId> {
+        self.is_owner();
+        self.allowed_accounts.clone()
+    }
+
+    /// Returns all strategies without filtering
+    pub fn get_strats_info(self) -> Vec<AutoCompounder> {
+        let mut info: Vec<AutoCompounder> = Vec::new();
+
+        for (token_id, strat) in self.seeds.clone() {
+            info.push(strat);
+        }
+
+        info
+    }
 }
 
 /// Internal methods that do not rely on blockchain interaction

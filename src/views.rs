@@ -3,13 +3,14 @@ use crate::*;
 #[near_bindgen]
 impl Contract {
     /// Returns the number of shares some accountId has in the contract
-    /// TODO: does it need to be an option?
+    /// Panics if token_id does not exist
     pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> Option<u128> {
         let compounder = self.seeds.get(&token_id).expect("ERR_TOKEN_DOES_NOT_EXIST");
         Some(*compounder.user_shares.get(&account_id).unwrap_or(&0u128))
     }
 
     /// Function that return the user`s near storage.
+    /// WARN: DEPRECATED
     pub fn get_user_storage_state(&self, account_id: AccountId) -> Option<RefStorageState> {
         self.is_caller(account_id.clone());
         let acc = self.internal_get_account(&account_id);
@@ -24,6 +25,7 @@ impl Contract {
     }
 
     /// Function to return the user's deposit in the auto_compounder contract.
+    /// WARN: DEPRECATED
     pub fn get_deposits(&self, account_id: AccountId) -> HashMap<AccountId, U128> {
         let wrapped_account = self.internal_get_account(&account_id);
         if let Some(account) = wrapped_account {
@@ -37,27 +39,25 @@ impl Contract {
         }
     }
 
+    /// Returns the state of the contract, such as Running, Paused
     pub fn get_contract_state(&self) -> String {
         format!("{} is {}", env::current_account_id(), self.state)
     }
 
-    /// Returns allowed_accounts
-    pub fn get_allowed_accounts(&self) -> Vec<AccountId> {
-        self.is_owner();
-        self.allowed_accounts.clone()
-    }
-
     /// Return the whitelisted tokens.
+    /// WARN: DEPRECATED
     pub fn get_whitelisted_tokens(&self) -> Vec<AccountId> {
         self.whitelisted_tokens.to_vec()
     }
 
-    // pub fn get_seed_min_deposit(&self) -> U128 {
-    //     self.seed_min_deposit
-    // }
+    /// Returns the minimum value accepted for given token_id
+    pub fn get_seed_min_deposit(self, token_id: String) -> U128 {
+        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        compounder.seed_min_deposit
+    }
 
     /// Returns the total amount of near that was deposited
-    /// TODO: remove this if not necessary
+    /// WARN: DEPRECATED
     pub fn user_total_near_deposited(&self, account_id: AccountId) -> Option<String> {
         let users_total_near_deposited = self.users_total_near_deposited.get(&account_id);
         if let Some(quantity) = users_total_near_deposited {
@@ -67,15 +67,12 @@ impl Contract {
         }
     }
 
-    // TODO: remove if compounders wont be used
-    // pub fn get_auto_compounders(self) -> Vec<AutoCompounder> {
-    //     self.compounders
-    // }
-
+    /// Returns all token ids filtering by running strategies
     pub fn get_allowed_tokens(self) -> Vec<String> {
         self.token_ids
     }
 
+    /// Return all Strategies filtering by running
     pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
@@ -97,16 +94,7 @@ impl Contract {
         info
     }
 
-    pub fn get_strats_info(self) -> Vec<AutoCompounder> {
-        let mut info: Vec<AutoCompounder> = Vec::new();
-
-        for (token_id, strat) in self.seeds.clone() {
-            info.push(strat);
-        }
-
-        info
-    }
-
+    /// Returns exchange and farm contracts
     pub fn get_contract_info(self) -> SafeInfo {
         SafeInfo {
             exchange_address: self.exchange_contract_id,
