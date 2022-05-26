@@ -3,6 +3,7 @@ use crate::*;
 #[near_bindgen]
 impl Contract {
     /// Returns the number of shares some accountId has in the contract
+    /// TODO: does it need to be an option?
     pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> Option<u128> {
         let compounder = self.seeds.get(&token_id).expect("ERR_TOKEN_DOES_NOT_EXIST");
         Some(*compounder.user_shares.get(&account_id).unwrap_or(&0u128))

@@ -9,8 +9,8 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-near-sdk = { git = "https://github.com/near/near-sdk-rs", tag = "4.0.0-pre.6"}
-near-contract-standards = { git = "https://github.com/near/near-sdk-rs", tag = "4.0.0-pre.6" } 
+near-sdk = { git = "https://github.com/near/near-sdk-rs", tag = "4.0.0-pre.9"}
+near-contract-standards = { git = "https://github.com/near/near-sdk-rs", tag = "4.0.0-pre.9" } 
 futures = "0.3"
 log = "0.4"
 console_log = { version = "0.2", optional = true }

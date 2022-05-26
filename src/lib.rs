@@ -28,6 +28,9 @@ use external_contracts::*;
 
 mod utils;
 
+mod errors;
+use crate::errors::*;
+
 mod auto_compounder;
 use auto_compounder::*;
 
@@ -110,9 +113,11 @@ pub struct Contract {
     // reward_token: String,
 
     // Contract address of the exchange used
+    // TODO: should be AccountId
     exchange_contract_id: String,
 
     // Contract address of the farm used
+    // TODO: should be AccountId
     farm_contract_id: String,
     // Farm used to auto-compound
     // farm: String,
