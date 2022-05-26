@@ -38,8 +38,6 @@ impl Contract {
 
     #[private]
     pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
-        let (_, contract) = self.get_predecessor_and_current_account();
-
         ext_exchange::mft_transfer_call(
             self.farm_contract_id.clone(),
             token_id.clone(),
@@ -53,7 +51,7 @@ impl Contract {
             token_id,
             account_id.clone(),
             shares,
-            contract,
+            env::current_account_id(),
             0,
             Gas(10_000_000_000_000),
         ))
@@ -66,61 +64,21 @@ impl Contract {
         account_id: AccountId,
         shares: u128,
     ) -> String {
+        // TODO: remove generic promise check
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
-
-        // increment total shares deposited by account
-        // TODO: should each auto-compounder store the amount each address have
-        //      or should the contract store it?
-        // increment_user_shares(&account_id, shares);
-        // self.user_shares.insert(account_id.clone(), new_shares);
 
         let compounder = self
             .seeds
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
-        compounder
-            .user_shares
-            .insert(account_id.clone(), shares.clone());
+        // TODO: should each auto-compounder store the amount each address have
+        //      or should the contract store it?
+        // increment total shares deposited by account
+        compounder.increment_user_shares(&account_id, shares);
 
         format!("The {} added {} to {}", account_id, shares, token_id)
     }
-
-    // #[private]
-    // pub fn callback_update_user_balance(
-    //     &mut self,
-    //     account_id: AccountId,
-    //     #[callback_result] shares: Result<String, PromiseError>,
-    // ) -> String {
-    //     require!(shares.is_ok());
-
-    //     let protocol_shares_on_pool: u128 = match shares {
-    //         Ok(shares_) => shares_.parse::<u128>().unwrap(),
-    //         _ => env::panic_str("Unknown error occurred"),
-    //     };
-
-    //     let shares_added_to_pool = protocol_shares_on_pool - self.protocol_shares;
-    //     let user_shares = self.get_user_shares(account_id.clone());
-
-    //     if user_shares == None {
-    //         self.user_shares.insert(account_id.clone(), 0);
-    //     }
-
-    //     let mut new_user_balance: u128 = 0;
-
-    //     if protocol_shares_on_pool > self.protocol_shares {
-    //         if let Some(x) = self.get_user_shares(account_id.clone()) {
-    //             Some(new_user_balance = x.parse::<u128>().unwrap() + shares_added_to_pool)
-    //         } else {
-    //             None
-    //         };
-    //         self.user_shares.insert(account_id, new_user_balance);
-    //         log!("User_shares = {}", new_user_balance);
-    //     };
-    //     self.protocol_shares = protocol_shares_on_pool;
-
-    //     protocol_shares_on_pool.to_string()
-    // }
 
     // #[private]
     // pub fn callback_get_deposits(&self) -> Promise {
@@ -208,8 +166,8 @@ impl Contract {
         amount: Balance,
         shares_available: Balance,
     ) {
-        assert!(self.check_promise());
         // TODO: remove generic promise check
+        assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
 
         let mut compounder = self
