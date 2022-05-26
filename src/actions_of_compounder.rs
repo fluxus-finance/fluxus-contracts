@@ -87,8 +87,8 @@ impl Contract {
     //     ext_exchange::get_deposits(
     //         contract_id,
     //         self.exchange_contract_id,
-    //         1,                       // yocto NEAR to attach
-    //         Gas(12_000_000_000_000), // gas to attach
+    //         1,
+    //         Gas(12_000_000_000_000),
     //     )
     // }
 
@@ -210,9 +210,9 @@ impl Contract {
         ext_exchange::get_pool_shares(
             pool_id,
             account_id,
-            self.exchange_contract_id.clone(), // contract account id
-            0,                                 // yocto NEAR to attach
-            Gas(10_000_000_000_000),           // gas to attach
+            self.exchange_contract_id.clone(),
+            0,
+            Gas(10_000_000_000_000),
         )
     }
 
@@ -227,9 +227,9 @@ impl Contract {
             pool_id,
             amounts,
             min_amounts,
-            self.exchange_contract_id.clone(), // contract account id
-            970000000000000000000,             // yocto NEAR to attach /////////////
-            Gas(30_000_000_000_000),           // gas to attach
+            self.exchange_contract_id.clone(),
+            970000000000000000000,
+            Gas(30_000_000_000_000),
         )
     }
 
@@ -237,9 +237,9 @@ impl Contract {
     fn call_get_deposits(&self, account_id: AccountId) -> Promise {
         ext_exchange::get_deposits(
             account_id,
-            self.exchange_contract_id.clone(), // contract account id
-            1,                                 // yocto NEAR to attach
-            Gas(15_000_000_000_000),           // gas to attach
+            self.exchange_contract_id.clone(),
+            1,
+            Gas(15_000_000_000_000),
         )
     }
 
@@ -248,9 +248,9 @@ impl Contract {
     pub fn call_user_register(&self, account_id: AccountId) -> Promise {
         ext_exchange::storage_deposit(
             account_id,
-            self.exchange_contract_id.clone(), // contract account id
-            10000000000000000000000,           // yocto NEAR to attach
-            Gas(3_000_000_000_000),            // gas to attach
+            self.exchange_contract_id.clone(),
+            10000000000000000000000,
+            Gas(3_000_000_000_000),
         )
     }
 
@@ -267,9 +267,9 @@ impl Contract {
             token_id,
             amount,
             msg,
-            self.exchange_contract_id.clone(), // contract account id
-            1,                                 // yocto NEAR to attach
-            Gas(80_000_000_000_000),           // gas to attach
+            self.exchange_contract_id.clone(),
+            1,
+            Gas(80_000_000_000_000),
         )
     }
 
@@ -284,9 +284,9 @@ impl Contract {
             token_id,
             amount,
             unregister,
-            self.farm_contract_id.clone(), // contract account id
-            1,                             // yocto NEAR to attach
-            Gas(180_000_000_000_000),      // gas to attach
+            self.farm_contract_id.clone(),
+            1,
+            Gas(180_000_000_000_000),
         )
     }
 }

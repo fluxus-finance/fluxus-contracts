@@ -230,6 +230,7 @@ impl Contract {
     /// Step 4
     /// Get amount of tokens available then stake it
     pub fn autocompounds_liquidity_and_stake(&mut self, token_id: String) {
+        // TODO: do not need to be mut
         self.assert_contract_running();
         self.is_allowed_account();
 
@@ -259,6 +260,7 @@ impl Contract {
         token_id: String,
         account_id: AccountId,
     ) {
+        // TODO: do not need to be mut
         assert!(deposits_result.is_ok(), "ERR_COULD_NOT_GET_DEPOSITS");
 
         let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
@@ -280,8 +282,12 @@ impl Contract {
             };
         }
 
+        // instead of passing token1, token2 separated
+        // use a vec, in the correct format, then you can easily do this op
+        // without any further problems
+
         // Add liquidity
-        self.call_add_liquidity(pool_id, vec![quantity_of_token2, quantity_of_token1], None)
+        self.call_add_liquidity(pool_id, vec![quantity_of_token1, quantity_of_token2], None)
             // Get the shares
             .then(ext_exchange::get_pool_shares(
                 pool_id,
@@ -307,9 +313,11 @@ impl Contract {
         #[callback_result] shares_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
+        // TODO: do not need to be mut
         assert!(shares_result.is_ok(), "ERR");
         let shares_amount = shares_result.unwrap().0;
 
+        // TODO: do not need to be mut
         let compounder = self.seeds.get_mut(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
         if shares_amount > 0 {
@@ -322,6 +330,12 @@ impl Contract {
             compounder.balance_update(total_shares, shares_amount.clone());
         };
 
+        log!(
+            "after: {:#?}",
+            compounder
+                .user_shares
+                .get(&"mesto.testnet".parse().unwrap())
+        );
         assert!(
             shares_amount >= compounder.seed_min_deposit.into(),
             "ERR_NOT_ENOUGH_SHARES_TO_STAKE"

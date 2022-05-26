@@ -81,6 +81,8 @@ impl AutoCompounder {
         let mut shares_distributed: U256 = U256::from(0u128);
 
         for (account, val) in self.user_shares.clone() {
+            log!("account {}", account);
+
             let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
 
             let casted_reward = U256::from(shares_reward) * acc_percentage;
@@ -91,7 +93,9 @@ impl AutoCompounder {
 
             let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
 
-            self.user_shares.insert(account, new_user_balance);
+            log!("before: {:#?}", self.user_shares.get(&account));
+            self.user_shares.insert(account.clone(), new_user_balance);
+            log!("after: {:#?}", self.user_shares.get(&account));
         }
 
         let residue: u128 = shares_reward - shares_distributed.as_u128();
@@ -155,5 +159,126 @@ impl VersionedCompounder {
             seed_min_deposit,
             seed_id,
         })
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use std::hash::Hash;
+
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::testing_env;
+
+    fn get_context() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"));
+        builder
+    }
+
+    pub fn to_account_id(value: &str) -> AccountId {
+        value.parse().unwrap()
+    }
+
+    fn create_contract() -> Contract {
+        let contract = Contract::new(
+            to_account_id("auto_compounder.near"),
+            String::from("eth.near").parse().unwrap(),
+            String::from("dai.near").parse().unwrap(),
+        );
+
+        contract
+    }
+
+    // fn create_strat(mut safe_contract: Contract) {}
+
+    #[test]
+    fn test_balance_update() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut contract = create_contract();
+
+        let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
+
+        let acc1 = to_account_id("alice.near");
+        let shares1 = near.clone();
+
+        let acc2 = to_account_id("bob.near");
+        let shares2 = near.clone() * 3;
+
+        let token1_address = String::from("eth.near").parse().unwrap();
+        let token2_address = String::from("dai.near").parse().unwrap();
+        let pool_id_token1_reward = 0;
+        let pool_id_token2_reward = 1;
+        let reward_token = String::from("usn.near").parse().unwrap();
+        let farm = "0".to_string();
+        let pool_id = 0;
+        let seed_min_deposit = U128(10);
+
+        contract.create_auto_compounder(
+            token1_address,
+            token2_address,
+            pool_id_token1_reward,
+            pool_id_token2_reward,
+            reward_token,
+            farm,
+            pool_id,
+            seed_min_deposit,
+        );
+
+        let token_id = String::from(":0");
+        // add initial balance for accounts
+        contract
+            .seeds
+            .get_mut(&token_id)
+            .unwrap()
+            .user_shares
+            .insert(acc1.clone(), shares1);
+
+        contract
+            .seeds
+            .get_mut(&token_id)
+            .unwrap()
+            .user_shares
+            .insert(acc2.clone(), shares2);
+
+        let total_shares: u128 = shares1 + shares2;
+
+        // distribute shares between accounts
+        contract
+            .seeds
+            .get_mut(&token_id)
+            .unwrap()
+            .balance_update(total_shares, near);
+
+        // assert account 1 earned 25% from reward shares
+        let acc1_updated_shares = contract
+            .seeds
+            .get(&token_id)
+            .unwrap()
+            .user_shares
+            .get(&acc1)
+            .unwrap();
+        assert_eq!(
+            *acc1_updated_shares, 1250000000000000000000000u128,
+            "ERR_BALANCE_UPDATE"
+        );
+
+        // assert account 2 earned 75% from reward shares
+        let acc2_updated_shares = contract
+            .seeds
+            .get(&token_id)
+            .unwrap()
+            .user_shares
+            .get(&acc2)
+            .unwrap();
+        assert_eq!(
+            *acc2_updated_shares, 3750000000000000000000000u128,
+            "ERR_BALANCE_UPDATE"
+        );
     }
 }

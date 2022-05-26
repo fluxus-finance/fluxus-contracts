@@ -76,7 +76,7 @@ impl Contract {
         self.token_ids
     }
 
-    pub fn get_compounders(self) -> Vec<AutoCompounderInfo> {
+    pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
         for (token_id, compounder) in self.seeds.clone() {
@@ -96,6 +96,23 @@ impl Contract {
 
         info
     }
+
+    pub fn get_strats_info(self) -> Vec<AutoCompounder> {
+        let mut info: Vec<AutoCompounder> = Vec::new();
+
+        for (token_id, strat) in self.seeds.clone() {
+            info.push(strat);
+        }
+
+        info
+    }
+
+    pub fn get_contract_info(self) -> SafeInfo {
+        SafeInfo {
+            exchange_address: self.exchange_contract_id,
+            farm_address: self.farm_contract_id,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -111,4 +128,11 @@ pub struct AutoCompounderInfo {
     pub pool_id: u64,
     pub seed_min_deposit: U128,
     pub seed_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct SafeInfo {
+    pub exchange_address: AccountId,
+    pub farm_address: AccountId,
 }
