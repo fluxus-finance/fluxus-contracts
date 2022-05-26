@@ -211,8 +211,19 @@ impl Contract {
 #[near_bindgen]
 impl Contract {
     pub fn update_contract_state(&mut self, state: RunningState) -> String {
+        self.is_owner();
         self.state = state;
         format!("{} is {}", env::current_account_id(), self.state)
+    }
+
+    pub fn update_exchange_contract(&mut self, contract: AccountId) {
+        self.is_owner();
+        self.exchange_contract_id = contract;
+    }
+
+    pub fn update_farm_contract(&mut self, contract: AccountId) {
+        self.is_owner();
+        self.farm_contract_id = contract;
     }
 }
 

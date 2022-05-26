@@ -11,7 +11,7 @@ impl Contract {
 
     /// Function that return the user`s near storage.
     pub fn get_user_storage_state(&self, account_id: AccountId) -> Option<RefStorageState> {
-        self.check_caller(account_id.clone());
+        self.is_caller(account_id.clone());
         let acc = self.internal_get_account(&account_id);
         if let Some(account) = acc {
             Some(RefStorageState {
@@ -43,7 +43,7 @@ impl Contract {
 
     /// Returns allowed_accounts
     pub fn get_allowed_accounts(&self) -> Vec<AccountId> {
-        self.check_permission();
+        self.is_owner();
         self.allowed_accounts.clone()
     }
 

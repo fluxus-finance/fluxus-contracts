@@ -295,7 +295,7 @@ impl Contract {
 // #[near_bindgen]
 // impl Contract {
 //     pub fn update_seed_min_deposit(&mut self, min_deposit: U128) -> U128 {
-//         self.check_permission();
+//         self.is_owner();
 //         self.seed_min_deposit = min_deposit;
 //         self.seed_min_deposit
 //     }

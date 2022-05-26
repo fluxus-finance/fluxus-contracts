@@ -4,7 +4,7 @@ use crate::*;
 impl Contract {
     /// Adds account_id to allowed_accounts if it is not already present
     pub fn add_allowed_account(&mut self, account_id: AccountId) {
-        self.check_permission();
+        self.is_owner();
 
         require!(
             !self.allowed_accounts.contains(&account_id),
@@ -15,7 +15,7 @@ impl Contract {
 
     /// Removes account_id from allowed_accounts
     pub fn remove_allowed_account(&mut self, account_id: AccountId) {
-        self.check_permission();
+        self.is_owner();
 
         // https://stackoverflow.com/a/44012406
         self.allowed_accounts.swap_remove(
@@ -29,7 +29,7 @@ impl Contract {
     /// Checks if predecessor_account_id is either the contract or the owner of the contract
     /// TODO: rename method to is_owner()
     #[private]
-    pub(crate) fn check_permission(&self) {
+    pub(crate) fn is_owner(&self) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
         require!(
             caller_acc_id == contract_id || caller_acc_id == self.owner_id,
@@ -40,7 +40,7 @@ impl Contract {
     /// Checks if account_id is either the caller account or the contract
     /// TODO: rename method to is_caller()
     #[private]
-    pub(crate) fn check_caller(&self, account_id: AccountId) {
+    pub(crate) fn is_caller(&self, account_id: AccountId) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
         assert!(
             (caller_acc_id == account_id) || (caller_acc_id == contract_id),
@@ -51,7 +51,7 @@ impl Contract {
     /// Checks if the caller account is in allowed_accounts
     /// TODO: rename method to is_allowed_account()
     #[private]
-    pub(crate) fn check_autocompounds_caller(&self) {
+    pub(crate) fn is_allowed_account(&self) {
         let caller_acc_id: &AccountId = &env::predecessor_account_id();
 
         let mut is_allowed: bool = false;
@@ -233,9 +233,9 @@ impl Contract {
 //         let mut contract = create_contract();
 
 //         // both contract and owner (caller) have permissions
-//         contract.check_autocompounds_caller();
-//         contract.check_permission();
-//         contract.check_caller(to_account_id("auto_compounder.near"));
+//         contract.is_allowed_account();
+//         contract.is_owner();
+//         contract.is_caller(to_account_id("auto_compounder.near"));
 
 //         // update caller to a different value
 //         testing_env!(context
@@ -244,16 +244,16 @@ impl Contract {
 
 //         // https://doc.rust-lang.org/std/panic/fn.catch_unwind.html
 //         // should panic because the caller is not present in allowed_accounts
-//         let result = std::panic::catch_unwind(|| contract.check_autocompounds_caller());
+//         let result = std::panic::catch_unwind(|| contract.is_allowed_account());
 //         assert!(result.is_err());
 
 //         // should panic because the caller is not the contract or the owner of the contract
-//         let result = std::panic::catch_unwind(|| contract.check_permission());
+//         let result = std::panic::catch_unwind(|| contract.is_owner());
 //         assert!(result.is_err());
 
 //         // should panic because the caller is not the contract or the account being consulted
 //         let result = std::panic::catch_unwind(|| {
-//             contract.check_caller(to_account_id("fluxus_finance.near"))
+//             contract.is_caller(to_account_id("fluxus_finance.near"))
 //         });
 //         assert!(result.is_err());
 //     }

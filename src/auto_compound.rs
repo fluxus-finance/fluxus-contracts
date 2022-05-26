@@ -6,7 +6,7 @@ impl Contract {
     /// Function to claim the reward from the farm contract
     pub fn claim_reward(&mut self, token_id: String) {
         self.assert_contract_running();
-        self.check_autocompounds_caller();
+        self.is_allowed_account();
 
         let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         let seed_id: String = compounder.seed_id.clone();
@@ -23,7 +23,7 @@ impl Contract {
     /// Function to claim the reward from the farm contract
     pub fn withdraw_of_reward(&mut self, token_id: String) -> Promise {
         self.assert_contract_running();
-        self.check_autocompounds_caller();
+        self.is_allowed_account();
 
         let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         let reward_token: AccountId = compounder.reward_token.clone();
@@ -93,7 +93,7 @@ impl Contract {
     /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
     pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
         self.assert_contract_running();
-        self.check_autocompounds_caller();
+        self.is_allowed_account();
 
         let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
@@ -231,7 +231,7 @@ impl Contract {
     /// Get amount of tokens available then stake it
     pub fn autocompounds_liquidity_and_stake(&mut self, token_id: String) {
         self.assert_contract_running();
-        self.check_autocompounds_caller();
+        self.is_allowed_account();
 
         ext_exchange::get_deposits(
             env::current_account_id(),
