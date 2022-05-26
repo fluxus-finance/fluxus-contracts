@@ -94,28 +94,17 @@ impl MFTTokenReceiver for Contract {
         self.assert_contract_running();
 
         //Check: Is the token_id the vault's pool_id? If is not, send it back
-        assert!(self.token_ids.contains(&token_id), "ERR_NOT_THE_POOL_ID");
+        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
         let amount_in_u128: u128 = amount.into();
 
         //Check: is the amount sent above or equal the minimum deposit?
-        for compounder in self.compounders.clone() {
-            let id = self.wrap_mft_token_id(&compounder.pool_id.to_string());
-
-            if id == token_id {
-                assert!(
-                    amount_in_u128 >= compounder.seed_min_deposit.into(),
-                    "ERR_BELOW_MIN_DEPOSIT"
-                );
-            }
-        }
+        assert!(
+            amount_in_u128 >= compounder.seed_min_deposit.into(),
+            "ERR_BELOW_MIN_DEPOSIT"
+        );
 
         // initiate stake process
-        /*
-            TODO: pass token_id to stake, and inside stake get info from auto-compounder in order to properly stake
-                this method should work for every auto-compounder struct created
-
-        */
         self.stake(token_id, &sender_id, amount_in_u128);
 
         PromiseOrValue::Value(U128(0))

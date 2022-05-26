@@ -33,7 +33,6 @@ impl Contract {
         );
 
         self.seeds.insert(token_id, compounder.clone());
-        self.compounders.push(compounder);
     }
 
     #[private]
