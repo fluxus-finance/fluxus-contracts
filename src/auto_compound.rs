@@ -13,9 +13,9 @@ impl Contract {
 
         ext_farm::claim_reward_by_seed(
             seed_id,
-            self.farm_contract_id.clone(), // contract account id
-            0,                             // yocto NEAR to attach
-            Gas(40_000_000_000_000),       // gas to attach//was 40?
+            self.farm_contract_id.clone(),
+            0,
+            Gas(40_000_000_000_000),
         );
     }
 
@@ -227,117 +227,112 @@ impl Contract {
         )) // TODO: should use a callback to assert that both tx succeeded
     }
 
-    // /// Step 4
-    // /// Get amount of tokens available then stake it
-    // #[payable]
-    // pub fn autocompounds_liquidity_and_stake(&mut self) {
-    //     self.assert_contract_running();
-    //     self.check_autocompounds_caller();
+    /// Step 4
+    /// Get amount of tokens available then stake it
+    pub fn autocompounds_liquidity_and_stake(&mut self, token_id: String) {
+        self.assert_contract_running();
+        self.check_autocompounds_caller();
 
-    //     ext_exchange::get_deposits(
-    //         env::current_account_id().try_into().unwrap(),
-    //         self.exchange_contract_id.parse().unwrap(), // contract account id
-    //         1,                                          // yocto NEAR to attach
-    //         Gas(9_000_000_000_000),                     // gas to attach
-    //     )
-    //     // Add liquidity and stake once again
-    //     .then(ext_self::stake_and_liquidity_auto(
-    //         env::current_account_id().try_into().unwrap(),
-    //         env::current_account_id(), // auto_compounder contract id
-    //         970000000000000000000,     // yocto NEAR to attach
-    //         Gas(200_000_000_000_000),  // gas to attach
-    //     ));
-    // }
+        ext_exchange::get_deposits(
+            env::current_account_id(),
+            self.exchange_contract_id.clone(),
+            1,
+            Gas(9_000_000_000_000),
+        )
+        // Add liquidity and stake once again
+        .then(ext_self::stake_and_liquidity_auto(
+            token_id,
+            env::current_account_id(),
+            env::current_account_id(),
+            0,
+            Gas(200_000_000_000_000),
+        ));
+    }
 
-    // /// Auto-compound function.
-    // ///
-    // /// Responsible to add liquidity and stake.
-    // #[private]
-    // #[payable]
-    // pub fn stake_and_liquidity_auto(&mut self, account_id: AccountId) {
-    //     assert_eq!(env::promise_results_count(), 1, "ERR_TOO_MANY_RESULTS");
-    //     let is_tokens = match env::promise_result(0) {
-    //         PromiseResult::NotReady => unreachable!(),
-    //         PromiseResult::Successful(tokens) => {
-    //             if let Ok(is_tokens) =
-    //                 near_sdk::serde_json::from_slice::<HashMap<AccountId, U128>>(&tokens)
-    //             {
-    //                 is_tokens
-    //             } else {
-    //                 env::panic_str("ERR_WRONG_VAL_RECEIVED")
-    //             }
-    //         }
-    //         PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
-    //     };
+    /// Auto-compound function.
+    ///
+    /// Responsible to add liquidity and stake.
+    #[private]
+    pub fn stake_and_liquidity_auto(
+        &mut self,
+        #[callback_result] deposits_result: Result<HashMap<AccountId, U128>, PromiseError>,
+        token_id: String,
+        account_id: AccountId,
+    ) {
+        assert!(deposits_result.is_ok(), "ERR_COULD_NOT_GET_DEPOSITS");
 
-    //     let pool_id_to_add_liquidity = self.pool_id;
-    //     let token_out1 = self.token1_address.to_string();
-    //     let token_out2 = self.token2_address.to_string();
-    //     let mut quantity_of_token1 = U128(0);
-    //     let mut quantity_of_token2 = U128(0);
+        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
-    //     for (key, val) in is_tokens.iter() {
-    //         if key.to_string() == token_out1 {
-    //             quantity_of_token1 = *val
-    //         };
-    //         if key.to_string() == token_out2 {
-    //             quantity_of_token2 = *val
-    //         };
-    //     }
-    //     let pool_id: u64 = self.pool_id;
+        let tokens: HashMap<AccountId, U128> = deposits_result.unwrap();
 
-    //     // Add liquidity
-    //     self.call_add_liquidity(
-    //         pool_id_to_add_liquidity,
-    //         vec![quantity_of_token2, quantity_of_token1],
-    //         None,
-    //     )
-    //     // Get the shares
-    //     .then(ext_exchange::get_pool_shares(
-    //         pool_id,
-    //         account_id.clone().try_into().unwrap(),
-    //         self.exchange_contract_id.parse().unwrap(), // contract account id
-    //         0,                                          // yocto NEAR to attach
-    //         Gas(10_000_000_000_000),                    // gas to attach
-    //     ))
-    //     // Update user balance
-    //     .then(ext_self::callback_to_balance(
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(15_000_000_000_000),
-    //     ))
-    //     .then(ext_self::callback_stake(
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(90_000_000_000_000),
-    //     ));
-    // }
+        let pool_id: u64 = compounder.pool_id;
+        let token_out1 = compounder.token1_address.to_string();
+        let token_out2 = compounder.token2_address.to_string();
+        let mut quantity_of_token1 = U128(0);
+        let mut quantity_of_token2 = U128(0);
 
-    // /// Read shares for each account registered.
-    // #[private]
-    // pub fn callback_to_balance(&mut self) -> String {
-    //     assert_eq!(env::promise_results_count(), 1, "ERR_TOO_MANY_RESULTS");
-    //     let shares = match env::promise_result(0) {
-    //         PromiseResult::NotReady => unreachable!(),
-    //         PromiseResult::Successful(tokens) => {
-    //             if let Ok(shares) = near_sdk::serde_json::from_slice::<String>(&tokens) {
-    //                 shares
-    //             } else {
-    //                 env::panic_str("ERR_WRONG_VAL_RECEIVED")
-    //             }
-    //         }
-    //         PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
-    //     };
+        for (key, val) in tokens.iter() {
+            if key.to_string() == token_out1 {
+                quantity_of_token1 = *val
+            };
+            if key.to_string() == token_out2 {
+                quantity_of_token2 = *val
+            };
+        }
 
-    //     if shares.parse::<u128>().unwrap() > 0 {
-    //         let mut total_shares: u128 = 0;
+        // Add liquidity
+        self.call_add_liquidity(pool_id, vec![quantity_of_token2, quantity_of_token1], None)
+            // Get the shares
+            .then(ext_exchange::get_pool_shares(
+                pool_id,
+                account_id.clone().try_into().unwrap(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+            // Update user balance and stake
+            .then(ext_self::callback_stake(
+                token_id,
+                env::current_account_id(),
+                0,
+                Gas(120_000_000_000_000),
+            ));
+    }
 
-    //         for (_, val) in self.user_shares.iter() {
-    //             total_shares += *val;
-    //         }
+    /// Receives shares from auto-compound and stake it
+    /// Change the user_balance and the auto_compounder balance of lps/shares
+    #[private]
+    pub fn callback_stake(
+        &mut self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+        token_id: String,
+    ) {
+        assert!(shares_result.is_ok(), "ERR");
+        let shares_amount = shares_result.unwrap().0;
 
-    //         self.balance_update(total_shares, shares.clone());
-    //     };
-    //     shares
-    // }
+        let compounder = self.seeds.get_mut(&token_id).expect(ERR21_TOKEN_NOT_REG);
+
+        if shares_amount > 0 {
+            let mut total_shares: u128 = 0;
+
+            for (_, val) in compounder.user_shares.iter() {
+                total_shares += *val;
+            }
+
+            compounder.balance_update(total_shares, shares_amount.clone());
+        };
+
+        assert!(
+            shares_amount >= compounder.seed_min_deposit.into(),
+            "ERR_NOT_ENOUGH_SHARES_TO_STAKE"
+        );
+
+        // TODO: Should call it right away and then use a callback to check the result
+        self.call_stake(
+            self.farm_contract_id.clone(),
+            token_id,
+            U128(shares_amount),
+            "".to_string(),
+        );
+    }
 }

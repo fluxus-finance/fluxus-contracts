@@ -100,7 +100,7 @@ impl MFTTokenReceiver for Contract {
 
         //Check: is the amount sent above or equal the minimum deposit?
         for compounder in self.compounders.clone() {
-            let id = self.wrap_mft_token_id(&compounder.pool_id);
+            let id = self.wrap_mft_token_id(&compounder.pool_id.to_string());
 
             if id == token_id {
                 assert!(

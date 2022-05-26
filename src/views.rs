@@ -108,7 +108,7 @@ pub struct AutoCompounderInfo {
     pub pool_id_token2_reward: u64,
     pub reward_token: AccountId,
     pub farm: String,
-    pub pool_id: String,
+    pub pool_id: u64,
     pub seed_min_deposit: U128,
     pub seed_id: String,
 }

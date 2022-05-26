@@ -160,11 +160,19 @@ pub trait Callbacks {
     );
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_return(&self) -> (U128, U128);
-    fn callback_stake(&mut self);
-    fn callback_to_balance(&mut self);
+    fn callback_stake(
+        &mut self,
+        #[callback_result] shares_result: Result<String, PromiseError>,
+        token_id: String,
+    );
     fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
     fn swap_to_auto(&mut self, token_id: String, amount_in_1: U128, amount_in_2: U128);
-    fn stake_and_liquidity_auto(&mut self, account_id: AccountId);
+    fn stake_and_liquidity_auto(
+        &mut self,
+        #[callback_result] deposits_result: Result<HashMap<AccountId, U128>, PromiseError>,
+        token_id: String,
+        account_id: AccountId,
+    );
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(
         &self,

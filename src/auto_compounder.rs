@@ -36,7 +36,7 @@ pub struct AutoCompounder {
     pub farm: String,
 
     // Pool used to add liquidity and farming
-    pub pool_id: String,
+    pub pool_id: u64,
 
     // Min LP amount accepted by the farm for stake
     pub seed_min_deposit: U128,
@@ -54,7 +54,7 @@ impl AutoCompounder {
         pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm: String,
-        pool_id: String,
+        pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
     ) -> Self {
@@ -75,8 +75,7 @@ impl AutoCompounder {
     }
 
     /// Update user balances based on the user's percentage in the contract.
-    pub(crate) fn balance_update(&mut self, total: u128, shares_reward: String) {
-        let shares_reward = shares_reward.parse::<u128>().unwrap();
+    pub(crate) fn balance_update(&mut self, total: u128, shares_reward: u128) {
         log!("new_shares_quantity is equal to {}", shares_reward);
 
         let mut shares_distributed: U256 = U256::from(0u128);
@@ -132,7 +131,7 @@ impl VersionedCompounder {
         pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm: String,
-        pool_id: String,
+        pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
     ) -> Self {

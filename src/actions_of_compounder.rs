@@ -12,12 +12,12 @@ impl Contract {
         pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm: String,
-        pool_id: String,
+        pool_id: u64,
         seed_min_deposit: U128,
     ) {
         let seed_id: String = format!("{}@{}", self.exchange_contract_id, pool_id);
 
-        let token_id = self.wrap_mft_token_id(&pool_id);
+        let token_id = self.wrap_mft_token_id(&pool_id.to_string());
         self.token_ids.push(token_id.clone());
 
         let compounder = AutoCompounder::new(
@@ -86,42 +86,6 @@ impl Contract {
         format!("The {} added {} to {}", account_id, shares, token_id)
     }
 
-    // /// Receives shares from auto-compound and stake it
-    // #[private]
-    // pub fn callback_stake(&mut self) {
-    //     assert_eq!(env::promise_results_count(), 1, "ERR_TOO_MANY_RESULTS");
-    //     let shares = match env::promise_result(0) {
-    //         PromiseResult::NotReady => unreachable!(),
-    //         PromiseResult::Successful(tokens) => {
-    //             if let Ok(shares) = near_sdk::serde_json::from_slice::<String>(&tokens) {
-    //                 shares
-    //             } else {
-    //                 env::panic_str("ERR_WRONG_VAL_RECEIVED")
-    //             }
-    //         }
-    //         PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
-    //     };
-
-    //     let amount: u128 = shares.parse::<u128>().unwrap();
-    //     assert!(
-    //         amount >= self.seed_min_deposit.into(),
-    //         "ERR_NOT_ENOUGH_SHARES_TO_STAKE"
-    //     );
-
-    //     //Concatenate ":" with pool id because ref's testnet contract need an argument like this. Ex -> :193
-    //     //For Mainnet, probability it is not necessary concatenate the ":"
-    //     let pool_id: String = ":".to_string() + &self.pool_id.to_string();
-
-    //     // TODO: Should call it right away and then use a callback to check the result
-    //     self.call_stake(
-    //         self.farm_contract_id,
-    //         pool_id,
-    //         U128(amount),
-    //         "".to_string(),
-    //     );
-    // }
-
-    // /// Change the user_balance and the auto_compounder balance of lps/shares
     // #[private]
     // pub fn callback_update_user_balance(
     //     &mut self,
