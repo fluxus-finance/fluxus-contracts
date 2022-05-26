@@ -156,7 +156,6 @@ pub trait Callbacks {
         token_id: String,
         account_id: AccountId,
         amount: Balance,
-        shares_available: Balance,
     );
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_return(&self) -> (U128, U128);

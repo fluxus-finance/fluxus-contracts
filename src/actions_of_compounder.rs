@@ -97,37 +97,33 @@ impl Contract {
     pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
-        // TODO: require that token_id exist
         let compounder = self
             .seeds
             .get(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
-        // TODO require!(ACCOUNT_EXIST)
         let user_shares = compounder
             .user_shares
             .get(&caller_id)
             .expect("ERR_ACCOUNT_DOES_NOT_EXIST");
 
-        let seed_id: String = compounder.seed_id.clone();
-        let shares_available: u128 = *user_shares;
-
-        // TODO: rewrite asserts
         assert!(
-            shares_available != 0,
+            *user_shares != 0,
             "User does not have enough lps to withdraw"
         );
 
-        let amount = amount_withdrawal.unwrap_or(U128(shares_available));
-        log!("Unstake amount = {}", amount.0);
-        assert!(amount.0 != 0, "User is trying to withdraw 0 shares");
-
+        let amount: U128 = amount_withdrawal.unwrap_or(U128(*user_shares));
         assert!(
-            shares_available >= amount.0,
-            "User is trying to withdrawal {} and only has {}",
+            *user_shares >= amount.0,
+            "{} is trying to withdrawal {} and only has {}",
+            caller_id.clone(),
             amount.0,
-            shares_available
+            user_shares
         );
+
+        let seed_id: String = compounder.seed_id.clone();
+
+        log!("{} is trying to withdrawal {}", caller_id, amount.0);
 
         // Unstake shares/lps
         ext_farm::withdraw_seed(
@@ -151,7 +147,6 @@ impl Contract {
             token_id,
             caller_id,
             amount.clone().0,
-            shares_available,
             contract_id,
             0,
             Gas(20_000_000_000_000),
@@ -164,24 +159,18 @@ impl Contract {
         token_id: String,
         account_id: AccountId,
         amount: Balance,
-        shares_available: Balance,
     ) {
         // TODO: remove generic promise check
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
 
-        let mut compounder = self
+        // Decrement user shares
+        let compounder = self
             .seeds
-            .get(&token_id)
+            .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
-        let new_shares: u128 = shares_available - amount;
-        // self.user_shares.insert(account_id.clone(), new_shares);
-
-        compounder
-            .user_shares
-            .clone()
-            .insert(account_id, new_shares);
+        compounder.decrement_user_shares(&account_id, amount);
     }
 }
 

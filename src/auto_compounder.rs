@@ -112,6 +112,12 @@ impl AutoCompounder {
             self.user_shares.insert(account_id.clone(), shares);
         };
     }
+
+    pub(crate) fn decrement_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
+        let user_shares = self.user_shares.get(account_id).unwrap();
+        let new_shares: u128 = user_shares - shares;
+        self.user_shares.insert(account_id.clone(), new_shares);
+    }
 }
 
 /// Versioned Farmer, used for lazy upgrade.
