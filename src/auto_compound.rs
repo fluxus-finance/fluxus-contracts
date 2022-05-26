@@ -13,9 +13,9 @@ impl Contract {
 
         ext_farm::claim_reward_by_seed(
             seed_id,
-            self.farm_contract_id.parse().unwrap(), // contract account id
-            0,                                      // yocto NEAR to attach
-            Gas(40_000_000_000_000),                // gas to attach//was 40?
+            self.farm_contract_id.clone(), // contract account id
+            0,                             // yocto NEAR to attach
+            Gas(40_000_000_000_000),       // gas to attach//was 40?
         );
     }
 
@@ -31,7 +31,7 @@ impl Contract {
         ext_farm::get_reward(
             env::current_account_id(),
             reward_token.clone(),
-            self.farm_contract_id.parse().unwrap(),
+            self.farm_contract_id.clone(),
             1,
             Gas(3_000_000_000_000),
         )
@@ -61,7 +61,7 @@ impl Contract {
             reward_token.clone(),
             amount.clone(),
             "false".to_string(),
-            self.farm_contract_id.parse().unwrap(),
+            self.farm_contract_id.clone(),
             1,
             Gas(180_000_000_000_000),
         )
@@ -100,8 +100,8 @@ impl Contract {
         let amount_in = U128(compounder.last_reward_amount / 2);
 
         ext_reward_token::ft_transfer_call(
-            self.exchange_contract_id.parse().unwrap(), // receiver_id,
-            compounder.last_reward_amount.to_string(),  //Amount after withdraw the rewards
+            self.exchange_contract_id.clone(),         // receiver_id,
+            compounder.last_reward_amount.to_string(), //Amount after withdraw the rewards
             "".to_string(),
             compounder.reward_token.clone(),
             1,
@@ -139,7 +139,7 @@ impl Contract {
             compounder.reward_token.clone(),
             amount_token_1,
             compounder.token1_address.clone(),
-            self.exchange_contract_id.parse().unwrap(),
+            self.exchange_contract_id.clone(),
             0,
             Gas(10_000_000_000_000),
         )
@@ -148,7 +148,7 @@ impl Contract {
             compounder.reward_token.clone(),
             amount_token_2,
             compounder.token2_address.clone(),
-            self.exchange_contract_id.parse().unwrap(),
+            self.exchange_contract_id.clone(),
             0,
             Gas(10_000_000_000_000),
         ))

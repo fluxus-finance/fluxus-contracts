@@ -113,12 +113,10 @@ pub struct Contract {
     // reward_token: String,
 
     // Contract address of the exchange used
-    // TODO: should be AccountId
-    exchange_contract_id: String,
+    exchange_contract_id: AccountId,
 
     // Contract address of the farm used
-    // TODO: should be AccountId
-    farm_contract_id: String,
+    farm_contract_id: AccountId,
     // Farm used to auto-compound
     // farm: String,
 
@@ -209,8 +207,8 @@ impl Contract {
     #[init]
     pub fn new(
         owner_id: AccountId,
-        exchange_contract_id: String,
-        farm_contract_id: String,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
     ) -> Self {
         let mut allowed_accounts: Vec<AccountId> = Vec::new();
         allowed_accounts.push(env::current_account_id());
