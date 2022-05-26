@@ -3,15 +3,10 @@ use crate::*;
 #[near_bindgen]
 impl Contract {
     /// Returns the number of shares some accountId has in the contract
-    // pub fn get_user_shares(&self, account_id: AccountId) -> Option<String> {
-    //     // self.check_caller(account_id.clone());
-    //     let user_shares = self.user_shares.get(&account_id);
-    //     if let Some(account) = user_shares {
-    //         Some(account.to_string())
-    //     } else {
-    //         None
-    //     }
-    // }
+    pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> Option<u128> {
+        let compounder = self.seeds.get(&token_id).expect("ERR_TOKEN_DOES_NOT_EXIST");
+        Some(*compounder.user_shares.get(&account_id).unwrap_or(&0u128))
+    }
 
     /// Function that return the user`s near storage.
     pub fn get_user_storage_state(&self, account_id: AccountId) -> Option<RefStorageState> {
@@ -71,15 +66,48 @@ impl Contract {
         }
     }
 
-    pub fn get_auto_compounders(self) -> Vec<AutoCompounder> {
-        self.compounders
-    }
+    // TODO: remove if compounders wont be used
+    // pub fn get_auto_compounders(self) -> Vec<AutoCompounder> {
+    //     self.compounders
+    // }
 
     pub fn get_allowed_tokens(self) -> Vec<String> {
         self.token_ids
     }
 
-    pub fn get_tokens_and_autos(self) -> HashMap<String, AutoCompounder> {
-        self.seeds
+    pub fn get_compounders(self) -> Vec<AutoCompounderInfo> {
+        let mut info: Vec<AutoCompounderInfo> = Vec::new();
+
+        for (token_id, compounder) in self.seeds.clone() {
+            info.push(AutoCompounderInfo {
+                token_id,
+                token1_address: compounder.token1_address,
+                token2_address: compounder.token2_address,
+                pool_id_token1_reward: compounder.pool_id_token1_reward,
+                pool_id_token2_reward: compounder.pool_id_token2_reward,
+                reward_token: compounder.reward_token,
+                farm: compounder.farm,
+                pool_id: compounder.pool_id,
+                seed_min_deposit: compounder.seed_min_deposit,
+                seed_id: compounder.seed_id,
+            })
+        }
+
+        info
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct AutoCompounderInfo {
+    pub token_id: String,
+    pub token1_address: AccountId,
+    pub token2_address: AccountId,
+    pub pool_id_token1_reward: String,
+    pub pool_id_token2_reward: String,
+    pub reward_token: AccountId,
+    pub farm: String,
+    pub pool_id: String,
+    pub seed_min_deposit: U128,
+    pub seed_id: String,
 }

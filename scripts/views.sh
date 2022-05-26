@@ -19,4 +19,6 @@ source .env
 
 near view $CONTRACT_NAME get_allowed_tokens '{}'
 
-near view $CONTRACT_NAME get_tokens_and_autos '{}'
+near view $CONTRACT_NAME get_compounders '{}'
+
+near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_id": ":'$pool_id'" }'
