@@ -21,26 +21,27 @@ impl Contract {
 
     /// Step 2
     /// Function to claim the reward from the farm contract
-    pub fn withdraw_of_reward(&mut self, token_id: String) {
+    pub fn withdraw_of_reward(&mut self, token_id: String) -> Promise {
         self.assert_contract_running();
         self.check_autocompounds_caller();
 
         let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
-        let token_id: AccountId = compounder.reward_token.clone();
+        let reward_token: AccountId = compounder.reward_token.clone();
 
         ext_farm::get_reward(
             env::current_account_id(),
-            token_id.clone(),
+            reward_token.clone(),
             self.farm_contract_id.parse().unwrap(),
             1,
             Gas(3_000_000_000_000),
         )
         .then(ext_self::callback_withdraw_rewards(
-            token_id.to_string(),
+            reward_token.to_string(),
+            token_id,
             env::current_account_id(),
             0,
-            Gas(190_000_000_000_000),
-        ));
+            Gas(217_000_000_000_000),
+        ))
     }
 
     /// Get the reward claimed and withdraw it.
@@ -48,6 +49,7 @@ impl Contract {
     pub fn callback_withdraw_rewards(
         &mut self,
         #[callback_result] reward_result: Result<U128, PromiseError>,
+        reward_token: String,
         token_id: String,
     ) -> Promise {
         assert!(reward_result.is_ok(), "ERR_COULD_NOT_GET_REWARD");
@@ -56,119 +58,174 @@ impl Contract {
         // TODO: should this method return amount like the old impl?
         //      if so, should be after withdraw_reward succeeds
         ext_farm::withdraw_reward(
-            token_id,
-            amount,
+            reward_token.clone(),
+            amount.clone(),
             "false".to_string(),
             self.farm_contract_id.parse().unwrap(),
             1,
             Gas(180_000_000_000_000),
         )
+        .then(ext_self::callback_post_withdraw(
+            token_id,
+            amount,
+            env::current_account_id(),
+            0,
+            Gas(20_000_000_000_000),
+        ))
     }
 
-    // /// Step 3
-    // /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
-    // pub fn autocompounds_swap(&mut self) -> Promise {
-    //     self.assert_contract_running();
-    //     self.check_autocompounds_caller();
+    #[private]
+    pub fn callback_post_withdraw(
+        &mut self,
+        #[callback_result] withdraw_result: Result<(), PromiseError>,
+        token_id: String,
+        amount: U128,
+    ) -> U128 {
+        assert!(withdraw_result.is_ok(), "ERR_COULD_NOT_WITHDRAW");
 
-    //     let amount_in = U128(self.last_reward_amount / 2);
+        let compounder = self.seeds.get_mut(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        compounder.last_reward_amount = amount.into();
 
-    //     ext_reward_token::ft_transfer_call(
-    //         self.exchange_contract_id.parse().unwrap(), // receiver_id,
-    //         self.last_reward_amount.to_string(),        //Amount after withdraw the rewards
-    //         "".to_string(),
-    //         self.reward_token.parse().unwrap(),
-    //         1,
-    //         Gas(40_000_000_000_000),
-    //     )
-    //     .then(ext_self::get_tokens_return(
-    //         amount_in,
-    //         amount_in,
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(60_000_000_000_000),
-    //     ))
-    //     .then(ext_self::swap_to_auto(
-    //         amount_in,
-    //         amount_in,
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(100_000_000_000_000),
-    //     ))
-    // }
+        amount
+    }
 
-    // #[private]
-    // pub fn get_tokens_return(&self, amount_token_1: U128, amount_token_2: U128) -> Promise {
-    //     ext_exchange::get_return(
-    //         self.pool_id_token1_reward,
-    //         self.reward_token.parse().unwrap(),
-    //         amount_token_1,
-    //         self.token1_address.parse().unwrap(),
-    //         self.exchange_contract_id.parse().unwrap(),
-    //         0,
-    //         Gas(10_000_000_000_000),
-    //     )
-    //     .and(ext_exchange::get_return(
-    //         self.pool_id_token2_reward,
-    //         self.reward_token.parse().unwrap(),
-    //         amount_token_2,
-    //         self.token2_address.parse().unwrap(),
-    //         self.exchange_contract_id.parse().unwrap(),
-    //         0,
-    //         Gas(10_000_000_000_000),
-    //     ))
-    //     .then(ext_self::callback_get_return(
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(10_000_000_000_000),
-    //     ))
-    // }
+    /// Step 3
+    /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
+    pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
+        self.assert_contract_running();
+        self.check_autocompounds_caller();
 
-    // /// Swap the auto-compound rewards
-    // #[private]
-    // pub fn swap_to_auto(
-    //     &mut self,
-    //     #[callback_unwrap] tokens: (U128, U128),
-    //     amount_in_1: U128,
-    //     amount_in_2: U128,
-    // ) -> Promise {
-    //     let (_, contract_id) = self.get_predecessor_and_current_account();
+        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
-    //     let pool_id_to_swap1 = self.pool_id_token1_reward;
-    //     let pool_id_to_swap2 = self.pool_id_token2_reward;
-    //     let token_in1 = self.reward_token.parse().unwrap();
-    //     let token_in2 = self.reward_token.parse().unwrap();
-    //     let token_out1 = self.token1_address.parse().unwrap();
-    //     let token_out2 = self.token2_address.parse().unwrap();
+        let amount_in = U128(compounder.last_reward_amount / 2);
 
-    //     let (token1_min_out, token2_min_out): (U128, U128) = tokens;
+        ext_reward_token::ft_transfer_call(
+            self.exchange_contract_id.parse().unwrap(), // receiver_id,
+            compounder.last_reward_amount.to_string(),  //Amount after withdraw the rewards
+            "".to_string(),
+            compounder.reward_token.clone(),
+            1,
+            Gas(40_000_000_000_000),
+        )
+        .then(ext_self::get_tokens_return(
+            token_id.clone(),
+            amount_in,
+            amount_in,
+            env::current_account_id(),
+            0,
+            Gas(60_000_000_000_000),
+        ))
+        .then(ext_self::swap_to_auto(
+            token_id,
+            amount_in,
+            amount_in,
+            env::current_account_id(),
+            0,
+            Gas(100_000_000_000_000),
+        ))
+    }
 
-    //     //Actualization of reward amount
-    //     // TODO: move to callback_swaps
-    //     self.last_reward_amount = 0;
+    #[private]
+    pub fn get_tokens_return(
+        &self,
+        token_id: String,
+        amount_token_1: U128,
+        amount_token_2: U128,
+    ) -> Promise {
+        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
-    //     ext_self::call_swap(
-    //         pool_id_to_swap1,
-    //         token_in1,
-    //         token_out1,
-    //         Some(amount_in_1),
-    //         token1_min_out,
-    //         contract_id.clone(),
-    //         0,
-    //         Gas(40_000_000_000_000),
-    //     )
-    //     // TODO: should use and
-    //     .then(ext_self::call_swap(
-    //         pool_id_to_swap2,
-    //         token_in2,
-    //         token_out2,
-    //         Some(amount_in_2),
-    //         token2_min_out,
-    //         contract_id.clone(),
-    //         0,
-    //         Gas(40_000_000_000_000),
-    //     )) // TODO: should use a callback to assert that both tx succeeded
-    // }
+        ext_exchange::get_return(
+            compounder.pool_id_token1_reward,
+            compounder.reward_token.clone(),
+            amount_token_1,
+            compounder.token1_address.clone(),
+            self.exchange_contract_id.parse().unwrap(),
+            0,
+            Gas(10_000_000_000_000),
+        )
+        .and(ext_exchange::get_return(
+            compounder.pool_id_token2_reward,
+            compounder.reward_token.clone(),
+            amount_token_2,
+            compounder.token2_address.clone(),
+            self.exchange_contract_id.parse().unwrap(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+        .then(ext_self::callback_get_return(
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_get_return(
+        &self,
+        #[callback_result] token1_out: Result<U128, PromiseError>,
+        #[callback_result] token2_out: Result<U128, PromiseError>,
+    ) -> (U128, U128) {
+        assert!(token1_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
+        assert!(token2_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
+
+        let amount_token1: U128 = token1_out.unwrap();
+        let amount_token2: U128 = token2_out.unwrap();
+
+        assert!(amount_token1.0 > 0u128, "ERR_SLIPPAGE_TOO_HIGH");
+        assert!(amount_token2.0 > 0u128, "ERR_SLIPPAGE_TOO_HIGH");
+
+        (amount_token1, amount_token2)
+    }
+
+    /// Swap the auto-compound rewards
+    #[private]
+    pub fn swap_to_auto(
+        &mut self,
+        #[callback_unwrap] tokens: (U128, U128),
+        token_id: String,
+        amount_in_1: U128,
+        amount_in_2: U128,
+    ) -> Promise {
+        let (_, contract_id) = self.get_predecessor_and_current_account();
+
+        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+
+        let pool_id_to_swap1 = compounder.pool_id_token1_reward;
+        let pool_id_to_swap2 = compounder.pool_id_token2_reward;
+        let token_in1 = compounder.reward_token.clone();
+        let token_in2 = compounder.reward_token.clone();
+        let token_out1 = compounder.token1_address.clone();
+        let token_out2 = compounder.token2_address.clone();
+
+        let (token1_min_out, token2_min_out): (U128, U128) = tokens;
+
+        //Actualization of reward amount
+        // TODO: move to callback_swaps
+        compounder.clone().last_reward_amount = 0;
+
+        // TODO: call exchange directly
+        ext_self::call_swap(
+            pool_id_to_swap1,
+            token_in1,
+            token_out1,
+            Some(amount_in_1),
+            token1_min_out,
+            contract_id.clone(),
+            0,
+            Gas(40_000_000_000_000),
+        )
+        // TODO: should use and
+        .then(ext_self::call_swap(
+            pool_id_to_swap2,
+            token_in2,
+            token_out2,
+            Some(amount_in_2),
+            token2_min_out,
+            contract_id.clone(),
+            0,
+            Gas(40_000_000_000_000),
+        )) // TODO: should use a callback to assert that both tx succeeded
+    }
 
     // /// Step 4
     // /// Get amount of tokens available then stake it

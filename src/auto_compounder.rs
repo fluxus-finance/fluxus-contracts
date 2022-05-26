@@ -15,7 +15,7 @@ pub struct AutoCompounder {
     // state: RunningState,
 
     // Used to keep track of the rewards received from the farm during auto-compound cycle
-    // last_reward_amount: u128,
+    pub last_reward_amount: u128,
 
     // Address of the first token used by pool
     pub token1_address: AccountId,
@@ -24,10 +24,10 @@ pub struct AutoCompounder {
     pub token2_address: AccountId,
 
     // Pool used to swap the reward received by the token used to add liquidity
-    pub pool_id_token1_reward: String,
+    pub pool_id_token1_reward: u64,
 
     // Pool used to swap the reward received by the token used to add liquidity
-    pub pool_id_token2_reward: String,
+    pub pool_id_token2_reward: u64,
 
     // Address of the reward token given by the farm
     pub reward_token: AccountId,
@@ -50,8 +50,8 @@ impl AutoCompounder {
     pub(crate) fn new(
         token1_address: AccountId,
         token2_address: AccountId,
-        pool_id_token1_reward: String,
-        pool_id_token2_reward: String,
+        pool_id_token1_reward: u64,
+        pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm: String,
         pool_id: String,
@@ -61,6 +61,7 @@ impl AutoCompounder {
         Self {
             user_shares: HashMap::new(),
             protocol_shares: 0u128,
+            last_reward_amount: 0u128,
             token1_address,
             token2_address,
             pool_id_token1_reward,
@@ -127,8 +128,8 @@ impl VersionedCompounder {
     pub fn new(
         token1_address: AccountId,
         token2_address: AccountId,
-        pool_id_token1_reward: String,
-        pool_id_token2_reward: String,
+        pool_id_token1_reward: u64,
+        pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm: String,
         pool_id: String,
@@ -138,6 +139,7 @@ impl VersionedCompounder {
         VersionedCompounder::V101(AutoCompounder {
             user_shares: HashMap::new(),
             protocol_shares: 0u128,
+            last_reward_amount: 0u128,
             token1_address,
             token2_address,
             pool_id_token1_reward,

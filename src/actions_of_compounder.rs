@@ -8,8 +8,8 @@ impl Contract {
         &mut self,
         token1_address: AccountId,
         token2_address: AccountId,
-        pool_id_token1_reward: String,
-        pool_id_token2_reward: String,
+        pool_id_token1_reward: u64,
+        pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm: String,
         pool_id: String,
@@ -85,37 +85,6 @@ impl Contract {
 
         format!("The {} added {} to {}", account_id, shares, token_id)
     }
-
-    // #[private]
-    // pub fn callback_get_return(
-    //     &self,
-    //     #[callback_result] token1_out: Result<U128, PromiseError>,
-    //     #[callback_result] token2_out: Result<U128, PromiseError>,
-    // ) -> (U128, U128) {
-    //     assert!(token1_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
-    //     assert!(token2_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
-
-    //     let mut amount_token1: u128;
-    //     let mut amount_token2: u128;
-
-    //     if let Ok(s) = token1_out.as_ref() {
-    //         let val: u128 = s.0;
-    //         require!(val > 0u128);
-    //         amount_token1 = val;
-    //     } else {
-    //         env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_1")
-    //     }
-
-    //     if let Ok(s) = token2_out.as_ref() {
-    //         let val: u128 = s.0;
-    //         require!(val > 0u128);
-    //         amount_token2 = val;
-    //     } else {
-    //         env::panic_str("ERR_COULD_NOT_DESERIALIZE_TOKEN_2")
-    //     }
-
-    //     (U128(amount_token1), U128(amount_token2))
-    // }
 
     // /// Receives shares from auto-compound and stake it
     // #[private]

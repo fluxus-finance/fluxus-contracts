@@ -147,7 +147,12 @@ pub trait Callbacks {
         min_amount_out: U128,
     );
     fn callback_update_user_balance(&mut self, account_id: AccountId) -> String;
-    fn callback_withdraw_rewards(&mut self, token_id: String) -> String;
+    fn callback_withdraw_rewards(
+        &mut self,
+        #[callback_result] reward_result: Result<U128, PromiseError>,
+        reward_token: String,
+        token_id: String,
+    ) -> String;
     fn callback_withdraw_shares(
         &mut self,
         token_id: String,
@@ -160,10 +165,21 @@ pub trait Callbacks {
     fn callback_stake(&mut self);
     fn callback_to_balance(&mut self);
     fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
-    fn swap_to_auto(&mut self, amount_in_1: U128, amount_in_2: U128);
+    fn swap_to_auto(&mut self, token_id: String, amount_in_1: U128, amount_in_2: U128);
     fn stake_and_liquidity_auto(&mut self, account_id: AccountId);
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
-    fn get_tokens_return(&self, amount_token_1: U128, amount_token_2: U128) -> Promise;
+    fn get_tokens_return(
+        &self,
+        token_id: String,
+        amount_token_1: U128,
+        amount_token_2: U128,
+    ) -> Promise;
+    fn callback_post_withdraw(
+        &mut self,
+        #[callback_result] withdraw_result: Result<(), PromiseError>,
+        token_id: String,
+        amount: U128,
+    ) -> U128;
 
     // fn stake(&self, token_id: String, account_id: AccountId, shares: u128) -> Promise;
 }
