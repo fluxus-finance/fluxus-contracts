@@ -38,6 +38,11 @@ mod actions_of_compounder;
 
 mod views;
 
+mod fluxus_strat;
+use fluxus_strat::*;
+
+mod actions_of_strat;
+
 #[derive(BorshStorageKey, BorshSerialize)]
 pub(crate) enum StorageKey {
     Accounts,
@@ -46,6 +51,7 @@ pub(crate) enum StorageKey {
     Shares { pool_id: u64 },
 }
 
+// TODO: update this to newer version, following AutoCompounderState
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
@@ -101,6 +107,8 @@ pub struct Contract {
 
     // Keeps track of token_id to strategy used
     strategies: HashMap<String, AutoCompounder>,
+
+    strategies2: HashMap<String, Strategy>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -203,6 +211,7 @@ impl Contract {
             /// List of all the pools.
             token_ids: Vec::new(),
             strategies: HashMap::new(),
+            strategies2: HashMap::new(),
         }
     }
 }

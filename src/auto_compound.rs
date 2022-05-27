@@ -285,6 +285,8 @@ impl Contract {
             };
         }
 
+        // TODO: require that both quantity are greater than 0
+
         // instead of passing token1, token2 separated
         // use a vec, in the correct format, then you can easily do this op
         // without any further problems

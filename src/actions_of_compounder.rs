@@ -32,7 +32,7 @@ impl Contract {
             seed_min_deposit,
         );
 
-        self.strategies.insert(token_id, compounder.clone());
+        self.strategies.insert(token_id, compounder);
     }
 
     #[private]

@@ -45,6 +45,42 @@ pub struct AutoCompounder {
     pub seed_id: String,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
+pub enum AutoCompounderState {
+    Running,
+    Ended,
+    Cleared,
+} //Should we really add paused state ? It would be best if our code is at such a synchronicity with ref-farm that we won't ever need to pause it.
+
+impl From<&AutoCompounderState> for String {
+    fn from(status: &AutoCompounderState) -> Self {
+        match *status {
+            AutoCompounderState::Running => String::from("Running"),
+            AutoCompounderState::Ended => String::from("Ended"),
+            AutoCompounderState::Cleared => String::from("Cleared"),
+        }
+    }
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
+pub enum AutoCompounderCycle {
+    Reward,
+    Withdrawal,
+    Swap,
+    Stake,
+}
+
+impl From<&AutoCompounderCycle> for String {
+    fn from(cycle: &AutoCompounderCycle) -> Self {
+        match *cycle {
+            AutoCompounderCycle::Reward => String::from("Reward"),
+            AutoCompounderCycle::Withdrawal => String::from("Withdrawal"),
+            AutoCompounderCycle::Swap => String::from("Swap"),
+            AutoCompounderCycle::Stake => String::from("Stake"),
+        }
+    }
+}
+
 /// Auto-compounder internal methods
 impl AutoCompounder {
     pub(crate) fn new(
@@ -81,8 +117,6 @@ impl AutoCompounder {
         let mut shares_distributed: U256 = U256::from(0u128);
 
         for (account, val) in self.user_shares.clone() {
-            log!("account {}", account);
-
             let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
 
             let casted_reward = U256::from(shares_reward) * acc_percentage;
@@ -93,9 +127,7 @@ impl AutoCompounder {
 
             let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
 
-            log!("before: {:#?}", self.user_shares.get(&account));
             self.user_shares.insert(account.clone(), new_user_balance);
-            log!("after: {:#?}", self.user_shares.get(&account));
         }
 
         let residue: u128 = shares_reward - shares_distributed.as_u128();
