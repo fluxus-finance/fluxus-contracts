@@ -45,4 +45,26 @@ impl Strategy {
             Strategy::AutoCompounder(strat) => strat.farm.clone(),
         }
     }
+
+    #[inline]
+    #[allow(unreachable_patterns)]
+    pub fn get(self) -> AutoCompounder {
+        match self {
+            // VersionedFarmer::V101(farmer) => farmer,
+            // AutoCompounder => ,
+            Strategy::AutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[inline]
+    #[allow(unreachable_patterns)]
+    pub fn get_mut(&mut self) -> &mut AutoCompounder {
+        match self {
+            // VersionedFarmer::V101(farmer) => farmer,
+            // AutoCompounder => ,
+            Strategy::AutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
 }

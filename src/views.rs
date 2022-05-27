@@ -5,10 +5,14 @@ impl Contract {
     /// Returns the number of shares some accountId has in the contract
     /// Panics if token_id does not exist
     pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> Option<u128> {
-        let compounder = self
-            .strategies
-            .get(&token_id)
-            .expect("ERR_TOKEN_DOES_NOT_EXIST");
+        let strat = self.strategies2.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+
+        let compounder = strat.clone().get();
+
+        // let compounder = self
+        //     .strategies
+        //     .get(&token_id)
+        //     .expect("ERR_TOKEN_DOES_NOT_EXIST");
         Some(*compounder.user_shares.get(&account_id).unwrap_or(&0u128))
     }
 
@@ -79,7 +83,11 @@ impl Contract {
     pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
-        for (token_id, compounder) in self.strategies.clone() {
+        // for (token_id, compounder) in self.strategies.clone() {
+
+        for (token_id, strat) in self.strategies2.clone() {
+            let compounder = strat.get();
+
             info.push(AutoCompounderInfo {
                 token_id,
                 token1_address: compounder.token1_address,

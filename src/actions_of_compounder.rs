@@ -66,10 +66,17 @@ impl Contract {
         // TODO: remove generic promise check
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
 
-        let compounder = self
-            .strategies
+        let strat = self
+            .strategies2
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+        let compounder = strat.get_mut();
+
+        // let compounder = self
+        //     .strategies
+        //     .get_mut(&token_id)
+        //     .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
         // TODO: should each auto-compounder store the amount each address have
         //      or should the contract store it?
