@@ -291,7 +291,7 @@ impl Contract {
             // Get the shares
             .then(ext_exchange::get_pool_shares(
                 pool_id,
-                account_id.clone().try_into().unwrap(),
+                account_id.clone(),
                 self.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
@@ -330,16 +330,14 @@ impl Contract {
             compounder.balance_update(total_shares, shares_amount.clone());
         };
 
-        log!(
-            "after: {:#?}",
-            compounder
-                .user_shares
-                .get(&"mesto.testnet".parse().unwrap())
-        );
-        assert!(
-            shares_amount >= compounder.seed_min_deposit.into(),
-            "ERR_NOT_ENOUGH_SHARES_TO_STAKE"
-        );
+        // Prevents failing on stake if below minimum deposit
+        if shares_amount < compounder.seed_min_deposit.into() {
+            log!(
+                "The current number of shares {} is below minimum deposit",
+                shares_amount
+            );
+            return;
+        }
 
         // TODO: Should call it right away and then use a callback to check the result
         self.call_stake(
