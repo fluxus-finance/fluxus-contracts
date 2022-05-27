@@ -663,89 +663,7 @@ impl Contract {
     }
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
-mod tests {
-    use std::hash::Hash;
-
-    use super::*;
-    use near_sdk::test_utils::VMContextBuilder;
-    use near_sdk::testing_env;
-
-    fn get_context() -> VMContextBuilder {
-        let mut builder = VMContextBuilder::new();
-        builder
-            .current_account_id(to_account_id("auto_compounder.near"))
-            .signer_account_id(to_account_id("auto_compounder.near"))
-            .predecessor_account_id(to_account_id("auto_compounder.near"));
-        builder
-    }
-
-    pub fn to_account_id(value: &str) -> AccountId {
-        value.parse().unwrap()
-    }
-
-    fn create_contract() -> Contract {
-        let contract = Contract::new(
-            to_account_id("auto_compounder.near"),
-            0u128,
-            String::from("eth.near"),
-            String::from("dai.near"),
-            0,
-            1,
-            String::from("usn.near"),
-            String::from(""),
-            String::from(""),
-            0,
-            0,
-            U128(100),
-        );
-
-        contract
-    }
-
-    #[test]
-    fn test_balance_update() {
-        let context = get_context();
-        testing_env!(context.build());
-
-        let mut contract = create_contract();
-
-        let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
-
-        let acc1 = to_account_id("alice.near");
-        let shares1 = near.clone();
-
-        let acc2 = to_account_id("bob.near");
-        let shares2 = near.clone() * 3;
-
-        // add initial balance for accounts
-        contract.user_shares.insert(acc1.clone(), shares1);
-        contract.user_shares.insert(acc2.clone(), shares2);
-
-        let total_shares: u128 = shares1 + shares2;
-
-        // distribute shares between accounts
-        contract.balance_update(total_shares, near.to_string());
-
-        // assert account 1 earned 25% from reward shares
-        let acc1_updated_shares = contract.user_shares.get(&acc1).unwrap();
-        assert_eq!(
-            *acc1_updated_shares, 1250000000000000000000000u128,
-            "ERR_BALANCE_UPDATE"
-        );
-
-        // assert account 2 earned 75% from reward shares
-        let acc2_updated_shares = contract.user_shares.get(&acc2).unwrap();
-        assert_eq!(
-            *acc2_updated_shares, 3750000000000000000000000u128,
-            "ERR_BALANCE_UPDATE"
-        );
-    }
-}
-
-
-
-mod tests {
+mod tests2 {
     use super::*;
     use near_sdk::test_utils::VMContextBuilder;
     use near_sdk::{testing_env, VMContext};
@@ -814,6 +732,44 @@ mod tests {
     }
 
     #[test]
+    fn test_balance_update() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut contract = create_contract();
+
+        let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
+
+        let acc1 = to_account_id("alice.near");
+        let shares1 = near.clone();
+
+        let acc2 = to_account_id("bob.near");
+        let shares2 = near.clone() * 3;
+
+        // add initial balance for accounts
+        contract.user_shares.insert(acc1.clone(), shares1);
+        contract.user_shares.insert(acc2.clone(), shares2);
+
+        let total_shares: u128 = shares1 + shares2;
+
+        // distribute shares between accounts
+        contract.balance_update(total_shares, near.to_string());
+
+        // assert account 1 earned 25% from reward shares
+        let acc1_updated_shares = contract.user_shares.get(&acc1).unwrap();
+        assert_eq!(
+            *acc1_updated_shares, 1250000000000000000000000u128,
+            "ERR_BALANCE_UPDATE"
+        );
+
+        // assert account 2 earned 75% from reward shares
+        let acc2_updated_shares = contract.user_shares.get(&acc2).unwrap();
+        assert_eq!(
+            *acc2_updated_shares, 3750000000000000000000000u128,
+            "ERR_BALANCE_UPDATE"
+        );
+    }
+    #[test]
     fn test_increment_and_get_user_shares() {
         let context = get_context();
         testing_env!(context.build());
@@ -856,55 +812,6 @@ mod tests {
             .unwrap();
         assert_eq!(U128(1000000000000000000000000), storage_state.deposit);
         assert_eq!(U128(1020000000000000000000), storage_state.usage);
-    }
-
-    #[test]
-    fn test_balance_update() {
-        //Creating users
-        let context_owner = get_context();
-        testing_env!(context_owner.build());
-
-        let context_user_1 = get_context_user_1();
-        testing_env!(context_user_1.build());
-
-        let context_user_2 = get_context_user_2();
-        testing_env!(context_user_2.build());
-
-        let mut contract = create_contract();
-
-        //Depositing in the contract
-        contract.storage_deposit(Some(to_account_id("auto_compounder.near")), Some(false));
-        contract.storage_deposit(Some(to_account_id("user1.near")), Some(false));
-        contract.storage_deposit(Some(to_account_id("user2.near")), Some(false));
-
-        contract.increment_user_shares(&to_account_id("auto_compounder.near"), 100_u128);
-        contract.increment_user_shares(&to_account_id("user1.near"), 100_u128);
-        contract.increment_user_shares(&to_account_id("user2.near"), 100_u128);
-
-        let mut vec: HashMap<AccountId, u128> = HashMap::new();
-
-        for (account, val) in contract.user_shares.iter() {
-            vec.insert(account.clone(), *val);
-        }
-
-        contract.balance_update(vec, "100".to_string());
-
-        let owner_shares = contract
-            .get_user_shares(to_account_id("auto_compounder.near"))
-            .unwrap()
-            .to_string();
-        let user1_shares = contract
-            .get_user_shares(to_account_id("user1.near"))
-            .unwrap()
-            .to_string();
-        let user2_shares = contract
-            .get_user_shares(to_account_id("user2.near"))
-            .unwrap()
-            .to_string();
-
-        assert_eq!(owner_shares, "133".to_string());
-        assert_eq!(user1_shares, "133".to_string());
-        assert_eq!(user2_shares, "133".to_string());
     }
 
     #[test]
