@@ -5,7 +5,10 @@ impl Contract {
     /// Returns the number of shares some accountId has in the contract
     /// Panics if token_id does not exist
     pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> Option<u128> {
-        let compounder = self.seeds.get(&token_id).expect("ERR_TOKEN_DOES_NOT_EXIST");
+        let compounder = self
+            .strategies
+            .get(&token_id)
+            .expect("ERR_TOKEN_DOES_NOT_EXIST");
         Some(*compounder.user_shares.get(&account_id).unwrap_or(&0u128))
     }
 
@@ -52,7 +55,7 @@ impl Contract {
 
     /// Returns the minimum value accepted for given token_id
     pub fn get_seed_min_deposit(self, token_id: String) -> U128 {
-        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         compounder.seed_min_deposit
     }
 
@@ -76,7 +79,7 @@ impl Contract {
     pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
-        for (token_id, compounder) in self.seeds.clone() {
+        for (token_id, compounder) in self.strategies.clone() {
             info.push(AutoCompounderInfo {
                 token_id,
                 token1_address: compounder.token1_address,

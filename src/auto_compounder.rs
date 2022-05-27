@@ -233,14 +233,14 @@ mod tests {
         let token_id = String::from(":0");
         // add initial balance for accounts
         contract
-            .seeds
+            .strategies
             .get_mut(&token_id)
             .unwrap()
             .user_shares
             .insert(acc1.clone(), shares1);
 
         contract
-            .seeds
+            .strategies
             .get_mut(&token_id)
             .unwrap()
             .user_shares
@@ -250,14 +250,14 @@ mod tests {
 
         // distribute shares between accounts
         contract
-            .seeds
+            .strategies
             .get_mut(&token_id)
             .unwrap()
             .balance_update(total_shares, near);
 
         // assert account 1 earned 25% from reward shares
         let acc1_updated_shares = contract
-            .seeds
+            .strategies
             .get(&token_id)
             .unwrap()
             .user_shares
@@ -270,7 +270,7 @@ mod tests {
 
         // assert account 2 earned 75% from reward shares
         let acc2_updated_shares = contract
-            .seeds
+            .strategies
             .get(&token_id)
             .unwrap()
             .user_shares

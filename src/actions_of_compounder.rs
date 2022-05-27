@@ -32,7 +32,7 @@ impl Contract {
             seed_min_deposit,
         );
 
-        self.seeds.insert(token_id, compounder.clone());
+        self.strategies.insert(token_id, compounder.clone());
     }
 
     #[private]
@@ -67,7 +67,7 @@ impl Contract {
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
 
         let compounder = self
-            .seeds
+            .strategies
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
@@ -97,7 +97,7 @@ impl Contract {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
         let compounder = self
-            .seeds
+            .strategies
             .get(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
@@ -165,7 +165,7 @@ impl Contract {
 
         // Decrement user shares
         let compounder = self
-            .seeds
+            .strategies
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 

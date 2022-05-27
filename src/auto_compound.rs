@@ -8,7 +8,7 @@ impl Contract {
         self.assert_contract_running();
         self.is_allowed_account();
 
-        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         let seed_id: String = compounder.seed_id.clone();
 
         ext_farm::claim_reward_by_seed(
@@ -25,7 +25,7 @@ impl Contract {
         self.assert_contract_running();
         self.is_allowed_account();
 
-        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         let reward_token: AccountId = compounder.reward_token.clone();
 
         ext_farm::get_reward(
@@ -83,7 +83,10 @@ impl Contract {
     ) -> U128 {
         assert!(withdraw_result.is_ok(), "ERR_COULD_NOT_WITHDRAW");
 
-        let compounder = self.seeds.get_mut(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
         compounder.last_reward_amount = amount.into();
 
         amount
@@ -95,7 +98,7 @@ impl Contract {
         self.assert_contract_running();
         self.is_allowed_account();
 
-        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
         let amount_in = U128(compounder.last_reward_amount / 2);
 
@@ -132,7 +135,7 @@ impl Contract {
         amount_token_1: U128,
         amount_token_2: U128,
     ) -> Promise {
-        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
         ext_exchange::get_return(
             compounder.pool_id_token1_reward,
@@ -188,7 +191,7 @@ impl Contract {
     ) -> Promise {
         let (_, contract_id) = self.get_predecessor_and_current_account();
 
-        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
         let pool_id_to_swap1 = compounder.pool_id_token1_reward;
         let pool_id_to_swap2 = compounder.pool_id_token2_reward;
@@ -263,7 +266,7 @@ impl Contract {
         // TODO: do not need to be mut
         assert!(deposits_result.is_ok(), "ERR_COULD_NOT_GET_DEPOSITS");
 
-        let compounder = self.seeds.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
         let tokens: HashMap<AccountId, U128> = deposits_result.unwrap();
 
@@ -318,7 +321,10 @@ impl Contract {
         let shares_amount = shares_result.unwrap().0;
 
         // TODO: do not need to be mut
-        let compounder = self.seeds.get_mut(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = self
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
 
         if shares_amount > 0 {
             let mut total_shares: u128 = 0;
