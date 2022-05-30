@@ -34,7 +34,7 @@ impl Contract {
             seed_min_deposit,
         ));
 
-        self.strategies2.insert(token_id, strat);
+        self.strategies.insert(token_id, strat);
 
         //
         format!("Hello world")

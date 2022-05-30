@@ -31,8 +31,6 @@ impl Contract {
             seed_id,
             seed_min_deposit,
         );
-
-        self.strategies.insert(token_id, compounder);
     }
 
     #[private]
@@ -69,16 +67,11 @@ impl Contract {
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
 
         let strat = self
-            .strategies2
+            .strategies
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
         let compounder = strat.get_mut();
-
-        // let compounder = self
-        //     .strategies
-        //     .get_mut(&token_id)
-        //     .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
         // TODO: should each auto-compounder store the amount each address have
         //      or should the contract store it?
@@ -106,7 +99,7 @@ impl Contract {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
         let strat = self
-            .strategies2
+            .strategies
             .get(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
@@ -131,6 +124,16 @@ impl Contract {
             user_shares
         );
 
+        /*  TODO:
+            unstake should do the following:
+            checks if user has enough shares to withdraw
+            get how many shares the protocol has in the exchange
+            if amount <= shares_on_exchange, withdraw directly from exchange and send to user
+            else, withdraw.(amount = shares_on_exchange - amount)
+
+            otherwise, the protocol will try to withdraw more value than it has in the farm
+            because the auto-compounder only send the shares after the minimum amount requirement is satisfied
+        */
         let seed_id: String = compounder.seed_id.clone();
 
         log!("{} is trying to withdrawal {}", caller_id, amount.0);
@@ -175,7 +178,7 @@ impl Contract {
         // assert!(mft_transfer_result.is_ok());
 
         let strat = self
-            .strategies2
+            .strategies
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 

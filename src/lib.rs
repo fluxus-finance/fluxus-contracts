@@ -106,9 +106,7 @@ pub struct Contract {
     token_ids: Vec<String>,
 
     // Keeps track of token_id to strategy used
-    strategies: HashMap<String, AutoCompounder>,
-
-    strategies2: HashMap<String, Strategy>,
+    strategies: HashMap<String, Strategy>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -211,7 +209,6 @@ impl Contract {
             /// List of all the pools.
             token_ids: Vec::new(),
             strategies: HashMap::new(),
-            strategies2: HashMap::new(),
         }
     }
 }
@@ -242,10 +239,10 @@ impl Contract {
     }
 
     /// Returns all strategies without filtering
-    pub fn get_strats_info(self) -> Vec<AutoCompounder> {
+    pub fn get_strats_info(self) -> Vec<Strategy> {
         self.is_owner();
 
-        let mut info: Vec<AutoCompounder> = Vec::new();
+        let mut info: Vec<Strategy> = Vec::new();
 
         for (token_id, strat) in self.strategies.clone() {
             info.push(strat);
