@@ -37,6 +37,7 @@ impl Contract {
 
     #[private]
     pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
+        // decide which strategies
         ext_exchange::mft_transfer_call(
             self.farm_contract_id.clone(),
             token_id.clone(),
@@ -46,6 +47,7 @@ impl Contract {
             1,
             Gas(80_000_000_000_000),
         )
+        // substitute for a generic callback, with a match for next step
         .then(ext_self::callback_stake_result(
             token_id,
             account_id.clone(),
@@ -103,10 +105,12 @@ impl Contract {
     pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
-        let compounder = self
-            .strategies
+        let strat = self
+            .strategies2
             .get(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+        let compounder = strat.clone().get();
 
         let user_shares = compounder
             .user_shares
@@ -170,12 +174,14 @@ impl Contract {
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
 
-        // Decrement user shares
-        let compounder = self
-            .strategies
+        let strat = self
+            .strategies2
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
+        let compounder = strat.get_mut();
+
+        // Decrement user shares
         compounder.decrement_user_shares(&account_id, amount);
     }
 }
