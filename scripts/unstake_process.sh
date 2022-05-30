@@ -10,8 +10,11 @@ near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_
 ### Auto-compoter staked shares
 near view $farm_contract_id list_user_seeds '{ "account_id": "'$CONTRACT_NAME'" }' 
 
-#### Unstake, swap to wnear and send it to auto_compounder contract.
+#### Unstake the total amount available
 near call $CONTRACT_NAME unstake '{ "token_id": ":'$pool_id'" }' --accountId $username --gas 300000000000000 
+
+#### Unstake given amount from contract
+# near call $CONTRACT_NAME unstake '{ "token_id": ":'$pool_id'", "amount_withdrawal": "1005611400372449400" }' --accountId $username --gas 300000000000000 
 
 #### Shoud have the contract shares minus the user shares
 near view $farm_contract_id list_user_seeds '{ "account_id": "'$CONTRACT_NAME'" }' 

@@ -163,8 +163,13 @@ pub trait Callbacks {
         token_id: String,
         amount: U128,
     ) -> U128;
-
-    // fn stake(&self, token_id: String, account_id: AccountId, shares: u128) -> Promise;
+    fn callback_get_pool_shares(
+        &self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+        token_id: String,
+        receiver_id: AccountId,
+        withdraw_amount: u128,
+    ) -> Promise;
 }
 const F: u128 = 100000000000000000000000000000; // rename this const
 

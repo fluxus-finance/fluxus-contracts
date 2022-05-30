@@ -26,6 +26,8 @@ pub struct SwapAction {
     pub min_amount_out: U128,
 }
 
+type SeedId = String;
+
 // Farm functions that we need to call inside the auto_compounder.
 #[ext_contract(ext_farm)]
 pub trait Farming {
@@ -40,6 +42,7 @@ pub trait Farming {
     fn withdraw_seed(&mut self, seed_id: String, amount: U128, msg: String);
     fn withdraw_reward(&mut self, token_id: String, amount: U128, unregister: String);
     fn get_reward(&mut self, account_id: AccountId, token_id: AccountId);
+    fn list_user_seeds(&self, account_id: AccountId) -> HashMap<SeedId, U128>;
 }
 
 // Ref exchange functions that we need to call inside the auto_compounder.
@@ -51,7 +54,7 @@ pub trait RefExchange {
         sender_id: AccountId,
         amount: U128,
     );
-    fn get_pool_shares(&mut self, pool_id: u64, account_id: AccountId);
+    fn get_pool_shares(&mut self, pool_id: u64, account_id: AccountId) -> U128;
     fn metadata(&mut self);
     fn storage_deposit(&mut self, account_id: AccountId);
     fn get_deposits(&mut self, account_id: AccountId);

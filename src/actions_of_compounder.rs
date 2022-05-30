@@ -124,46 +124,86 @@ impl Contract {
             user_shares
         );
 
-        /*  TODO:
-            unstake should do the following:
-            checks if user has enough shares to withdraw
-            get how many shares the protocol has in the exchange
-            if amount <= shares_on_exchange, withdraw directly from exchange and send to user
-            else, withdraw.(amount = shares_on_exchange - amount)
-
-            otherwise, the protocol will try to withdraw more value than it has in the farm
-            because the auto-compounder only send the shares after the minimum amount requirement is satisfied
-        */
-        let seed_id: String = compounder.seed_id.clone();
-
         log!("{} is trying to withdrawal {}", caller_id, amount.0);
 
         // Unstake shares/lps
-        ext_farm::withdraw_seed(
-            seed_id,
-            amount.clone(),
-            "".to_string(),
-            self.farm_contract_id.clone(),
-            1,
-            Gas(180_000_000_000_000),
+        ext_exchange::get_pool_shares(
+            compounder.pool_id,
+            contract_id.clone(),
+            self.exchange_contract_id.clone(),
+            0,
+            Gas(20_000_000_000_000),
         )
-        .then(ext_exchange::mft_transfer(
+        .then(ext_self::callback_get_pool_shares(
             token_id.clone(),
             caller_id.clone(),
-            amount.clone(),
-            Some("".to_string()),
-            self.exchange_contract_id.clone(),
-            1,
-            Gas(50_000_000_000_000),
+            amount.clone().0,
+            contract_id.clone(),
+            0,
+            Gas(230_000_000_000_000),
         ))
         .then(ext_self::callback_withdraw_shares(
             token_id,
             caller_id,
-            amount.clone().0,
+            amount.0,
             contract_id,
             0,
             Gas(20_000_000_000_000),
         ))
+    }
+
+    #[private]
+    pub fn callback_get_pool_shares(
+        &self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+        token_id: String,
+        receiver_id: AccountId,
+        withdraw_amount: u128,
+    ) -> Promise {
+        assert!(shares_result.is_ok(), "ERR");
+
+        let strat = self
+            .strategies
+            .get(&token_id)
+            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+        let compounder = strat.clone().get();
+
+        let shares_on_exchange: u128 = shares_result.unwrap().into();
+
+        if shares_on_exchange >= withdraw_amount {
+            ext_exchange::mft_transfer(
+                token_id.clone(),
+                receiver_id,
+                U128(withdraw_amount),
+                Some("".to_string()),
+                self.exchange_contract_id.clone(),
+                1,
+                Gas(30_000_000_000_000),
+            )
+        } else {
+            let amount = withdraw_amount - shares_on_exchange;
+
+            // withdraw missing amount from farm
+            ext_farm::withdraw_seed(
+                compounder.seed_id,
+                U128(amount.clone()),
+                "".to_string(),
+                self.farm_contract_id.clone(),
+                1,
+                Gas(180_000_000_000_000),
+            )
+            // transfer the total amount required
+            .then(ext_exchange::mft_transfer(
+                token_id.clone(),
+                receiver_id,
+                U128(withdraw_amount),
+                Some("".to_string()),
+                self.exchange_contract_id.clone(),
+                1,
+                Gas(30_000_000_000_000),
+            ))
+        }
     }
 
     #[private]

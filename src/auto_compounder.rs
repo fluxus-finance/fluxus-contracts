@@ -1,9 +1,19 @@
 use crate::*;
 
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct SharesBalance {
+    /// stores the amount given address deposited
+    deposited: u128,
+    /// stores the amount given address deposited plus the earned shares
+    total: u128,
+}
+
 // #[derive(BorshSerialize, BorshDeserialize)]
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AutoCompounder {
+    // TODO: update user_shares to a map of accountId to SharesBalance
     // Struct that maps addresses to its currents shares added plus the received
     // from the auto-compound strategy
     pub user_shares: HashMap<AccountId, u128>,
@@ -151,7 +161,13 @@ impl AutoCompounder {
 
     pub(crate) fn decrement_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
         let user_shares = self.user_shares.get(account_id).unwrap();
-        let new_shares: u128 = user_shares - shares;
+        let new_shares: u128 = *user_shares - shares;
+        log!(
+            "{} had {} and now has {}",
+            account_id,
+            user_shares,
+            new_shares
+        );
         self.user_shares.insert(account_id.clone(), new_shares);
     }
 }
@@ -227,90 +243,90 @@ mod tests {
 
     // fn create_strat(mut safe_contract: Contract) {}
 
-    #[test]
-    fn test_balance_update() {
-        let context = get_context();
-        testing_env!(context.build());
+    // #[test]
+    // fn test_balance_update() {
+    //     let context = get_context();
+    //     testing_env!(context.build());
 
-        let mut contract = create_contract();
+    //     let mut contract = create_contract();
 
-        let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
+    //     let near: u128 = 1_000_000_000_000_000_000_000_000; // 1 N
 
-        let acc1 = to_account_id("alice.near");
-        let shares1 = near.clone();
+    //     let acc1 = to_account_id("alice.near");
+    //     let shares1 = near.clone();
 
-        let acc2 = to_account_id("bob.near");
-        let shares2 = near.clone() * 3;
+    //     let acc2 = to_account_id("bob.near");
+    //     let shares2 = near.clone() * 3;
 
-        let token1_address = String::from("eth.near").parse().unwrap();
-        let token2_address = String::from("dai.near").parse().unwrap();
-        let pool_id_token1_reward = 0;
-        let pool_id_token2_reward = 1;
-        let reward_token = String::from("usn.near").parse().unwrap();
-        let farm = "0".to_string();
-        let pool_id = 0;
-        let seed_min_deposit = U128(10);
+    //     let token1_address = String::from("eth.near").parse().unwrap();
+    //     let token2_address = String::from("dai.near").parse().unwrap();
+    //     let pool_id_token1_reward = 0;
+    //     let pool_id_token2_reward = 1;
+    //     let reward_token = String::from("usn.near").parse().unwrap();
+    //     let farm = "0".to_string();
+    //     let pool_id = 0;
+    //     let seed_min_deposit = U128(10);
 
-        contract.create_auto_compounder(
-            token1_address,
-            token2_address,
-            pool_id_token1_reward,
-            pool_id_token2_reward,
-            reward_token,
-            farm,
-            pool_id,
-            seed_min_deposit,
-        );
+    //     contract.create_auto_compounder(
+    //         token1_address,
+    //         token2_address,
+    //         pool_id_token1_reward,
+    //         pool_id_token2_reward,
+    //         reward_token,
+    //         farm,
+    //         pool_id,
+    //         seed_min_deposit,
+    //     );
 
-        let token_id = String::from(":0");
-        // add initial balance for accounts
-        contract
-            .strategies
-            .get_mut(&token_id)
-            .unwrap()
-            .user_shares
-            .insert(acc1.clone(), shares1);
+    //     let token_id = String::from(":0");
+    //     // add initial balance for accounts
+    //     contract
+    //         .strategies
+    //         .get_mut(&token_id)
+    //         .unwrap()
+    //         .user_shares
+    //         .insert(acc1.clone(), shares1);
 
-        contract
-            .strategies
-            .get_mut(&token_id)
-            .unwrap()
-            .user_shares
-            .insert(acc2.clone(), shares2);
+    //     contract
+    //         .strategies
+    //         .get_mut(&token_id)
+    //         .unwrap()
+    //         .user_shares
+    //         .insert(acc2.clone(), shares2);
 
-        let total_shares: u128 = shares1 + shares2;
+    //     let total_shares: u128 = shares1 + shares2;
 
-        // distribute shares between accounts
-        contract
-            .strategies
-            .get_mut(&token_id)
-            .unwrap()
-            .balance_update(total_shares, near);
+    //     // distribute shares between accounts
+    //     contract
+    //         .strategies
+    //         .get_mut(&token_id)
+    //         .unwrap()
+    //         .balance_update(total_shares, near);
 
-        // assert account 1 earned 25% from reward shares
-        let acc1_updated_shares = contract
-            .strategies
-            .get(&token_id)
-            .unwrap()
-            .user_shares
-            .get(&acc1)
-            .unwrap();
-        assert_eq!(
-            *acc1_updated_shares, 1250000000000000000000000u128,
-            "ERR_BALANCE_UPDATE"
-        );
+    //     // assert account 1 earned 25% from reward shares
+    //     let acc1_updated_shares = contract
+    //         .strategies
+    //         .get(&token_id)
+    //         .unwrap()
+    //         .user_shares
+    //         .get(&acc1)
+    //         .unwrap();
+    //     assert_eq!(
+    //         *acc1_updated_shares, 1250000000000000000000000u128,
+    //         "ERR_BALANCE_UPDATE"
+    //     );
 
-        // assert account 2 earned 75% from reward shares
-        let acc2_updated_shares = contract
-            .strategies
-            .get(&token_id)
-            .unwrap()
-            .user_shares
-            .get(&acc2)
-            .unwrap();
-        assert_eq!(
-            *acc2_updated_shares, 3750000000000000000000000u128,
-            "ERR_BALANCE_UPDATE"
-        );
-    }
+    //     // assert account 2 earned 75% from reward shares
+    //     let acc2_updated_shares = contract
+    //         .strategies
+    //         .get(&token_id)
+    //         .unwrap()
+    //         .user_shares
+    //         .get(&acc2)
+    //         .unwrap();
+    //     assert_eq!(
+    //         *acc2_updated_shares, 3750000000000000000000000u128,
+    //         "ERR_BALANCE_UPDATE"
+    //     );
+    // }
 }
