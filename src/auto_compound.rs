@@ -131,6 +131,7 @@ impl Contract {
         ))
     }
 
+    // TODO: should get the callback from ft_transfer_call and check if it was successful
     #[private]
     pub fn get_tokens_return(
         &self,
@@ -211,7 +212,6 @@ impl Contract {
         let (token1_min_out, token2_min_out): (U128, U128) = tokens;
 
         //Actualization of reward amount
-        // TODO: move to callback_swaps
         compounder.last_reward_amount = 0;
 
         // TODO: call exchange directly
@@ -303,7 +303,12 @@ impl Contract {
         // Add liquidity
         self.call_add_liquidity(pool_id, vec![quantity_of_token1, quantity_of_token2], None)
             // Get the shares
-            .then(ext_exchange::get_pool_shares(
+            .then(ext_self::callback_stake(
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+            .and(ext_exchange::get_pool_shares(
                 pool_id,
                 account_id.clone(),
                 self.exchange_contract_id.clone(),
@@ -311,7 +316,7 @@ impl Contract {
                 Gas(10_000_000_000_000),
             ))
             // Update user balance and stake
-            .then(ext_self::callback_stake(
+            .then(ext_self::callback_post_get_pool_shares(
                 token_id,
                 env::current_account_id(),
                 0,
@@ -319,17 +324,29 @@ impl Contract {
             ));
     }
 
+    #[private]
+    pub fn callback_stake(
+        &self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+    ) -> U128 {
+        assert!(shares_result.is_ok(), "ERR");
+        let shares_amount = shares_result.unwrap();
+
+        shares_amount
+    }
+
     /// Receives shares from auto-compound and stake it
     /// Change the user_balance and the auto_compounder balance of lps/shares
     #[private]
-    pub fn callback_stake(
+    pub fn callback_post_get_pool_shares(
         &mut self,
-        #[callback_result] shares_result: Result<U128, PromiseError>,
+        #[callback_unwrap] minted_shares_result: U128,
+        #[callback_result] total_shares_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
         // TODO: do not need to be mut
-        assert!(shares_result.is_ok(), "ERR");
-        let shares_amount = shares_result.unwrap().0;
+        assert!(total_shares_result.is_ok(), "ERR");
+        let shares_amount = minted_shares_result.0;
 
         // TODO: do not need to be mut
         let strat = self
@@ -349,11 +366,13 @@ impl Contract {
             compounder.balance_update(total_shares, shares_amount.clone());
         };
 
+        let accumulated_shares = total_shares_result.unwrap().0;
+
         // Prevents failing on stake if below minimum deposit
-        if shares_amount < compounder.seed_min_deposit.into() {
+        if accumulated_shares < compounder.seed_min_deposit.into() {
             log!(
                 "The current number of shares {} is below minimum deposit",
-                shares_amount
+                accumulated_shares
             );
             return;
         }
@@ -362,7 +381,7 @@ impl Contract {
         self.call_stake(
             self.farm_contract_id.clone(),
             token_id,
-            U128(shares_amount),
+            U128(accumulated_shares),
             "".to_string(),
         );
     }

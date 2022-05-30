@@ -65,7 +65,12 @@ pub trait RefExchange {
         amount_in: U128,
         token_out: AccountId,
     ) -> U128;
-    fn add_liquidity(&mut self, pool_id: u64, amounts: Vec<U128>, min_amounts: Option<Vec<U128>>);
+    fn add_liquidity(
+        &mut self,
+        pool_id: u64,
+        amounts: Vec<U128>,
+        min_amounts: Option<Vec<U128>>,
+    ) -> U128;
     fn swap(&mut self, actions: Vec<SwapAction>, referral_id: Option<AccountId>);
     fn mft_transfer_call(
         &mut self,

@@ -137,9 +137,11 @@ pub trait Callbacks {
     );
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_return(&self) -> (U128, U128);
-    fn callback_stake(
+    fn callback_stake(&mut self, #[callback_result] shares_result: Result<U128, PromiseError>);
+    fn callback_post_get_pool_shares(
         &mut self,
-        #[callback_result] shares_result: Result<String, PromiseError>,
+        #[callback_unwrap] minted_shares_result: U128,
+        #[callback_result] total_shares_result: Result<U128, PromiseError>,
         token_id: String,
     );
     fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
