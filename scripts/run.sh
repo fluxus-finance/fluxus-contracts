@@ -1,4 +1,4 @@
-#Running run2_0.sh: 
+#Running run.sh: 
 
 # build wasm
 ./build.sh
@@ -13,7 +13,7 @@ source .env
 echo $username
  
 
-# initializes the contract and registers the necessary 
+# initializes the contract, create strategy and registers in the necessary contracts
 ./initialize.sh
 
 # storage_deposit + wrap_near + stake   

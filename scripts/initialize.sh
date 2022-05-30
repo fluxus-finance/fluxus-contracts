@@ -7,12 +7,21 @@ echo $reward_token
 
 
 #### Initialize contract
-# near call $CONTRACT_NAME new '{"owner_id":"'$username'", "protocol_shares": 0,
-# "token1_address": "'$token1_address'", "token2_address": "'$token2_address'", 
-# "pool_id_token1_reward": '$pool_id_token1_reward', "pool_id_token2_reward": '$pool_id_token2_reward', "reward_token": "'$reward_token'",
-# "exchange_contract_id": "'$exchange_contract_id'", "farm_contract_id": "'$farm_contract_id'", 
-# "farm_id": '$farm_id', "pool_id": '$pool_id', "seed_min_deposit": "1000000000000000000"}' --accountId $username
+near call $CONTRACT_NAME new '{ "owner_id":"'$username'", "exchange_contract_id": "'$exchange_contract_id'", 
+    "farm_contract_id": "'$farm_contract_id'" }' --accountId $CONTRACT_NAME
 
+#### Create first strategy
+near call $CONTRACT_NAME create_strategy '{
+    "_strategy": "",
+    "token1_address": "'$token1_address'", 
+    "token2_address": "'$token2_address'", 
+    "pool_id_token1_reward": '$pool_id_token1_reward', 
+    "pool_id_token2_reward": '$pool_id_token2_reward', 
+    "reward_token": "'$reward_token'",
+    "farm": "'$farm_id'", 
+    "pool_id": '$pool_id', 
+    "seed_min_deposit": "1000000000000000000" 
+    }' --accountId $CONTRACT_NAME --gas $total_gas
 
 #### Register contract 
 
@@ -22,9 +31,6 @@ near call $CONTRACT_NAME call_user_register '{"account_id": "'$CONTRACT_NAME'"}'
 #At the farm
 near call $farm_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.1
 
-#At near wrap
-near call $wrap_near_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --gas 300000000000000 --deposit 0.00125
-
 #At reward token
 near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --gas 300000000000000 --deposit 0.00125
 
@@ -32,6 +38,7 @@ near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "reg
 near call $exchange_contract_id register_tokens '{ "token_ids" : [ "'$reward_token'" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
 
 # Register the contract in the pool 
+#### TODO: move this call to create_auto_compounder method
 near call $exchange_contract_id mft_register '{ "token_id" : ":'$pool_id'", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
 
 # Update contract to Paused, making stake and auto-compound unavailable
