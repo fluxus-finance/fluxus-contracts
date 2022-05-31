@@ -142,33 +142,90 @@ impl Contract {
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.clone().get();
 
-        ext_exchange::get_return(
-            compounder.pool_id_token1_reward,
-            compounder.reward_token.clone(),
-            amount_token_1,
-            compounder.token1_address.clone(),
-            self.exchange_contract_id.clone(),
-            0,
-            Gas(10_000_000_000_000),
-        )
-        .and(ext_exchange::get_return(
-            compounder.pool_id_token2_reward,
-            compounder.reward_token.clone(),
-            amount_token_2,
-            compounder.token2_address.clone(),
-            self.exchange_contract_id.clone(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
-        .then(ext_self::callback_get_return(
-            env::current_account_id(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
+        let token1 = compounder.token1_address.clone();
+        let token2 = compounder.token2_address.clone();
+        let reward = compounder.reward_token.clone();
+
+        if reward == token1 {
+            ext_exchange::get_return(
+                compounder.pool_id_token2_reward,
+                compounder.reward_token.clone(),
+                amount_token_2,
+                compounder.token2_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .then(ext_self::callback_get_token_return(
+                1u64,
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+        } else if reward == token2 {
+            ext_exchange::get_return(
+                compounder.pool_id_token1_reward,
+                compounder.reward_token.clone(),
+                amount_token_1,
+                compounder.token1_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .then(ext_self::callback_get_token_return(
+                2u64,
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+        } else {
+            ext_exchange::get_return(
+                compounder.pool_id_token1_reward,
+                compounder.reward_token.clone(),
+                amount_token_1,
+                compounder.token1_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .and(ext_exchange::get_return(
+                compounder.pool_id_token2_reward,
+                compounder.reward_token.clone(),
+                amount_token_2,
+                compounder.token2_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+            .then(ext_self::callback_get_tokens_return(
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+        }
     }
 
     #[private]
-    pub fn callback_get_return(
+    pub fn callback_get_token_return(
+        &self,
+        #[callback_result] token_out: Result<U128, PromiseError>,
+        common_token: u64,
+    ) -> (U128, U128) {
+        assert!(token_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_RETURN");
+
+        let amount: U128 = token_out.unwrap();
+
+        assert!(amount.0 > 0u128, "ERR_SLIPPAGE_TOO_HIGH");
+
+        if common_token == 1 {
+            (U128(0), amount)
+        } else {
+            (amount, U128(0))
+        }
+    }
+
+    #[private]
+    pub fn callback_get_tokens_return(
         &self,
         #[callback_result] token1_out: Result<U128, PromiseError>,
         #[callback_result] token2_out: Result<U128, PromiseError>,
@@ -214,28 +271,52 @@ impl Contract {
         //Actualization of reward amount
         compounder.last_reward_amount = 0;
 
-        // TODO: call exchange directly
-        ext_self::call_swap(
-            pool_id_to_swap1,
-            token_in1,
-            token_out1,
-            Some(amount_in_1),
-            token1_min_out,
-            contract_id.clone(),
-            0,
-            Gas(40_000_000_000_000),
-        )
-        // TODO: should use and
-        .then(ext_self::call_swap(
-            pool_id_to_swap2,
-            token_in2,
-            token_out2,
-            Some(amount_in_2),
-            token2_min_out,
-            contract_id.clone(),
-            0,
-            Gas(40_000_000_000_000),
-        )) // TODO: should use a callback to assert that both tx succeeded
+        if token1_min_out == U128(0) {
+            ext_self::call_swap(
+                pool_id_to_swap2,
+                token_in2.clone(),
+                token_out2.clone(),
+                Some(amount_in_2),
+                token2_min_out,
+                contract_id.clone(),
+                0,
+                Gas(40_000_000_000_000),
+            )
+        } else if token2_min_out == U128(0) {
+            ext_self::call_swap(
+                pool_id_to_swap1,
+                token_in1.clone(),
+                token_out1.clone(),
+                Some(amount_in_1),
+                token1_min_out,
+                contract_id.clone(),
+                0,
+                Gas(40_000_000_000_000),
+            )
+        } else {
+            // TODO: call exchange directly
+            ext_self::call_swap(
+                pool_id_to_swap1,
+                token_in1.clone(),
+                token_out1.clone(),
+                Some(amount_in_1),
+                token1_min_out,
+                contract_id.clone(),
+                0,
+                Gas(40_000_000_000_000),
+            )
+            // TODO: should use and
+            .then(ext_self::call_swap(
+                pool_id_to_swap2,
+                token_in2.clone(),
+                token_out2.clone(),
+                Some(amount_in_2),
+                token2_min_out,
+                contract_id.clone(),
+                0,
+                Gas(40_000_000_000_000),
+            )) // should use a callback to assert that both tx succeeded
+        }
     }
 
     /// Step 4
