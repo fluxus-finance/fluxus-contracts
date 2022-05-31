@@ -1,12 +1,12 @@
 use crate::*;
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct SharesBalance {
     /// stores the amount given address deposited
-    deposited: u128,
+    pub deposited: u128,
     /// stores the amount given address deposited plus the earned shares
-    total: u128,
+    pub total: u128,
 }
 
 // #[derive(BorshSerialize, BorshDeserialize)]
@@ -16,7 +16,7 @@ pub struct AutoCompounder {
     // TODO: update user_shares to a map of accountId to SharesBalance
     // Struct that maps addresses to its currents shares added plus the received
     // from the auto-compound strategy
-    pub user_shares: HashMap<AccountId, u128>,
+    pub user_shares: HashMap<AccountId, SharesBalance>,
 
     // Keeps tracks of how much shares the contract gained from the auto-compound
     pub protocol_shares: u128,
@@ -126,7 +126,9 @@ impl AutoCompounder {
 
         let mut shares_distributed: U256 = U256::from(0u128);
 
-        for (account, val) in self.user_shares.clone() {
+        for (account, mut shares) in self.user_shares.clone() {
+            log!("before {:#?}", shares);
+            let val = shares.total;
             let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
 
             let casted_reward = U256::from(shares_reward) * acc_percentage;
@@ -137,7 +139,11 @@ impl AutoCompounder {
 
             let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
 
-            self.user_shares.insert(account.clone(), new_user_balance);
+            shares.total = new_user_balance;
+
+            log!("after {:#?}", shares);
+
+            self.user_shares.insert(account.clone(), shares);
         }
 
         let residue: u128 = shares_reward - shares_distributed.as_u128();
@@ -145,30 +151,47 @@ impl AutoCompounder {
     }
 
     pub(crate) fn increment_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let user_lps = self.user_shares.get(account_id).unwrap_or(&0);
+        let initial_balance = &mut SharesBalance {
+            deposited: 0u128,
+            total: 0u128,
+        };
+        let mut user_shares = self
+            .user_shares
+            .get(account_id)
+            .unwrap_or(initial_balance)
+            .clone();
 
-        if *user_lps > 0 {
-            // TODO: improve log
-            // log!("");
-            let new_balance: u128 = *user_lps + shares;
-            self.user_shares.insert(account_id.clone(), new_balance);
+        let user_lps = user_shares.total;
+
+        // TODO: is it possible to use get_mut on user_shares, to avoid using insert?
+
+        if user_lps > 0 {
+            user_shares.total = user_lps + shares;
+            self.user_shares
+                .insert(account_id.clone(), user_shares.clone());
         } else {
-            // TODO: improve log
-            // log!("");
-            self.user_shares.insert(account_id.clone(), shares);
+            user_shares.deposited = shares;
+            user_shares.total = shares;
+            self.user_shares
+                .insert(account_id.clone(), user_shares.clone());
         };
     }
 
     pub(crate) fn decrement_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let user_shares = self.user_shares.get(account_id).unwrap();
-        let new_shares: u128 = *user_shares - shares;
+        let mut user_shares = self.user_shares.get(account_id).unwrap().clone();
+        let new_shares: u128 = user_shares.total - shares;
         log!(
             "{} had {} and now has {}",
             account_id,
-            user_shares,
+            user_shares.total,
             new_shares
         );
-        self.user_shares.insert(account_id.clone(), new_shares);
+
+        // The following code resets the initial deposit
+        // The earned_shares will return how much the user has earned after the withdraw, not the deposit
+        user_shares.deposited = new_shares;
+        user_shares.total = new_shares;
+        self.user_shares.insert(account_id.clone(), user_shares);
     }
 }
 

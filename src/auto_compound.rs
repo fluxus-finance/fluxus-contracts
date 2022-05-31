@@ -440,8 +440,8 @@ impl Contract {
         if shares_amount > 0 {
             let mut total_shares: u128 = 0;
 
-            for (_, val) in compounder.user_shares.iter() {
-                total_shares += *val;
+            for (_, balance) in compounder.user_shares.iter() {
+                total_shares += balance.total;
             }
 
             compounder.balance_update(total_shares, shares_amount.clone());

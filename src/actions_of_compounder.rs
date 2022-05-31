@@ -111,17 +111,17 @@ impl Contract {
             .expect("ERR_ACCOUNT_DOES_NOT_EXIST");
 
         assert!(
-            *user_shares != 0,
+            user_shares.total != 0,
             "User does not have enough lps to withdraw"
         );
 
-        let amount: U128 = amount_withdrawal.unwrap_or(U128(*user_shares));
+        let amount: U128 = amount_withdrawal.unwrap_or(U128(user_shares.total));
         assert!(
-            *user_shares >= amount.0,
+            user_shares.total >= amount.0,
             "{} is trying to withdrawal {} and only has {}",
             caller_id.clone(),
             amount.0,
-            user_shares
+            user_shares.total
         );
 
         log!("{} is trying to withdrawal {}", caller_id, amount.0);

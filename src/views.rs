@@ -4,12 +4,19 @@ use crate::*;
 impl Contract {
     /// Returns the number of shares some accountId has in the contract
     /// Panics if token_id does not exist
-    pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> Option<u128> {
+    pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> SharesBalance {
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
 
         let compounder = strat.clone().get();
 
-        Some(*compounder.user_shares.get(&account_id).unwrap_or(&0u128))
+        compounder
+            .user_shares
+            .get(&account_id)
+            .unwrap_or(&SharesBalance {
+                deposited: 0u128,
+                total: 0u128,
+            })
+            .clone()
     }
 
     /// Function that return the user`s near storage.
