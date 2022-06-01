@@ -1,22 +1,70 @@
+use near_sdk::PromiseOrValue;
+
 use crate::*;
 
 #[near_bindgen]
 impl Contract {
     /// Step 1
     /// Function to claim the reward from the farm contract
-    pub fn claim_reward(&mut self, token_id: String) {
+    pub fn claim_reward(&mut self, token_id: String) -> Promise {
         self.assert_contract_running();
         self.is_allowed_account();
 
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         let seed_id: String = strat.clone().get().seed_id;
+        let farm_id: String = strat.clone().get().farm_id;
 
-        ext_farm::claim_reward_by_seed(
+        ext_farm::list_farms_by_seed(
+            seed_id.clone(),
+            self.farm_contract_id.clone(),
+            0,
+            Gas(40_000_000_000_000),
+        )
+        .then(ext_self::callback_list_farms_by_seed(
+            token_id,
+            seed_id,
+            farm_id,
+            env::current_account_id(),
+            0,
+            Gas(60_000_000_000_000),
+        ))
+    }
+
+    pub fn callback_list_farms_by_seed(
+        &mut self,
+        #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
+        token_id: String,
+        seed_id: String,
+        farm_id: String,
+    ) -> PromiseOrValue<String> {
+        assert!(farms_result.is_ok(), "ERR");
+
+        let farms = farms_result.unwrap();
+
+        for farm in farms.iter() {
+            if farm.farm_id == farm_id {
+                log!("matched");
+                if farm.farm_status != String::from("Running") {
+                    log!("matched on status: {}", farm.farm_status);
+
+                    let strat = self
+                        .strategies
+                        .get_mut(&token_id)
+                        .expect(ERR21_TOKEN_NOT_REG);
+                    let compounder = strat.get_mut();
+
+                    compounder.state = AutoCompounderState::Ended;
+                    return PromiseOrValue::Value(format!("The farm {:#?} ended", farm_id));
+                }
+            }
+        }
+
+        PromiseOrValue::Promise(ext_farm::claim_reward_by_seed(
             seed_id,
             self.farm_contract_id.clone(),
             0,
             Gas(40_000_000_000_000),
-        );
+        ))
     }
 
     /// Step 2

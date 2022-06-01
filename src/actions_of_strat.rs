@@ -16,8 +16,8 @@ impl Contract {
         seed_min_deposit: U128,
     ) -> String {
         self.is_owner();
-        //
         let seed_id: String = format!("{}@{}", self.exchange_contract_id, pool_id);
+        let farm_id: String = format!("{}#{}", seed_id, farm);
 
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
         self.token_ids.push(token_id.clone());
@@ -28,7 +28,7 @@ impl Contract {
             pool_id_token1_reward,
             pool_id_token2_reward,
             reward_token,
-            farm,
+            farm_id,
             pool_id,
             seed_id,
             seed_min_deposit,
@@ -36,7 +36,7 @@ impl Contract {
 
         self.strategies.insert(token_id, strat);
 
-        //
+        // TODO: return better message
         format!("Hello world")
     }
 }

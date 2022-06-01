@@ -91,13 +91,14 @@ impl Contract {
             let compounder = strat.get();
 
             info.push(AutoCompounderInfo {
+                state: compounder.state,
                 token_id,
                 token1_address: compounder.token1_address,
                 token2_address: compounder.token2_address,
                 pool_id_token1_reward: compounder.pool_id_token1_reward,
                 pool_id_token2_reward: compounder.pool_id_token2_reward,
                 reward_token: compounder.reward_token,
-                farm: compounder.farm,
+                farm_id: compounder.farm_id,
                 pool_id: compounder.pool_id,
                 seed_min_deposit: compounder.seed_min_deposit,
                 seed_id: compounder.seed_id,
@@ -105,6 +106,12 @@ impl Contract {
         }
 
         info
+    }
+
+    pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
+        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let compounder = strat.clone().get();
+        compounder.state
     }
 
     /// Returns exchange and farm contracts
@@ -119,13 +126,14 @@ impl Contract {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AutoCompounderInfo {
+    pub state: AutoCompounderState,
     pub token_id: String,
     pub token1_address: AccountId,
     pub token2_address: AccountId,
     pub pool_id_token1_reward: u64,
     pub pool_id_token2_reward: u64,
     pub reward_token: AccountId,
-    pub farm: String,
+    pub farm_id: String,
     pub pool_id: u64,
     pub seed_min_deposit: U128,
     pub seed_id: String,

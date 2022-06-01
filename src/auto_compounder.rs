@@ -22,7 +22,7 @@ pub struct AutoCompounder {
     pub protocol_shares: u128,
 
     // State is used to update the contract to a Paused/Running state
-    // state: RunningState,
+    pub state: AutoCompounderState,
 
     // Used to keep track of the rewards received from the farm during auto-compound cycle
     pub last_reward_amount: u128,
@@ -43,7 +43,7 @@ pub struct AutoCompounder {
     pub reward_token: AccountId,
 
     // Farm used to auto-compound
-    pub farm: String,
+    pub farm_id: String,
 
     // Pool used to add liquidity and farming
     pub pool_id: u64,
@@ -55,7 +55,8 @@ pub struct AutoCompounder {
     pub seed_id: String,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Clone)]
+#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(crate = "near_sdk::serde")]
 pub enum AutoCompounderState {
     Running,
     Ended,
@@ -99,7 +100,7 @@ impl AutoCompounder {
         pool_id_token1_reward: u64,
         pool_id_token2_reward: u64,
         reward_token: AccountId,
-        farm: String,
+        farm_id: String,
         pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
@@ -107,13 +108,14 @@ impl AutoCompounder {
         Self {
             user_shares: HashMap::new(),
             protocol_shares: 0u128,
+            state: AutoCompounderState::Running,
             last_reward_amount: 0u128,
             token1_address,
             token2_address,
             pool_id_token1_reward,
             pool_id_token2_reward,
             reward_token,
-            farm,
+            farm_id,
             pool_id,
             seed_min_deposit,
             seed_id,
@@ -211,7 +213,7 @@ impl VersionedCompounder {
         pool_id_token1_reward: u64,
         pool_id_token2_reward: u64,
         reward_token: AccountId,
-        farm: String,
+        farm_id: String,
         pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
@@ -219,13 +221,14 @@ impl VersionedCompounder {
         VersionedCompounder::V101(AutoCompounder {
             user_shares: HashMap::new(),
             protocol_shares: 0u128,
+            state: AutoCompounderState::Running,
             last_reward_amount: 0u128,
             token1_address,
             token2_address,
             pool_id_token1_reward,
             pool_id_token2_reward,
             reward_token,
-            farm,
+            farm_id,
             pool_id,
             seed_min_deposit,
             seed_id,

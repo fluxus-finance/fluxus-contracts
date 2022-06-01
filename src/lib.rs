@@ -54,9 +54,8 @@ pub(crate) enum StorageKey {
 }
 
 // TODO: update this to newer version, following AutoCompounderState
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
 pub enum RunningState {
     Running,
     Paused,
@@ -172,6 +171,13 @@ pub trait Callbacks {
         token_id: String,
         receiver_id: AccountId,
         withdraw_amount: u128,
+    ) -> Promise;
+    fn callback_list_farms_by_seed(
+        &self,
+        #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
+        token_id: String,
+        seed_id: String,
+        farm_id: String,
     ) -> Promise;
 }
 const F: u128 = 100000000000000000000000000000; // rename this const

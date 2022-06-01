@@ -26,7 +26,28 @@ pub struct SwapAction {
     pub min_amount_out: U128,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct FarmInfo {
+    pub farm_id: FarmId,
+    pub farm_kind: String,
+    pub farm_status: String,
+    pub seed_id: SeedId,
+    pub reward_token: AccountId,
+    pub start_at: u32,
+    pub reward_per_session: U128,
+    pub session_interval: u32,
+
+    pub total_reward: U128,
+    pub cur_round: u32,
+    pub last_round: u32,
+    pub claimed_reward: U128,
+    pub unclaimed_reward: U128,
+    pub beneficiary_reward: U128,
+}
+
 type SeedId = String;
+type FarmId = String;
 
 // Farm functions that we need to call inside the auto_compounder.
 #[ext_contract(ext_farm)]
@@ -43,6 +64,7 @@ pub trait Farming {
     fn withdraw_reward(&mut self, token_id: String, amount: U128, unregister: String);
     fn get_reward(&mut self, account_id: AccountId, token_id: AccountId);
     fn list_user_seeds(&self, account_id: AccountId) -> HashMap<SeedId, U128>;
+    fn list_farms_by_seed(&self, seed_id: SeedId) -> Vec<FarmInfo>;
 }
 
 // Ref exchange functions that we need to call inside the auto_compounder.

@@ -42,7 +42,7 @@ impl Strategy {
     // Return the farm or liquidity pool or token( other kinds of strategy) this strategy accepts
     pub fn get_token_id(&self) -> String {
         match self {
-            Strategy::AutoCompounder(strat) => strat.farm.clone(),
+            Strategy::AutoCompounder(strat) => strat.farm_id.clone(),
         }
     }
 

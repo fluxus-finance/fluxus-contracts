@@ -6,7 +6,7 @@ impl Contract {
     pub fn update_contract_state(&mut self, state: RunningState) -> String {
         self.is_owner();
         self.state = state;
-        format!("{} is {}", env::current_account_id(), self.state)
+        format!("{} is {:#?}", env::current_account_id(), self.state)
     }
 
     pub fn update_exchange_contract(&mut self, contract_id: AccountId) {
@@ -36,5 +36,25 @@ impl Contract {
         }
 
         info
+    }
+
+    pub fn update_compounder_state(
+        &mut self,
+        token_id: String,
+        state: AutoCompounderState,
+    ) -> String {
+        self.is_owner();
+
+        let strat = self
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+        let compounder = strat.get_mut();
+
+        if compounder.state != state {
+            compounder.state = state;
+        }
+
+        format!("The current state is {:#?}", compounder.state)
     }
 }
