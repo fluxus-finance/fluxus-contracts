@@ -13,7 +13,6 @@ enum TokenReceiverMessage {
     /// Alternative to deposit + execute actions call.
     Execute {
         referral_id: Option<AccountId>,
-        // TODO: remove if not used
         // List of sequential actions.
         //actions: Vec<Action>,
     },
@@ -30,7 +29,6 @@ pub trait RefExchange {
     fn metadata(&mut self);
 }
 
-/// TODO: this should be in the near_standard_contracts
 #[ext_contract(ext_fungible_token)]
 pub trait FungibleToken {
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>);

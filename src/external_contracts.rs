@@ -123,5 +123,10 @@ pub trait Wrapnear {
 
 #[ext_contract(ext_reward_token)]
 pub trait ExtRewardToken {
-    fn ft_transfer_call(&mut self, receiver_id: AccountId, amount: String, msg: String);
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: String,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
 }

@@ -103,8 +103,6 @@ impl Contract {
         assert!(reward_result.is_ok(), "ERR_COULD_NOT_GET_REWARD");
         let amount: U128 = reward_result.unwrap();
 
-        // TODO: should this method return amount like the old impl?
-        //      if so, should be after withdraw_reward succeeds
         ext_farm::withdraw_reward(
             reward_token.clone(),
             amount.clone(),
@@ -179,14 +177,16 @@ impl Contract {
         ))
     }
 
-    // TODO: should get the callback from ft_transfer_call and check if it was successful
     #[private]
     pub fn get_tokens_return(
         &self,
+        #[callback_result] ft_transfer_result: Result<U128, PromiseError>,
         token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
     ) -> Promise {
+        assert!(ft_transfer_result.is_ok(), "ERR_REWARD_TRANSFER_FAILED");
+
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.clone().get();
 
@@ -320,38 +320,28 @@ impl Contract {
         compounder.last_reward_amount = 0;
 
         if token1_min_out == U128(0) {
-            ext_self::call_swap(
+            self.call_swap(
                 pool_id_to_swap2,
                 token_in2.clone(),
                 token_out2.clone(),
                 Some(amount_in_2),
                 token2_min_out,
-                contract_id.clone(),
-                0,
-                Gas(40_000_000_000_000),
             )
         } else if token2_min_out == U128(0) {
-            ext_self::call_swap(
+            self.call_swap(
                 pool_id_to_swap1,
                 token_in1.clone(),
                 token_out1.clone(),
                 Some(amount_in_1),
                 token1_min_out,
-                contract_id.clone(),
-                0,
-                Gas(40_000_000_000_000),
             )
         } else {
-            // TODO: call exchange directly
-            ext_self::call_swap(
+            self.call_swap(
                 pool_id_to_swap1,
                 token_in1.clone(),
                 token_out1.clone(),
                 Some(amount_in_1),
                 token1_min_out,
-                contract_id.clone(),
-                0,
-                Gas(40_000_000_000_000),
             )
             // TODO: should use and
             .then(ext_self::call_swap(
@@ -369,8 +359,7 @@ impl Contract {
 
     /// Step 4
     /// Get amount of tokens available then stake it
-    pub fn autocompounds_liquidity_and_stake(&mut self, token_id: String) {
-        // TODO: do not need to be mut
+    pub fn autocompounds_liquidity_and_stake(&self, token_id: String) {
         self.assert_contract_running();
         self.is_allowed_account();
 
@@ -395,12 +384,11 @@ impl Contract {
     /// Responsible to add liquidity and stake.
     #[private]
     pub fn stake_and_liquidity_auto(
-        &mut self,
+        &self,
         #[callback_result] deposits_result: Result<HashMap<AccountId, U128>, PromiseError>,
         token_id: String,
         account_id: AccountId,
     ) {
-        // TODO: do not need to be mut
         assert!(deposits_result.is_ok(), "ERR_COULD_NOT_GET_DEPOSITS");
 
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
@@ -423,7 +411,14 @@ impl Contract {
             };
         }
 
-        // TODO: require that both quantity are greater than 0
+        if quantity_of_token1.0 == 0u128 {
+            log!("The contract has 0 deposits of {}", token_out1);
+            return;
+        }
+        if quantity_of_token2.0 == 0u128 {
+            log!("The contract has 0 deposits of {}", token_out2);
+            return;
+        }
 
         // instead of passing token1, token2 separated
         // use a vec, in the correct format, then you can easily do this op
@@ -473,11 +468,9 @@ impl Contract {
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
-        // TODO: do not need to be mut
         assert!(total_shares_result.is_ok(), "ERR");
         let shares_amount = minted_shares_result.0;
 
-        // TODO: do not need to be mut
         let strat = self
             .strategies
             .get_mut(&token_id)
@@ -506,7 +499,6 @@ impl Contract {
             return;
         }
 
-        // TODO: Should call it right away and then use a callback to check the result
         self.call_stake(
             self.farm_contract_id.clone(),
             token_id,

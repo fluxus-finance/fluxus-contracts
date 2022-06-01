@@ -13,7 +13,6 @@ pub struct SharesBalance {
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AutoCompounder {
-    // TODO: update user_shares to a map of accountId to SharesBalance
     // Struct that maps addresses to its currents shares added plus the received
     // from the auto-compound strategy
     pub user_shares: HashMap<AccountId, SharesBalance>,

@@ -155,6 +155,7 @@ pub trait Callbacks {
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(
         &self,
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,

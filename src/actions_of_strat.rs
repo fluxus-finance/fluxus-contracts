@@ -34,9 +34,8 @@ impl Contract {
             seed_min_deposit,
         ));
 
-        self.strategies.insert(token_id, strat);
+        self.strategies.insert(token_id.clone(), strat);
 
-        // TODO: return better message
-        format!("Hello world")
+        format!("Strategy for {} created successfully", token_id)
     }
 }

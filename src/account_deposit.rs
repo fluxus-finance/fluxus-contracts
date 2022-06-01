@@ -347,7 +347,6 @@ impl Contract {
     /// This should be used when it's known that storage is prepaid.
     pub(crate) fn internal_register_account(&mut self, account_id: &AccountId, amount: Balance) {
         let mut account = self.internal_unwrap_or_default_account(&account_id);
-        // TODO: format to a more consistent way
         log!(
             "account.near_amount = {} + amount = {} == {}",
             account.near_amount,
@@ -364,7 +363,6 @@ impl Contract {
         amount: Balance,
     ) {
         let mut account = self.internal_unwrap_or_default_account(&account_id);
-        // TODO: format to a more consistent way
         log!(
             "account.near_amount is = {} and amount = {}",
             account.near_amount,

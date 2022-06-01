@@ -3,37 +3,6 @@ use crate::*;
 /// Auto-compounder strategy methods
 #[near_bindgen]
 impl Contract {
-    // TODO: this method should register in the correct pool/farm
-    pub fn create_auto_compounder(
-        &mut self,
-        token1_address: AccountId,
-        token2_address: AccountId,
-        pool_id_token1_reward: u64,
-        pool_id_token2_reward: u64,
-        reward_token: AccountId,
-        farm: String,
-        pool_id: u64,
-        seed_min_deposit: U128,
-    ) {
-        let seed_id: String = format!("{}@{}", self.exchange_contract_id, pool_id);
-        let farm_id: String = format!("{}#{}", seed_id, farm);
-
-        let token_id = self.wrap_mft_token_id(&pool_id.to_string());
-        self.token_ids.push(token_id.clone());
-
-        let compounder = AutoCompounder::new(
-            token1_address,
-            token2_address,
-            pool_id_token1_reward,
-            pool_id_token2_reward,
-            reward_token,
-            farm_id,
-            pool_id,
-            seed_id,
-            seed_min_deposit,
-        );
-    }
-
     #[private]
     pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
         // decide which strategies
@@ -74,26 +43,11 @@ impl Contract {
 
         let compounder = strat.get_mut();
 
-        // TODO: should each auto-compounder store the amount each address have
-        //      or should the contract store it?
         // increment total shares deposited by account
         compounder.increment_user_shares(&account_id, shares);
 
         format!("The {} added {} to {}", account_id, shares, token_id)
     }
-
-    // #[private]
-    // pub fn callback_get_deposits(&self) -> Promise {
-    //     assert!(self.check_promise(), "Previous tx failed.");
-
-    //     let (_, contract_id) = self.get_predecessor_and_current_account();
-    //     ext_exchange::get_deposits(
-    //         contract_id,
-    //         self.exchange_contract_id,
-    //         1,
-    //         Gas(12_000_000_000_000),
-    //     )
-    // }
 
     /// Withdraw user lps and send it to the contract.
     pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {

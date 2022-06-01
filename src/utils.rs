@@ -27,7 +27,6 @@ impl Contract {
     }
 
     /// Checks if predecessor_account_id is either the contract or the owner of the contract
-    /// TODO: rename method to is_owner()
     #[private]
     pub(crate) fn is_owner(&self) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
@@ -38,7 +37,6 @@ impl Contract {
     }
 
     /// Checks if account_id is either the caller account or the contract
-    /// TODO: rename method to is_caller()
     #[private]
     pub(crate) fn is_caller(&self, account_id: AccountId) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
@@ -49,7 +47,6 @@ impl Contract {
     }
 
     /// Checks if the caller account is in allowed_accounts
-    /// TODO: rename method to is_allowed_account()
     #[private]
     pub(crate) fn is_allowed_account(&self) {
         let caller_acc_id: &AccountId = &env::predecessor_account_id();
