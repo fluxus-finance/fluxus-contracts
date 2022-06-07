@@ -66,7 +66,9 @@ impl From<&AutoCompounderState> for String {
     fn from(status: &AutoCompounderState) -> Self {
         match *status {
             AutoCompounderState::Running => String::from("Running"),
+            // Define how long the strategy should be on ended state, waiting for withdrawal
             AutoCompounderState::Ended => String::from("Ended"),
+            // Latest state, after all withdraw was done
             AutoCompounderState::Cleared => String::from("Cleared"),
         }
     }
@@ -128,7 +130,6 @@ impl AutoCompounder {
         let mut shares_distributed: U256 = U256::from(0u128);
 
         for (account, mut shares) in self.user_shares.clone() {
-            log!("before {:#?}", shares);
             let val = shares.total;
             let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
 
@@ -141,8 +142,6 @@ impl AutoCompounder {
             let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
 
             shares.total = new_user_balance;
-
-            log!("after {:#?}", shares);
 
             self.user_shares.insert(account.clone(), shares);
         }
