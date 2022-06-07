@@ -32,3 +32,6 @@ near call $CONTRACT_NAME get_strats_info '{}' --accountId $CONTRACT_NAME
 
 #### Returns struct from user {deposited: x, total: y}
 near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_id": ":'$pool_id'" }'
+
+#### Get guardians
+near view $CONTRACT_NAME get_guardians '{}'

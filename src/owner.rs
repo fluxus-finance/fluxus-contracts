@@ -57,4 +57,29 @@ impl Contract {
 
         format!("The current state is {:#?}", compounder.state)
     }
+
+    /// Extend guardians. Only can be called by owner.
+    #[payable]
+    pub fn extend_guardians(&mut self, guardians: Vec<AccountId>) {
+        assert_one_yocto();
+        self.is_owner();
+        for guardian in guardians {
+            self.guardians.insert(&guardian);
+        }
+    }
+
+    /// Remove guardians. Only can be called by owner.
+    #[payable]
+    pub fn remove_guardians(&mut self, guardians: Vec<AccountId>) {
+        assert_one_yocto();
+        self.is_owner();
+        for guardian in guardians {
+            self.guardians.remove(&guardian);
+        }
+    }
+
+    pub fn is_owner_or_guardians(&self) -> bool {
+        env::predecessor_account_id() == self.owner_id
+            || self.guardians.contains(&env::predecessor_account_id())
+    }
 }

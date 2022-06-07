@@ -51,6 +51,7 @@ pub(crate) enum StorageKey {
     Whitelist,
     AccountTokens { account_id: AccountId },
     Shares { pool_id: u64 },
+    Guardian,
 }
 
 // TODO: update this to newer version, following AutoCompounderState
@@ -78,8 +79,11 @@ pub struct Contract {
     // Account address that have authority to update the contract state
     owner_id: AccountId,
 
-    // // Keeps tracks of how much shares the contract gained from the auto-compound
-    // protocol_shares: u128,
+    /// Set of guardians.
+    guardians: UnorderedSet<AccountId>,
+
+    // Keeps tracks of how much shares the contract gained from the auto-compound
+    protocol_shares: u128,
 
     // Keeps tracks of accounts that send coins to this contract
     accounts: LookupMap<AccountId, VAccount>,
@@ -93,7 +97,6 @@ pub struct Contract {
     // State is used to update the contract to a Paused/Running state
     state: RunningState,
 
-    // TODO: do we still need this?
     // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
     users_total_near_deposited: HashMap<AccountId, u128>,
 
@@ -215,6 +218,8 @@ impl Contract {
 
         Self {
             owner_id: owner_id,
+            guardians: UnorderedSet::new(StorageKey::Guardian),
+            protocol_shares: 0u128,
             accounts: LookupMap::new(StorageKey::Accounts),
             allowed_accounts,
             whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),

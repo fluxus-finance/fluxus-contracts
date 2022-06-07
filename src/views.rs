@@ -121,6 +121,11 @@ impl Contract {
             farm_address: self.farm_contract_id,
         }
     }
+
+    /// Only get guardians info
+    pub fn get_guardians(&self) -> Vec<AccountId> {
+        self.guardians.to_vec()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
