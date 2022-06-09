@@ -166,7 +166,8 @@ impl AutoCompounder {
         // TODO: is it possible to use get_mut on user_shares, to avoid using insert?
 
         if user_lps > 0 {
-            user_shares.total = user_lps + shares;
+            user_shares.deposited += shares;
+            user_shares.total += shares;
             self.user_shares
                 .insert(account_id.clone(), user_shares.clone());
         } else {

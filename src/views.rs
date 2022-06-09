@@ -9,14 +9,17 @@ impl Contract {
 
         let compounder = strat.clone().get();
 
-        compounder
+        let shares = compounder
             .user_shares
             .get(&account_id)
             .unwrap_or(&SharesBalance {
                 deposited: 0u128,
                 total: 0u128,
             })
-            .clone()
+            .clone();
+
+        log!("{:#?} has {:#?}", account_id.to_string(), shares);
+        shares
     }
 
     /// Function that return the user`s near storage.
