@@ -10,19 +10,6 @@ echo $reward_token
 near call $CONTRACT_NAME new '{ "owner_id":"'$username'", "exchange_contract_id": "'$exchange_contract_id'", 
     "farm_contract_id": "'$farm_contract_id'" }' --accountId $CONTRACT_NAME
 
-#### Create first strategy
-near call $CONTRACT_NAME create_strategy '{
-    "_strategy": "",
-    "token1_address": "'$token1_address'", 
-    "token2_address": "'$token2_address'", 
-    "pool_id_token1_reward": '$pool_id_token1_reward', 
-    "pool_id_token2_reward": '$pool_id_token2_reward', 
-    "reward_token": "'$reward_token'",
-    "farm": "'$farm_id'", 
-    "pool_id": '$pool_id', 
-    "seed_min_deposit": "1000000000000000000" 
-    }' --accountId $CONTRACT_NAME --gas $total_gas
-
 #### Register contract 
 
 #At ref
@@ -37,9 +24,3 @@ near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "reg
 # Register reward_token in the exchange in the contracts account whitelisted tokens
 near call $exchange_contract_id register_tokens '{ "token_ids" : [ "'$reward_token'" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
 
-# Register the contract in the pool 
-#### TODO: move this call to create_auto_compounder method
-near call $exchange_contract_id mft_register '{ "token_id" : ":'$pool_id'", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
-
-# Update contract to Paused, making stake and auto-compound unavailable
-# near call $CONTRACT_NAME update_contract_state '{ "state": "Paused" }' --accountId $CONTRACT_NAME

@@ -13,13 +13,16 @@ source .env
 echo $username
  
 
-# initializes the contract, create strategy and registers in the necessary contracts
+#### initializes the contract, create strategy and registers in the necessary contracts
 ./initialize.sh
 
-# storage_deposit + wrap_near + stake   
-# ./stake_process.sh
+#### create strategy from .env
+./add_strategy.sh
 
-# unstake_and_remove_liquidity + withdraw_to_contract
+#### storage_deposit + wrap_near + stake   
+./stake_process.sh
+
+#### unstake_and_remove_liquidity + withdraw_to_contract
 # ./unstake_process.sh
  
  
