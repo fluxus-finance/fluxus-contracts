@@ -83,7 +83,16 @@ impl Contract {
 
     /// Returns all token ids filtering by running strategies
     pub fn get_allowed_tokens(self) -> Vec<String> {
-        self.token_ids
+        let mut running_strategies: Vec<String> = Vec::new();
+
+        for token in self.token_ids {
+            let strat = self.strategies.get(&token).unwrap();
+            if strat.get_ref().state == AutoCompounderState::Running {
+                running_strategies.push(token);
+            }
+        }
+
+        running_strategies
     }
 
     /// Return all Strategies filtering by running
