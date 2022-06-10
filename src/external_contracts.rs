@@ -60,9 +60,11 @@ pub trait Farming {
         msg: String,
     );
     fn claim_reward_by_seed(&mut self, seed_id: String);
+    fn claim_reward_by_farm(&mut self, farm_id: String);
     fn withdraw_seed(&mut self, seed_id: String, amount: U128, msg: String);
     fn withdraw_reward(&mut self, token_id: String, amount: U128, unregister: String);
-    fn get_reward(&mut self, account_id: AccountId, token_id: AccountId);
+    fn get_reward(&mut self, account_id: AccountId, token_id: AccountId) -> U128;
+    fn get_unclaimed_reward(&mut self, account_id: AccountId, farm_id: String) -> U128;
     fn list_user_seeds(&self, account_id: AccountId) -> HashMap<SeedId, U128>;
     fn list_farms_by_seed(&self, seed_id: SeedId) -> Vec<FarmInfo>;
 }

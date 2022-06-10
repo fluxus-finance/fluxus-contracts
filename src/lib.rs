@@ -139,7 +139,7 @@ pub trait Callbacks {
     );
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_tokens_return(&self) -> (U128, U128);
-    fn callback_get_token_return(&self, common_token: u64) -> (U128, U128);
+    fn callback_get_token_return(&self, common_token: u64, amount_token: U128) -> (U128, U128);
     fn callback_stake(&mut self, #[callback_result] shares_result: Result<U128, PromiseError>);
     fn callback_post_get_pool_shares(
         &mut self,
@@ -148,7 +148,13 @@ pub trait Callbacks {
         token_id: String,
     );
     fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
-    fn swap_to_auto(&mut self, token_id: String, amount_in_1: U128, amount_in_2: U128);
+    fn swap_to_auto(
+        &mut self,
+        token_id: String,
+        amount_in_1: U128,
+        amount_in_2: U128,
+        common_token: u64,
+    );
     fn stake_and_liquidity_auto(
         &mut self,
         #[callback_result] deposits_result: Result<HashMap<AccountId, U128>, PromiseError>,
@@ -162,6 +168,7 @@ pub trait Callbacks {
         token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
+        common_token: u64,
     ) -> Promise;
     fn callback_post_withdraw(
         &mut self,
@@ -169,6 +176,16 @@ pub trait Callbacks {
         token_id: String,
         amount: U128,
     ) -> U128;
+    fn callback_post_claim_reward(
+        &self,
+        #[callback_result] claim_result: Result<(), PromiseError>,
+        token_id: String,
+    ) -> Promise;
+    fn callback_post_get_unclaimed_reward(
+        &self,
+        #[callback_result] claim_result: Result<(), PromiseError>,
+        token_id: String,
+    );
     fn callback_get_pool_shares(
         &self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
@@ -180,7 +197,6 @@ pub trait Callbacks {
         &self,
         #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
         token_id: String,
-        seed_id: String,
         farm_id: String,
     ) -> Promise;
 }

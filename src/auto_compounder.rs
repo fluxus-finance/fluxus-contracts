@@ -41,6 +41,10 @@ pub struct AutoCompounder {
     // Address of the reward token given by the farm
     pub reward_token: AccountId,
 
+    // Store balance of available token1 and token2
+    // obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
+    pub available_balance: Vec<Balance>,
+
     // Farm used to auto-compound
     pub farm_id: String,
 
@@ -116,6 +120,7 @@ impl AutoCompounder {
             pool_id_token1_reward,
             pool_id_token2_reward,
             reward_token,
+            available_balance: vec![0u128, 0u128],
             farm_id,
             pool_id,
             seed_min_deposit,
@@ -227,6 +232,7 @@ impl VersionedCompounder {
             pool_id_token1_reward,
             pool_id_token2_reward,
             reward_token,
+            available_balance: vec![0u128, 0u128],
             farm_id,
             pool_id,
             seed_min_deposit,

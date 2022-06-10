@@ -59,6 +59,15 @@ impl Strategy {
 
     #[inline]
     #[allow(unreachable_patterns)]
+    pub fn get_ref(&self) -> &AutoCompounder {
+        match self {
+            Strategy::AutoCompounder(compounder) => &compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[inline]
+    #[allow(unreachable_patterns)]
     pub fn get_mut(&mut self) -> &mut AutoCompounder {
         match self {
             // VersionedFarmer::V101(farmer) => farmer,
