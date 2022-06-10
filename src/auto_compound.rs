@@ -79,7 +79,10 @@ impl Contract {
     ) -> U128 {
         assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
 
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
 
         ext_farm::claim_reward_by_farm(
             strat.get_ref().farm_id.clone(),
@@ -89,11 +92,6 @@ impl Contract {
         );
 
         let reward_amount = reward_amount_result.unwrap();
-        let strat = self
-            .strategies
-            .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
-
         let compounder = strat.get_mut();
         compounder.last_reward_amount = reward_amount.into();
         reward_amount
