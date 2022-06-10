@@ -243,6 +243,16 @@ impl Contract {
             _ => env::panic_str("E51: contract paused"),
         };
     }
+    fn assert_strategy_running(&self, token_id: String) {
+        self.assert_contract_running();
+
+        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+
+        match strat.clone().get().state {
+            AutoCompounderState::Running => (),
+            _ => env::panic_str("E51: strategy ended"),
+        };
+    }
 
     /// wrap token_id into correct format in MFT standard
     pub(crate) fn wrap_mft_token_id(&self, token_id: &String) -> String {

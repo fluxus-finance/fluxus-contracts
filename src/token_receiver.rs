@@ -89,7 +89,7 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        self.assert_contract_running();
+        self.assert_strategy_running(token_id.clone());
 
         //Check: Is the token_id the vault's pool_id? If is not, send it back
         let strategy = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);

@@ -7,7 +7,7 @@ impl Contract {
     /// Step 1
     /// Function to claim the reward from the farm contract
     pub fn claim_reward(&mut self, token_id: String) -> Promise {
-        self.assert_contract_running();
+        self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
@@ -70,7 +70,7 @@ impl Contract {
     /// Step 2
     /// Function to claim the reward from the farm contract
     pub fn withdraw_of_reward(&mut self, token_id: String) -> Promise {
-        self.assert_contract_running();
+        self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
@@ -143,7 +143,7 @@ impl Contract {
     /// Step 3
     /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
     pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
-        self.assert_contract_running();
+        self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
@@ -360,7 +360,7 @@ impl Contract {
     /// Step 4
     /// Get amount of tokens available then stake it
     pub fn autocompounds_liquidity_and_stake(&self, token_id: String) {
-        self.assert_contract_running();
+        self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
         ext_exchange::get_deposits(
