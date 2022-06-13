@@ -135,6 +135,20 @@ impl Contract {
     pub fn get_guardians(&self) -> Vec<AccountId> {
         self.guardians.to_vec()
     }
+
+    /// Returns current amount holden by the contract
+    pub fn get_contract_amount(self) -> U128 {
+        let mut amount: u128 = 0;
+
+        for (_, strat) in self.strategies {
+            let compounder = strat.get();
+
+            for (_, shares) in compounder.user_shares {
+                amount += shares.total;
+            }
+        }
+        U128(amount)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
