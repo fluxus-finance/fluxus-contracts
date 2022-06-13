@@ -173,13 +173,11 @@ impl AutoCompounder {
         if user_lps > 0 {
             user_shares.deposited += shares;
             user_shares.total += shares;
-            self.user_shares
-                .insert(account_id.clone(), user_shares.clone());
+            self.user_shares.insert(account_id.clone(), user_shares);
         } else {
             user_shares.deposited = shares;
             user_shares.total = shares;
-            self.user_shares
-                .insert(account_id.clone(), user_shares.clone());
+            self.user_shares.insert(account_id.clone(), user_shares);
         };
     }
 

@@ -92,7 +92,7 @@ impl Contract {
         .then(ext_self::callback_get_pool_shares(
             token_id.clone(),
             caller_id.clone(),
-            amount.clone().0,
+            amount.0,
             contract_id.clone(),
             0,
             Gas(230_000_000_000_000),
@@ -142,7 +142,7 @@ impl Contract {
             // withdraw missing amount from farm
             ext_farm::withdraw_seed(
                 compounder.seed_id,
-                U128(amount.clone()),
+                U128(amount),
                 "".to_string(),
                 self.farm_contract_id.clone(),
                 1,
@@ -202,10 +202,10 @@ impl Contract {
         ext_exchange::swap(
             vec![SwapAction {
                 pool_id: pool_id_to_swap,
-                token_in: token_in,
-                token_out: token_out,
-                amount_in: amount_in,
-                min_amount_out: min_amount_out,
+                token_in,
+                token_out,
+                amount_in,
+                min_amount_out,
             }],
             None,
             self.exchange_contract_id.clone(),
@@ -241,16 +241,6 @@ impl Contract {
             self.exchange_contract_id.clone(),
             970000000000000000000,
             Gas(30_000_000_000_000),
-        )
-    }
-
-    /// Call the ref get_deposits function.
-    fn call_get_deposits(&self, account_id: AccountId) -> Promise {
-        ext_exchange::get_deposits(
-            account_id,
-            self.exchange_contract_id.clone(),
-            1,
-            Gas(15_000_000_000_000),
         )
     }
 

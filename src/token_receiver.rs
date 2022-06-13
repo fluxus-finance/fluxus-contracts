@@ -1,7 +1,6 @@
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{ext_contract, PromiseOrValue};
-pub const GAS_FOR_FT_TRANSFER: Gas = Gas(10_000_000_000_000);
 
 use crate::*;
 

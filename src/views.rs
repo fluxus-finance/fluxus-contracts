@@ -73,12 +73,9 @@ impl Contract {
     /// Returns the total amount of near that was deposited
     /// WARN: DEPRECATED
     pub fn user_total_near_deposited(&self, account_id: AccountId) -> Option<String> {
-        let users_total_near_deposited = self.users_total_near_deposited.get(&account_id);
-        if let Some(quantity) = users_total_near_deposited {
-            Some(quantity.to_string())
-        } else {
-            None
-        }
+        self.users_total_near_deposited
+            .get(&account_id)
+            .map(|x| x.to_string())
     }
 
     /// Returns all token ids filtering by running strategies
@@ -99,7 +96,7 @@ impl Contract {
     pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
-        for (token_id, strat) in self.strategies.clone() {
+        for (token_id, strat) in self.strategies {
             let compounder = strat.get();
 
             info.push(AutoCompounderInfo {

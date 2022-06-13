@@ -15,7 +15,7 @@ impl Contract {
         let farm_id: String = strat.get_ref().farm_id.clone();
 
         ext_farm::list_farms_by_seed(
-            seed_id.clone(),
+            seed_id,
             self.farm_contract_id.clone(),
             0,
             Gas(40_000_000_000_000),
@@ -40,17 +40,15 @@ impl Contract {
         let farms = farms_result.unwrap();
 
         for farm in farms.iter() {
-            if farm.farm_id == farm_id {
-                if farm.farm_status != String::from("Running") {
-                    let strat = self
-                        .strategies
-                        .get_mut(&token_id)
-                        .expect(ERR21_TOKEN_NOT_REG);
-                    let compounder = strat.get_mut();
+            if farm.farm_id == farm_id && farm.farm_status != *"Running" {
+                let strat = self
+                    .strategies
+                    .get_mut(&token_id)
+                    .expect(ERR21_TOKEN_NOT_REG);
+                let compounder = strat.get_mut();
 
-                    compounder.state = AutoCompounderState::Ended;
-                    return PromiseOrValue::Value(format!("The farm {:#?} ended", farm_id));
-                }
+                compounder.state = AutoCompounderState::Ended;
+                return PromiseOrValue::Value(format!("The farm {:#?} ended", farm_id));
             }
         }
 
@@ -176,7 +174,7 @@ impl Contract {
             self.exchange_contract_id.clone(),         // receiver_id,
             compounder.last_reward_amount.to_string(), //Amount after withdraw the rewards
             "".to_string(),
-            compounder.reward_token.clone(),
+            compounder.reward_token,
             1,
             Gas(40_000_000_000_000),
         )
@@ -217,9 +215,9 @@ impl Contract {
         if common_token == 1 {
             ext_exchange::get_return(
                 compounder.pool_id_token2_reward,
-                compounder.reward_token.clone(),
+                compounder.reward_token,
                 amount_token_2,
-                compounder.token2_address.clone(),
+                compounder.token2_address,
                 self.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
@@ -234,9 +232,9 @@ impl Contract {
         } else if common_token == 2 {
             ext_exchange::get_return(
                 compounder.pool_id_token1_reward,
-                compounder.reward_token.clone(),
+                compounder.reward_token,
                 amount_token_1,
-                compounder.token1_address.clone(),
+                compounder.token1_address,
                 self.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
@@ -260,9 +258,9 @@ impl Contract {
             )
             .and(ext_exchange::get_return(
                 compounder.pool_id_token2_reward,
-                compounder.reward_token.clone(),
+                compounder.reward_token,
                 amount_token_2,
-                compounder.token2_address.clone(),
+                compounder.token2_address,
                 self.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
@@ -357,35 +355,35 @@ impl Contract {
         if common_token == 1 {
             self.call_swap(
                 pool_id_to_swap2,
-                token_in2.clone(),
-                token_out2.clone(),
+                token_in2,
+                token_out2,
                 Some(amount_in_2),
                 token2_min_out,
             )
         } else if common_token == 2 {
             self.call_swap(
                 pool_id_to_swap1,
-                token_in1.clone(),
-                token_out1.clone(),
+                token_in1,
+                token_out1,
                 Some(amount_in_1),
                 token1_min_out,
             )
         } else {
             self.call_swap(
                 pool_id_to_swap1,
-                token_in1.clone(),
-                token_out1.clone(),
+                token_in1,
+                token_out1,
                 Some(amount_in_1),
                 token1_min_out,
             )
             // TODO: should use and
             .then(ext_self::call_swap(
                 pool_id_to_swap2,
-                token_in2.clone(),
-                token_out2.clone(),
+                token_in2,
+                token_out2,
                 Some(amount_in_2),
                 token2_min_out,
-                contract_id.clone(),
+                contract_id,
                 0,
                 Gas(40_000_000_000_000),
             )) // should use a callback to assert that both tx succeeded
@@ -448,9 +446,7 @@ impl Contract {
         #[callback_result] shares_result: Result<U128, PromiseError>,
     ) -> U128 {
         assert!(shares_result.is_ok(), "ERR");
-        let shares_amount = shares_result.unwrap();
-
-        shares_amount
+        shares_result.unwrap()
     }
 
     /// Receives shares from auto-compound and stake it
@@ -479,7 +475,7 @@ impl Contract {
                 total_shares += balance.total;
             }
 
-            compounder.balance_update(total_shares, shares_amount.clone());
+            compounder.balance_update(total_shares, shares_amount);
         };
 
         let accumulated_shares = total_shares_result.unwrap().0;

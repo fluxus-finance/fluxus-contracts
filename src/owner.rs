@@ -31,7 +31,7 @@ impl Contract {
 
         let mut info: Vec<Strategy> = Vec::new();
 
-        for (token_id, strat) in self.strategies.clone() {
+        for (_, strat) in self.strategies {
             info.push(strat);
         }
 

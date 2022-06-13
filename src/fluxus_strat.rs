@@ -61,7 +61,7 @@ impl Strategy {
     #[allow(unreachable_patterns)]
     pub fn get_ref(&self) -> &AutoCompounder {
         match self {
-            Strategy::AutoCompounder(compounder) => &compounder,
+            Strategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }

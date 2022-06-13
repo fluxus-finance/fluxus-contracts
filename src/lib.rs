@@ -71,8 +71,6 @@ impl fmt::Display for RunningState {
     }
 }
 
-const TEN_TO_THE_POWER_OF_12: u128 = 1000000000000;
-
 #[near_bindgen]
 #[derive(BorshSerialize, BorshDeserialize, PanicOnDefault)]
 pub struct Contract {
@@ -229,11 +227,10 @@ impl Contract {
         exchange_contract_id: AccountId,
         farm_contract_id: AccountId,
     ) -> Self {
-        let mut allowed_accounts: Vec<AccountId> = Vec::new();
-        allowed_accounts.push(env::current_account_id());
+        let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
         Self {
-            owner_id: owner_id,
+            owner_id,
             guardians: UnorderedSet::new(StorageKey::Guardian),
             protocol_shares: 0u128,
             accounts: LookupMap::new(StorageKey::Accounts),
@@ -242,8 +239,8 @@ impl Contract {
             state: RunningState::Running,
             // TODO: remove this
             users_total_near_deposited: HashMap::new(),
-            exchange_contract_id: exchange_contract_id.clone(),
-            farm_contract_id: farm_contract_id.clone(),
+            exchange_contract_id,
+            farm_contract_id,
             /// List of all the pools.
             token_ids: Vec::new(),
             strategies: HashMap::new(),

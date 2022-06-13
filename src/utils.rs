@@ -88,19 +88,15 @@ impl Contract {
     #[private]
     pub fn check_promise(&self) -> bool {
         match env::promise_results_count() {
-            0 => {
-                return true;
-            }
-            1 => {
-                match env::promise_result(0) {
-                    PromiseResult::Successful(_) => {
-                        env::log_str("Check_promise successful");
-                        return true;
-                    }
-                    PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
-                    _ => return false,
-                };
-            }
+            0 => true,
+            1 => match env::promise_result(0) {
+                PromiseResult::Successful(_) => {
+                    env::log_str("Check_promise successful");
+                    true
+                }
+                PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
+                _ => false,
+            },
             _ => false,
         }
     }
