@@ -41,3 +41,6 @@ near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_
 
 #### Get guardians
 near view $CONTRACT_NAME get_guardians '{}'
+
+# #### Get total amount staked on contract
+# near view $CONTRACT_NAME get_contract_amount '{}'
