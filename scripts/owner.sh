@@ -12,3 +12,6 @@ near call $CONTRACT_NAME update_compounder_state ' {"token_id": "'$token_id'", "
 
 #### Give extra permissions to given addresses
 near call $CONTRACT_NAME extend_guardians '{ "guardians": ["'$username'"] }' --accountId $username --depositYocto 1
+
+### Only used by contracts admins, returns the same as get_stras plus current users infos
+near call $CONTRACT_NAME get_strats_info '{}' --accountId $CONTRACT_NAME

@@ -33,9 +33,6 @@ near view $CONTRACT_NAME get_strats '{}'
 #### Get state from strat, if its Running, Ended, etc.
 near view $CONTRACT_NAME get_strat_state '{"token_id": "'$token_id'" }'
 
-### Only used by contracts admins, returns the same as get_stras plus current users infos
-near call $CONTRACT_NAME get_strats_info '{}' --accountId $CONTRACT_NAME
-
 #### Returns struct from user {deposited: x, total: y}
 near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_id": ":'$pool_id'" }'
 
@@ -43,4 +40,4 @@ near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_
 near view $CONTRACT_NAME get_guardians '{}'
 
 # #### Get total amount staked on contract
-# near view $CONTRACT_NAME get_contract_amount '{}'
+near view $CONTRACT_NAME get_contract_amount '{}'
