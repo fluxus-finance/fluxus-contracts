@@ -17,6 +17,8 @@ use near_sdk::{
     BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseResult,
 };
 
+use percentage::Percentage;
+
 use crate::account_deposit::{Account, VAccount};
 mod account_deposit;
 mod auto_compound;

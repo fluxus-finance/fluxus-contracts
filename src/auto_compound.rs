@@ -336,13 +336,19 @@ impl Contract {
         let token_out1 = compounder.token1_address.clone();
         let token_out2 = compounder.token2_address.clone();
 
-        let (token1_min_out, token2_min_out): (U128, U128) = tokens;
+        let (mut token1_min_out, mut token2_min_out): (U128, U128) = tokens;
+
+        // apply slippage
+        let percent = Percentage::from(compounder.slippage);
+
+        token1_min_out = U128(percent.apply_to(token1_min_out.0));
+        token2_min_out = U128(percent.apply_to(token2_min_out.0));
 
         compounder.available_balance[0] = token1_min_out.0;
         compounder.available_balance[1] = token2_min_out.0;
 
         log!(
-            "min amount out: has {} for {} and {} for {}",
+            "min amount out: {} for {} and {} for {}",
             token1_min_out.0,
             token_out1,
             token2_min_out.0,

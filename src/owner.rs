@@ -82,4 +82,23 @@ impl Contract {
         env::predecessor_account_id() == self.owner_id
             || self.guardians.contains(&env::predecessor_account_id())
     }
+
+    /// Update slippage for given token_id
+    pub fn update_strat_slippage(&mut self, token_id: String, new_slippage: u128) -> String {
+        assert!(self.is_owner_or_guardians(), "ERR_");
+        // TODO: what maximum slippage should be accepted?
+        // Should not accept, say, 0 slippage
+        let strat = self
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        let compounder = strat.get_mut();
+        compounder.slippage = 100 - new_slippage;
+
+        format!(
+            "The current slippage for {} is {}",
+            token_id, compounder.slippage
+        )
+    }
 }

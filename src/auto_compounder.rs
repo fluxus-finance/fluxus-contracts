@@ -23,6 +23,10 @@ pub struct AutoCompounder {
     // State is used to update the contract to a Paused/Running state
     pub state: AutoCompounderState,
 
+    /// Slippage applied to swaps, range from 0 to 100.
+    /// Defaults to 5%. The value will be computed as 100 - slippage
+    pub slippage: u128,
+
     // Used to keep track of the rewards received from the farm during auto-compound cycle
     pub last_reward_amount: u128,
 
@@ -114,6 +118,7 @@ impl AutoCompounder {
             user_shares: HashMap::new(),
             protocol_shares: 0u128,
             state: AutoCompounderState::Running,
+            slippage: 95u128,
             last_reward_amount: 0u128,
             token1_address,
             token2_address,
@@ -224,6 +229,7 @@ impl VersionedCompounder {
             user_shares: HashMap::new(),
             protocol_shares: 0u128,
             state: AutoCompounderState::Running,
+            slippage: 95u128,
             last_reward_amount: 0u128,
             token1_address,
             token2_address,
