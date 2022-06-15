@@ -74,7 +74,7 @@ impl Contract {
         &mut self,
         #[callback_result] reward_amount_result: Result<U128, PromiseError>,
         token_id: String,
-    ) -> U128 {
+    ) -> Promise {
         assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
 
         let strat = self
@@ -82,17 +82,18 @@ impl Contract {
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
 
+        let reward_amount = reward_amount_result.unwrap();
+        let compounder = strat.get_mut();
+
+        // store the amount of reward earned
+        compounder.last_reward_amount = reward_amount.0;
+
         ext_farm::claim_reward_by_farm(
             strat.get_ref().farm_id.clone(),
             self.farm_contract_id.clone(),
             0,
             Gas(40_000_000_000_000),
-        );
-
-        let reward_amount = reward_amount_result.unwrap();
-        let compounder = strat.get_mut();
-        compounder.last_reward_amount = reward_amount.into();
-        reward_amount
+        )
     }
 
     /// Step 2
@@ -105,11 +106,12 @@ impl Contract {
         let reward_token: AccountId = strat.clone().get().reward_token;
 
         let compounder = strat.get_ref();
-        let amount = compounder.last_reward_amount;
+
+        let amount_to_withdraw = compounder.last_reward_amount;
 
         ext_farm::withdraw_reward(
             reward_token.to_string(),
-            U128(amount),
+            U128(amount_to_withdraw),
             "false".to_string(),
             self.farm_contract_id.clone(),
             1,
@@ -117,10 +119,9 @@ impl Contract {
         )
         .then(ext_self::callback_post_withdraw(
             token_id,
-            U128(amount),
             env::current_account_id(),
             0,
-            Gas(20_000_000_000_000),
+            Gas(60_000_000_000_000),
         ))
     }
 
@@ -129,8 +130,7 @@ impl Contract {
         &mut self,
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
         token_id: String,
-        amount: U128,
-    ) -> U128 {
+    ) -> PromiseOrValue<U128> {
         let strat = self
             .strategies
             .get_mut(&token_id)
@@ -141,10 +141,17 @@ impl Contract {
         if withdraw_result.is_err() {
             compounder.last_reward_amount = 0u128;
             log!("ERR_WITHDRAW_FROM_FARM_FAILED");
-            return U128(0);
+            return PromiseOrValue::Value(U128(0));
         }
 
-        amount
+        PromiseOrValue::Promise(ext_reward_token::ft_transfer_call(
+            self.exchange_contract_id.clone(),         // receiver_id,
+            compounder.last_reward_amount.to_string(), //Amount after withdraw the rewards
+            "".to_string(),
+            compounder.reward_token.clone(),
+            1,
+            Gas(40_000_000_000_000),
+        ))
     }
 
     /// Step 3
@@ -153,8 +160,11 @@ impl Contract {
         self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
-        let compounder = strat.clone().get();
+        let strat = self
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+        let compounder = strat.get_mut();
 
         let token1 = compounder.token1_address.clone();
         let token2 = compounder.token2_address.clone();
@@ -168,16 +178,44 @@ impl Contract {
             common_token = 2;
         }
 
-        let amount_in = U128(compounder.last_reward_amount / 2);
+        assert!(
+            compounder.last_reward_amount > 0,
+            "ERR_NO_REWARD_AVAILABLE_TO_SWAP"
+        );
 
-        ext_reward_token::ft_transfer_call(
-            self.exchange_contract_id.clone(),         // receiver_id,
-            compounder.last_reward_amount.to_string(), //Amount after withdraw the rewards
-            "".to_string(),
-            compounder.reward_token,
+        // apply fee to reward amount
+        // increase last_fee_amount, to cover the case that the last transfer somehow failed
+        let percent = Percentage::from(compounder.protocol_fee);
+
+        let fee_amount = percent.apply_to(compounder.last_reward_amount);
+        compounder.last_fee_amount += fee_amount;
+
+        // remaining amount to reinvest
+        let reward_amount = compounder.last_reward_amount - fee_amount;
+
+        // ensure that the value used is less than or equal to the current available amount
+        assert!(
+            reward_amount + fee_amount <= compounder.last_reward_amount,
+            "ERR"
+        );
+
+        let amount_in = U128(reward_amount / 2);
+
+        ext_exchange::mft_transfer(
+            compounder.reward_token.to_string(),
+            self.treasure_contract_id.clone(),
+            U128(compounder.last_fee_amount),
+            Some("".to_string()),
+            self.exchange_contract_id.clone(),
             1,
-            Gas(40_000_000_000_000),
+            Gas(20_000_000_000_000),
         )
+        .then(ext_self::callback_post_mft_transfer(
+            token_id.clone(),
+            env::current_account_id(),
+            0,
+            Gas(20_000_000_000_000),
+        ))
         .then(ext_self::get_tokens_return(
             token_id.clone(),
             amount_in,
@@ -198,10 +236,38 @@ impl Contract {
         ))
     }
 
+    /// Callback to verify that transfer to treasure succeeded
+    #[private]
+    pub fn callback_post_mft_transfer(
+        &mut self,
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        token_id: String,
+    ) {
+        let strat = self
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        let compounder = strat.get_mut();
+
+        // in the case where the transfer failed, the next cycle will send it plus the new amount earned
+        if ft_transfer_result.is_err() {
+            log!("Transfer to treasure failed".to_string());
+            return;
+        }
+
+        let amount = compounder.last_fee_amount;
+
+        // ensures that no duplicated value is sent to treasure
+        compounder.last_fee_amount = 0;
+
+        log!("Transfer {} to treasure succeeded", amount)
+    }
+
     #[private]
     pub fn get_tokens_return(
         &self,
-        #[callback_result] ft_transfer_result: Result<U128, PromiseError>,
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
@@ -210,14 +276,14 @@ impl Contract {
         assert!(ft_transfer_result.is_ok(), "ERR_REWARD_TRANSFER_FAILED");
 
         let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
-        let compounder = strat.clone().get();
+        let compounder = strat.get_ref();
 
         if common_token == 1 {
             ext_exchange::get_return(
                 compounder.pool_id_token2_reward,
-                compounder.reward_token,
+                compounder.reward_token.clone(),
                 amount_token_2,
-                compounder.token2_address,
+                compounder.token2_address.clone(),
                 self.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
@@ -232,9 +298,9 @@ impl Contract {
         } else if common_token == 2 {
             ext_exchange::get_return(
                 compounder.pool_id_token1_reward,
-                compounder.reward_token,
+                compounder.reward_token.clone(),
                 amount_token_1,
-                compounder.token1_address,
+                compounder.token1_address.clone(),
                 self.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
@@ -258,9 +324,9 @@ impl Contract {
             )
             .and(ext_exchange::get_return(
                 compounder.pool_id_token2_reward,
-                compounder.reward_token,
+                compounder.reward_token.clone(),
                 amount_token_2,
-                compounder.token2_address,
+                compounder.token2_address.clone(),
                 self.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),

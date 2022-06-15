@@ -17,6 +17,9 @@ pub struct AutoCompounder {
     // from the auto-compound strategy
     pub user_shares: HashMap<AccountId, SharesBalance>,
 
+    // Fee applied to each round of auto-compound
+    pub protocol_fee: u128,
+
     // Keeps tracks of how much shares the contract gained from the auto-compound
     pub protocol_shares: u128,
 
@@ -29,6 +32,10 @@ pub struct AutoCompounder {
 
     // Used to keep track of the rewards received from the farm during auto-compound cycle
     pub last_reward_amount: u128,
+
+    /// Used to keep track of the owned amount from fee of the token reward
+    /// This will be used to store owned amount if ft_transfer to treasure fails
+    pub last_fee_amount: u128,
 
     // Address of the first token used by pool
     pub token1_address: AccountId,
@@ -104,6 +111,7 @@ impl From<&AutoCompounderCycle> for String {
 /// Auto-compounder internal methods
 impl AutoCompounder {
     pub(crate) fn new(
+        protocol_fee: u128,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id_token1_reward: u64,
@@ -116,10 +124,12 @@ impl AutoCompounder {
     ) -> Self {
         Self {
             user_shares: HashMap::new(),
+            protocol_fee,
             protocol_shares: 0u128,
             state: AutoCompounderState::Running,
             slippage: 95u128,
             last_reward_amount: 0u128,
+            last_fee_amount: 0u128,
             token1_address,
             token2_address,
             pool_id_token1_reward,
@@ -215,6 +225,7 @@ pub enum VersionedCompounder {
 
 impl VersionedCompounder {
     pub fn new(
+        protocol_fee: u128,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id_token1_reward: u64,
@@ -227,10 +238,12 @@ impl VersionedCompounder {
     ) -> Self {
         VersionedCompounder::V101(AutoCompounder {
             user_shares: HashMap::new(),
+            protocol_fee,
             protocol_shares: 0u128,
             state: AutoCompounderState::Running,
             slippage: 95u128,
             last_reward_amount: 0u128,
+            last_fee_amount: 0u128,
             token1_address,
             token2_address,
             pool_id_token1_reward,
@@ -271,6 +284,7 @@ mod tests {
             to_account_id("auto_compounder.near"),
             String::from("eth.near").parse().unwrap(),
             String::from("dai.near").parse().unwrap(),
+            String::from("treasure.near").parse().unwrap(),
         );
 
         contract

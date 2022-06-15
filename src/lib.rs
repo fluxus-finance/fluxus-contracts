@@ -106,6 +106,9 @@ pub struct Contract {
     // Contract address of the farm used
     farm_contract_id: AccountId,
 
+    // Contract address to receive earned shares from fee
+    treasure_contract_id: AccountId,
+
     // Pools used to harvest, in the ":X" format
     token_ids: Vec<String>,
 
@@ -174,8 +177,11 @@ pub trait Callbacks {
         &mut self,
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
         token_id: String,
-        amount: U128,
-    ) -> U128;
+    ) -> Promise;
+    fn callback_post_mft_transfer(
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        token_id: String,
+    );
     fn callback_post_claim_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
@@ -228,6 +234,7 @@ impl Contract {
         owner_id: AccountId,
         exchange_contract_id: AccountId,
         farm_contract_id: AccountId,
+        treasure_contract_id: AccountId,
     ) -> Self {
         let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
@@ -243,6 +250,7 @@ impl Contract {
             users_total_near_deposited: HashMap::new(),
             exchange_contract_id,
             farm_contract_id,
+            treasure_contract_id,
             /// List of all the pools.
             token_ids: Vec::new(),
             strategies: HashMap::new(),

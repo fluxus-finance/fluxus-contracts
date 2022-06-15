@@ -6,6 +6,7 @@ impl Contract {
     pub fn create_strategy(
         &mut self,
         _strategy: String,
+        protocol_fee: u128,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id_token1_reward: u64,
@@ -23,6 +24,7 @@ impl Contract {
         self.token_ids.push(token_id.clone());
 
         let strat: Strategy = Strategy::AutoCompounder(AutoCompounder::new(
+            protocol_fee,
             token1_address,
             token2_address,
             pool_id_token1_reward,
