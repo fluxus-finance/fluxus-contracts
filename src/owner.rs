@@ -5,33 +5,34 @@ use crate::*;
 impl Contract {
     pub fn update_contract_state(&mut self, state: RunningState) -> String {
         self.is_owner();
-        self.state = state;
-        format!("{} is {:#?}", env::current_account_id(), self.state)
+        self.data_mut().state = state;
+        format!("{} is {:#?}", env::current_account_id(), self.data().state)
     }
 
     pub fn update_exchange_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
-        self.exchange_contract_id = contract_id;
+        self.data_mut().exchange_contract_id = contract_id;
     }
 
     pub fn update_farm_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
-        self.farm_contract_id = contract_id;
+        self.data_mut().farm_contract_id = contract_id;
     }
 
     /// Returns allowed_accounts
     pub fn get_allowed_accounts(&self) -> Vec<AccountId> {
         self.is_owner();
-        self.allowed_accounts.clone()
+        self.data().allowed_accounts.clone()
     }
 
     /// Returns all strategies without filtering
-    pub fn get_strats_info(self) -> Vec<Strategy> {
+    pub fn get_strats_info(self) -> Vec<VersionedStrategy> {
         self.is_owner();
 
-        let mut info: Vec<Strategy> = Vec::new();
+        let mut info: Vec<VersionedStrategy> = Vec::new();
 
-        for (_, strat) in self.strategies {
+        // TODO: should exist a `get_strategies` and upgrade everything at once if so?
+        for (_, strat) in self.data().strategies.clone() {
             info.push(strat);
         }
 
@@ -46,6 +47,7 @@ impl Contract {
         self.is_owner();
 
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -64,7 +66,7 @@ impl Contract {
         assert_one_yocto();
         self.is_owner();
         for guardian in guardians {
-            self.guardians.insert(&guardian);
+            self.data_mut().guardians.insert(&guardian);
         }
     }
 
@@ -74,13 +76,16 @@ impl Contract {
         assert_one_yocto();
         self.is_owner();
         for guardian in guardians {
-            self.guardians.remove(&guardian);
+            self.data_mut().guardians.remove(&guardian);
         }
     }
 
     pub fn is_owner_or_guardians(&self) -> bool {
-        env::predecessor_account_id() == self.owner_id
-            || self.guardians.contains(&env::predecessor_account_id())
+        env::predecessor_account_id() == self.data().owner_id
+            || self
+                .data()
+                .guardians
+                .contains(&env::predecessor_account_id())
     }
 
     /// Update slippage for given token_id
@@ -89,6 +94,7 @@ impl Contract {
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);

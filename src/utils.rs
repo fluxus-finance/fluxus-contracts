@@ -7,19 +7,21 @@ impl Contract {
         self.is_owner();
 
         require!(
-            !self.allowed_accounts.contains(&account_id),
+            !self.data().allowed_accounts.contains(&account_id),
             "ERR_ACCOUNT_ALREADY_EXIST"
         );
-        self.allowed_accounts.push(account_id)
+        self.data_mut().allowed_accounts.push(account_id)
     }
 
     /// Removes account_id from allowed_accounts
     pub fn remove_allowed_account(&mut self, account_id: AccountId) {
         self.is_owner();
 
+        let accounts = self.data().allowed_accounts.clone();
+
         // https://stackoverflow.com/a/44012406
-        self.allowed_accounts.swap_remove(
-            self.allowed_accounts
+        self.data_mut().allowed_accounts.swap_remove(
+            accounts
                 .iter()
                 .position(|x| *x == account_id)
                 .expect("ERR_ACCOUNT_DOES_NOT_EXIST"),
@@ -31,7 +33,7 @@ impl Contract {
     pub(crate) fn is_owner(&self) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
         require!(
-            caller_acc_id == contract_id || caller_acc_id == self.owner_id,
+            caller_acc_id == contract_id || caller_acc_id == self.data().owner_id,
             "ERR_NOT_ALLOWED"
         );
     }
@@ -53,7 +55,7 @@ impl Contract {
 
         let mut is_allowed: bool = false;
 
-        for account in &self.allowed_accounts {
+        for account in &self.data().allowed_accounts {
             if caller_acc_id == account {
                 is_allowed = true;
                 break;
@@ -68,11 +70,11 @@ impl Contract {
     pub fn extend_whitelisted_tokens(&mut self, tokens: Vec<AccountId>) {
         assert_eq!(
             env::predecessor_account_id(),
-            self.owner_id,
+            self.data().owner_id,
             "ERR_NOT_ALLOWED"
         );
         for token in tokens {
-            self.whitelisted_tokens.insert(&token);
+            self.data_mut().whitelisted_tokens.insert(&token);
         }
     }
 

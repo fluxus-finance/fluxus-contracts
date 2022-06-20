@@ -10,13 +10,13 @@ impl Contract {
         self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat(&token_id);
         let seed_id: String = strat.get_ref().seed_id.clone();
         let farm_id: String = strat.get_ref().farm_id.clone();
 
         ext_farm::list_farms_by_seed(
             seed_id,
-            self.farm_contract_id.clone(),
+            self.data().farm_contract_id.clone(),
             0,
             Gas(40_000_000_000_000),
         )
@@ -42,6 +42,7 @@ impl Contract {
         for farm in farms.iter() {
             if farm.farm_id == farm_id && farm.farm_status != *"Running" {
                 let strat = self
+                    .data_mut()
                     .strategies
                     .get_mut(&token_id)
                     .expect(ERR21_TOKEN_NOT_REG);
@@ -56,7 +57,7 @@ impl Contract {
             ext_farm::get_unclaimed_reward(
                 env::current_account_id(),
                 farm_id,
-                self.farm_contract_id.clone(),
+                self.data().farm_contract_id.clone(),
                 1,
                 Gas(3_000_000_000_000),
             )
@@ -78,6 +79,7 @@ impl Contract {
         assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
 
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -90,7 +92,7 @@ impl Contract {
 
         ext_farm::claim_reward_by_farm(
             strat.get_ref().farm_id.clone(),
-            self.farm_contract_id.clone(),
+            self.data().farm_contract_id.clone(),
             0,
             Gas(40_000_000_000_000),
         )
@@ -102,7 +104,7 @@ impl Contract {
         self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat(&token_id);
         let reward_token: AccountId = strat.clone().get().reward_token;
 
         let compounder = strat.get_ref();
@@ -113,7 +115,7 @@ impl Contract {
             reward_token.to_string(),
             U128(amount_to_withdraw),
             "false".to_string(),
-            self.farm_contract_id.clone(),
+            self.data().farm_contract_id.clone(),
             1,
             Gas(180_000_000_000_000),
         )
@@ -131,7 +133,10 @@ impl Contract {
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
         token_id: String,
     ) -> PromiseOrValue<U128> {
+        let exchange_id = self.exchange_acc();
+
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -145,7 +150,7 @@ impl Contract {
         }
 
         PromiseOrValue::Promise(ext_reward_token::ft_transfer_call(
-            self.exchange_contract_id.clone(),         // receiver_id,
+            exchange_id,
             compounder.last_reward_amount.to_string(), //Amount after withdraw the rewards
             "".to_string(),
             compounder.reward_token.clone(),
@@ -160,7 +165,10 @@ impl Contract {
         self.assert_strategy_running(token_id.clone());
         self.is_allowed_account();
 
+        let treasure_id = self.treasure_acc();
+
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -203,10 +211,10 @@ impl Contract {
 
         ext_exchange::mft_transfer(
             compounder.reward_token.to_string(),
-            self.treasure_contract_id.clone(),
+            treasure_id,
             U128(compounder.last_fee_amount),
             Some("".to_string()),
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             1,
             Gas(20_000_000_000_000),
         )
@@ -244,6 +252,7 @@ impl Contract {
         token_id: String,
     ) {
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -275,7 +284,7 @@ impl Contract {
     ) -> Promise {
         assert!(ft_transfer_result.is_ok(), "ERR_REWARD_TRANSFER_FAILED");
 
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat(&token_id);
         let compounder = strat.get_ref();
 
         if common_token == 1 {
@@ -284,7 +293,7 @@ impl Contract {
                 compounder.reward_token.clone(),
                 amount_token_2,
                 compounder.token2_address.clone(),
-                self.exchange_contract_id.clone(),
+                self.data().exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             )
@@ -301,7 +310,7 @@ impl Contract {
                 compounder.reward_token.clone(),
                 amount_token_1,
                 compounder.token1_address.clone(),
-                self.exchange_contract_id.clone(),
+                self.data().exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             )
@@ -318,7 +327,7 @@ impl Contract {
                 compounder.reward_token.clone(),
                 amount_token_1,
                 compounder.token1_address.clone(),
-                self.exchange_contract_id.clone(),
+                self.data().exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             )
@@ -327,7 +336,7 @@ impl Contract {
                 compounder.reward_token.clone(),
                 amount_token_2,
                 compounder.token2_address.clone(),
-                self.exchange_contract_id.clone(),
+                self.data().exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             ))
@@ -390,6 +399,7 @@ impl Contract {
         let (_, contract_id) = self.get_predecessor_and_current_account();
 
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -470,6 +480,7 @@ impl Contract {
         self.is_allowed_account();
 
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -499,7 +510,7 @@ impl Contract {
         .and(ext_exchange::get_pool_shares(
             pool_id,
             env::current_account_id(),
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             0,
             Gas(10_000_000_000_000),
         ))
@@ -533,10 +544,7 @@ impl Contract {
         assert!(total_shares_result.is_ok(), "ERR");
         let shares_amount = minted_shares_result.0;
 
-        let strat = self
-            .strategies
-            .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat_mut(&token_id);
 
         let compounder = strat.get_mut();
 
@@ -562,7 +570,7 @@ impl Contract {
         }
 
         self.call_stake(
-            self.farm_contract_id.clone(),
+            self.data().farm_contract_id.clone(),
             token_id,
             U128(accumulated_shares),
             "".to_string(),

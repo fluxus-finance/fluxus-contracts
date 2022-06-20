@@ -91,9 +91,9 @@ impl MFTTokenReceiver for Contract {
         self.assert_strategy_running(token_id.clone());
 
         //Check: Is the token_id the vault's pool_id? If is not, send it back
-        let strategy = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat(&token_id);
 
-        let compounder = strategy.clone().get();
+        let compounder = strat.get();
 
         let amount_in_u128: u128 = amount.into();
 

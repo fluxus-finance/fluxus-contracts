@@ -5,7 +5,7 @@ impl Contract {
     /// Returns the number of shares some accountId has in the contract
     /// Panics if token_id does not exist
     pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> SharesBalance {
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat(&token_id);
 
         let compounder = strat.clone().get();
 
@@ -54,18 +54,18 @@ impl Contract {
 
     /// Returns the state of the contract, such as Running, Paused
     pub fn get_contract_state(&self) -> String {
-        format!("{} is {}", env::current_account_id(), self.state)
+        format!("{} is {}", env::current_account_id(), self.data().state)
     }
 
     /// Return the whitelisted tokens.
     /// WARN: DEPRECATED
     pub fn get_whitelisted_tokens(&self) -> Vec<AccountId> {
-        self.whitelisted_tokens.to_vec()
+        self.data().whitelisted_tokens.to_vec()
     }
 
     /// Returns the minimum value accepted for given token_id
     pub fn get_seed_min_deposit(self, token_id: String) -> U128 {
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat(&token_id);
         let compounder = strat.clone().get();
         compounder.seed_min_deposit
     }
@@ -73,17 +73,18 @@ impl Contract {
     /// Returns the total amount of near that was deposited
     /// WARN: DEPRECATED
     pub fn user_total_near_deposited(&self, account_id: AccountId) -> Option<String> {
-        self.users_total_near_deposited
+        self.data()
+            .users_total_near_deposited
             .get(&account_id)
             .map(|x| x.to_string())
     }
 
     /// Returns all token ids filtering by running strategies
-    pub fn get_allowed_tokens(self) -> Vec<String> {
+    pub fn get_allowed_tokens(&self) -> Vec<String> {
         let mut running_strategies: Vec<String> = Vec::new();
 
-        for token in self.token_ids {
-            let strat = self.strategies.get(&token).unwrap();
+        for token in self.data().token_ids.clone() {
+            let strat = self.get_strat(&token);
             if strat.get_ref().state == AutoCompounderState::Running {
                 running_strategies.push(token);
             }
@@ -96,7 +97,7 @@ impl Contract {
     pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
-        for (token_id, strat) in self.strategies {
+        for (token_id, strat) in self.data().strategies.clone() {
             let compounder = strat.get();
 
             info.push(AutoCompounderInfo {
@@ -118,29 +119,29 @@ impl Contract {
     }
 
     pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
-        let compounder = strat.clone().get();
+        let strat = self.get_strat(&token_id);
+        let compounder = strat.get();
         compounder.state
     }
 
     /// Returns exchange and farm contracts
     pub fn get_contract_info(self) -> SafeInfo {
         SafeInfo {
-            exchange_address: self.exchange_contract_id,
-            farm_address: self.farm_contract_id,
+            exchange_address: self.exchange_acc(),
+            farm_address: self.farm_acc(),
         }
     }
 
     /// Only get guardians info
     pub fn get_guardians(&self) -> Vec<AccountId> {
-        self.guardians.to_vec()
+        self.data().guardians.to_vec()
     }
 
     /// Returns current amount holden by the contract
     pub fn get_contract_amount(self) -> U128 {
         let mut amount: u128 = 0;
 
-        for (_, strat) in self.strategies {
+        for (_, strat) in self.data().strategies.clone() {
             let compounder = strat.get();
 
             for (_, shares) in compounder.user_shares {

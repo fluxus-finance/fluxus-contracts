@@ -290,7 +290,7 @@ impl Contract {
                 if let Some(mut account) = self.internal_get_account(&sender_id) {
                     if account.deposit_with_storage_check(&token_id, amount.0) {
                         // cause storage already checked, here can directly save
-                        self.accounts.insert(&sender_id, &account.into());
+                        self.data_mut().accounts.insert(&sender_id, &account.into());
                     } else {
                         // we can ensure that internal_get_account here would NOT cause a version upgrade,
                         // cause it is callback, the account must be the current version or non-exist,
@@ -327,16 +327,21 @@ impl Contract {
     /// This should be only place to directly use `self.accounts`.
     pub(crate) fn internal_save_account(&mut self, account_id: &AccountId, account: Account) {
         account.assert_storage_usage();
-        self.accounts.insert(&account_id, &account.into());
+        self.data_mut()
+            .accounts
+            .insert(&account_id, &account.into());
     }
 
     /// save token to owner account as lostfound, no need to care about storage
     /// only global whitelisted token can be stored in lost-found
     pub(crate) fn internal_lostfound(&mut self, token_id: &AccountId, amount: u128) {
-        if self.whitelisted_tokens.contains(token_id) {
-            let mut lostfound = self.internal_unwrap_or_default_account(&self.owner_id);
+        if self.data().whitelisted_tokens.contains(token_id) {
+            let mut lostfound = self.internal_unwrap_or_default_account(&self.data().owner_id);
             lostfound.deposit(token_id, amount);
-            self.accounts.insert(&self.owner_id, &lostfound.into());
+            let owner_id = self.data().owner_id.clone();
+            self.data_mut()
+                .accounts
+                .insert(&owner_id, &lostfound.into());
         } else {
             env::panic_str("ERR: non-whitelisted token can NOT deposit into lost-found.");
         }
@@ -408,7 +413,8 @@ impl Contract {
     ) {
         let mut account = self.internal_unwrap_account(sender_id);
         assert!(
-            self.whitelisted_tokens.contains(token_id) || account.get_balance(token_id).is_some(),
+            self.data().whitelisted_tokens.contains(token_id)
+                || account.get_balance(token_id).is_some(),
             "{}",
             "E12: token not whitelisted"
         );
@@ -417,7 +423,10 @@ impl Contract {
     }
 
     pub fn internal_get_account(&self, account_id: &AccountId) -> Option<Account> {
-        self.accounts.get(account_id).map(|va| va.into_current())
+        self.data()
+            .accounts
+            .get(account_id)
+            .map(|va| va.into_current())
     }
 
     pub fn internal_unwrap_account(&self, account_id: &AccountId) -> Account {

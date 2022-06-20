@@ -15,7 +15,7 @@ impl StorageManagement for Contract {
             .unwrap_or_else(|| env::predecessor_account_id());
         let registration_only = registration_only.unwrap_or(false);
         let min_balance = self.storage_balance_bounds().min.0;
-        let already_registered = self.accounts.contains_key(&account_id);
+        let already_registered = self.data().accounts.contains_key(&account_id);
         if amount < min_balance && !already_registered {
             env::panic_str("ERR_DEPOSIT_LESS_THAN_MIN_STORAGE");
         }
@@ -39,12 +39,14 @@ impl StorageManagement for Contract {
 
         if already_registered {
             let amount_already_deposited = self
+                .data_mut()
                 .users_total_near_deposited
                 .get_mut(&account_id.clone())
                 .unwrap()
                 .clone();
 
-            self.users_total_near_deposited
+            self.data_mut()
+                .users_total_near_deposited
                 .insert(account_id.clone(), amount + amount_already_deposited);
 
             log!(
@@ -52,7 +54,8 @@ impl StorageManagement for Contract {
                 amount + amount_already_deposited
             );
         } else {
-            self.users_total_near_deposited
+            self.data_mut()
+                .users_total_near_deposited
                 .insert(account_id.clone(), amount);
             log!("0 + amount = {}", amount);
         }
@@ -67,11 +70,12 @@ impl StorageManagement for Contract {
         let amount = amount.unwrap_or(U128(0)).0;
 
         require!(
-            self.accounts.contains_key(&account_id),
+            self.data().accounts.contains_key(&account_id),
             "Account is not registered"
         );
 
         let amount_already_deposited = self
+            .data_mut()
             .users_total_near_deposited
             .get_mut(&account_id.clone())
             .unwrap()
@@ -97,7 +101,8 @@ impl StorageManagement for Contract {
             percentage_gains
         );
 
-        self.users_total_near_deposited
+        self.data_mut()
+            .users_total_near_deposited
             .insert(account_id.clone(), amount_already_deposited - amount);
         let withdraw_amount = self.internal_storage_withdraw(&account_id, amount);
         Promise::new(account_id.clone()).transfer(withdraw_amount);
@@ -117,7 +122,7 @@ impl StorageManagement for Contract {
                 account_deposit.tokens.is_empty(),
                 "ERR_STORAGE_UNREGISTER_TOKENS_NOT_EMPTY"
             );
-            self.accounts.remove(&account_id);
+            self.data_mut().accounts.remove(&account_id);
             Promise::new(account_id.clone()).transfer(account_deposit.near_amount);
             true
         } else {

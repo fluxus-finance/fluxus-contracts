@@ -1,3 +1,5 @@
+use crate::*;
+
 use crate::auto_compounder::AutoCompounder;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -11,22 +13,22 @@ pub(crate) type StratId = String;
 /// without needing to migrate the storage.
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub enum Strategy {
+pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
 }
 
-impl Strategy {
+impl VersionedStrategy {
     /// Returns Strategy kind.
     pub fn kind(&self) -> String {
         match self {
-            Strategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
         }
     }
 
     // TODO: impl
     // pub fn strategy_cycle(&mut self) {
     //     match self {
-    //         Strategy::AutoCompounder(strat) => {
+    //         VersionedStrategy::AutoCompounder(strat) => {
     //             strat.strategy_cycle();
     //         }
     //     }
@@ -35,45 +37,85 @@ impl Strategy {
     // TODO: impl
     // pub fn get_strategy_id(&self) -> StratId {
     //     match self {
-    //         Strategy::AutoCompounder(strat) => strat.strategy_id.clone(),
+    //         VersionedStrategy::AutoCompounder(strat) => strat.strategy_id.clone(),
     //     }
     // }
+
+    /// update method in order to upgrade strategy
+    pub fn upgrade(&self) -> Self {
+        match self {
+            VersionedStrategy::AutoCompounder(compounder) => {
+                VersionedStrategy::AutoCompounder(compounder.clone())
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    /// update method in order to upgrade strategy
+    pub fn need_upgrade(&self) -> bool {
+        match self {
+            Self::AutoCompounder(_) => false,
+            _ => unimplemented!(),
+        }
+    }
 
     // Return the farm or liquidity pool or token( other kinds of strategy) this strategy accepts
     pub fn get_token_id(&self) -> String {
         match self {
-            Strategy::AutoCompounder(strat) => strat.farm_id.clone(),
+            VersionedStrategy::AutoCompounder(strat) => strat.farm_id.clone(),
+            _ => unimplemented!(),
         }
     }
 
-    #[inline]
-    #[allow(unreachable_patterns)]
     pub fn get(self) -> AutoCompounder {
         match self {
-            // VersionedFarmer::V101(farmer) => farmer,
-            // AutoCompounder => ,
-            Strategy::AutoCompounder(compounder) => compounder,
+            VersionedStrategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }
 
-    #[inline]
-    #[allow(unreachable_patterns)]
     pub fn get_ref(&self) -> &AutoCompounder {
         match self {
-            Strategy::AutoCompounder(compounder) => compounder,
+            VersionedStrategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }
 
-    #[inline]
-    #[allow(unreachable_patterns)]
     pub fn get_mut(&mut self) -> &mut AutoCompounder {
         match self {
-            // VersionedFarmer::V101(farmer) => farmer,
-            // AutoCompounder => ,
-            Strategy::AutoCompounder(compounder) => compounder,
+            VersionedStrategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
+        }
+    }
+}
+
+impl Contract {
+    pub fn get_strat(&self, token_id: &String) -> VersionedStrategy {
+        let strat = self
+            .data()
+            .strategies
+            .get(token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        if strat.need_upgrade() {
+            strat.upgrade()
+        } else {
+            strat.clone()
+        }
+    }
+
+    pub fn get_strat_mut(&mut self, token_id: &String) -> &mut VersionedStrategy {
+        let strat = self
+            .data_mut()
+            .strategies
+            .get_mut(token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        if strat.need_upgrade() {
+            strat.upgrade();
+            strat
+        } else {
+            strat
         }
     }
 }

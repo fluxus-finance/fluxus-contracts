@@ -17,13 +17,13 @@ impl Contract {
         seed_min_deposit: U128,
     ) -> String {
         self.is_owner();
-        let seed_id: String = format!("{}@{}", self.exchange_contract_id, pool_id);
+        let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id);
         let farm_id: String = format!("{}#{}", seed_id, farm);
 
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
-        self.token_ids.push(token_id.clone());
+        self.data_mut().token_ids.push(token_id.clone());
 
-        let strat: Strategy = Strategy::AutoCompounder(AutoCompounder::new(
+        let strat: VersionedStrategy = VersionedStrategy::AutoCompounder(AutoCompounder::new(
             protocol_fee,
             token1_address,
             token2_address,
@@ -36,8 +36,8 @@ impl Contract {
             seed_min_deposit,
         ));
 
-        self.strategies.insert(token_id.clone(), strat);
+        self.data_mut().strategies.insert(token_id.clone(), strat);
 
-        format!("Strategy for {} created successfully", token_id)
+        format!("VersionedStrategy for {} created successfully", token_id)
     }
 }

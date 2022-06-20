@@ -73,9 +73,10 @@ impl fmt::Display for RunningState {
     }
 }
 
+// TODO: update to a versionable contract
 #[near_bindgen]
 #[derive(BorshSerialize, BorshDeserialize, PanicOnDefault)]
-pub struct Contract {
+pub struct ContractData {
     // Account address that have authority to update the contract state
     owner_id: AccountId,
 
@@ -113,7 +114,7 @@ pub struct Contract {
     token_ids: Vec<String>,
 
     // Keeps track of token_id to strategy used
-    strategies: HashMap<String, Strategy>,
+    strategies: HashMap<String, VersionedStrategy>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -213,55 +214,10 @@ construct_uint! {
     pub struct U256(4);
 }
 
-#[near_bindgen]
-impl Contract {
-    /// Function that initialize the contract.
-    ///
-    /// Arguments:
-    ///
-    /// - `owner_id` - the account id that owns the contract
-    /// - `protocol_shares` - the number of shares the contract starts/has
-    /// - `token1_address` - First pool token
-    /// - `token2_address` - Second pool token
-    /// - `pool_id_token1_reward` - Pool_id of a pool that is token1-reward
-    /// - `pool_id_token2_reward` - Pool_id of a pool that is token2-reward
-    /// - `reward_token` - Reward given by the farm
-    /// - `exchange` - The exchange that will be used to swap tokens and stake
-    /// - `farm_id` - The id of the farm to stake
-    /// - `pool_id` - The id of the pool to swap tokens
-    #[init]
-    pub fn new(
-        owner_id: AccountId,
-        exchange_contract_id: AccountId,
-        farm_contract_id: AccountId,
-        treasure_contract_id: AccountId,
-    ) -> Self {
-        let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
-
-        Self {
-            owner_id,
-            guardians: UnorderedSet::new(StorageKey::Guardian),
-            protocol_shares: 0u128,
-            accounts: LookupMap::new(StorageKey::Accounts),
-            allowed_accounts,
-            whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
-            state: RunningState::Running,
-            // TODO: remove this
-            users_total_near_deposited: HashMap::new(),
-            exchange_contract_id,
-            farm_contract_id,
-            treasure_contract_id,
-            /// List of all the pools.
-            token_ids: Vec::new(),
-            strategies: HashMap::new(),
-        }
-    }
-}
-
 /// Internal methods that do not rely on blockchain interaction
 impl Contract {
     fn assert_contract_running(&self) {
-        match self.state {
+        match self.data().state {
             RunningState::Running => (),
             _ => env::panic_str("E51: contract paused"),
         };
@@ -269,9 +225,9 @@ impl Contract {
     fn assert_strategy_running(&self, token_id: String) {
         self.assert_contract_running();
 
-        let strat = self.strategies.get(&token_id).expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat(&token_id);
 
-        match strat.clone().get().state {
+        match strat.get().state {
             AutoCompounderState::Running => (),
             _ => env::panic_str("E51: strategy ended"),
         };
@@ -280,5 +236,81 @@ impl Contract {
     /// wrap token_id into correct format in MFT standard
     pub(crate) fn wrap_mft_token_id(&self, token_id: &String) -> String {
         format!(":{}", token_id)
+    }
+}
+
+#[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+pub struct Contract {
+    data: VersionedContractData,
+}
+
+/// Versioned contract data. Allows to easily upgrade contracts.
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum VersionedContractData {
+    V0001(ContractData),
+}
+
+impl VersionedContractData {}
+
+#[near_bindgen]
+impl Contract {
+    #[init]
+    pub fn new(
+        owner_id: AccountId,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
+        treasure_contract_id: AccountId,
+    ) -> Self {
+        assert!(!env::state_exists(), "Already initialized");
+        let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
+
+        Self {
+            data: VersionedContractData::V0001(ContractData {
+                owner_id,
+                guardians: UnorderedSet::new(StorageKey::Guardian),
+                protocol_shares: 0u128,
+                accounts: LookupMap::new(StorageKey::Accounts),
+                allowed_accounts,
+                whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
+                state: RunningState::Running,
+                // TODO: remove this
+                users_total_near_deposited: HashMap::new(),
+                exchange_contract_id,
+                farm_contract_id,
+                treasure_contract_id,
+                /// List of all the pools.
+                token_ids: Vec::new(),
+                strategies: HashMap::new(),
+            }),
+        }
+    }
+}
+
+impl Contract {
+    fn data(&self) -> &ContractData {
+        match &self.data {
+            VersionedContractData::V0001(data) => data,
+            _ => unimplemented!(),
+        }
+    }
+
+    fn data_mut(&mut self) -> &mut ContractData {
+        match &mut self.data {
+            VersionedContractData::V0001(data) => data,
+            _ => unimplemented!(),
+        }
+    }
+
+    fn exchange_acc(&self) -> AccountId {
+        self.data().exchange_contract_id.clone()
+    }
+
+    fn farm_acc(&self) -> AccountId {
+        self.data().farm_contract_id.clone()
+    }
+
+    fn treasure_acc(&self) -> AccountId {
+        self.data().treasure_contract_id.clone()
     }
 }

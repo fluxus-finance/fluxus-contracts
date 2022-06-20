@@ -7,11 +7,11 @@ impl Contract {
     pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
         // decide which strategies
         ext_exchange::mft_transfer_call(
-            self.farm_contract_id.clone(),
+            self.data().farm_contract_id.clone(),
             token_id.clone(),
             U128(shares),
             "".to_string(),
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             1,
             Gas(80_000_000_000_000),
         )
@@ -37,6 +37,7 @@ impl Contract {
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
 
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
@@ -50,10 +51,11 @@ impl Contract {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
+    pub fn unstake(&self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
         let strat = self
+            .data()
             .strategies
             .get(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
@@ -85,7 +87,7 @@ impl Contract {
         ext_exchange::get_pool_shares(
             compounder.pool_id,
             contract_id.clone(),
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             0,
             Gas(20_000_000_000_000),
         )
@@ -118,6 +120,7 @@ impl Contract {
         assert!(shares_result.is_ok(), "ERR");
 
         let strat = self
+            .data()
             .strategies
             .get(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
@@ -132,7 +135,7 @@ impl Contract {
                 receiver_id,
                 U128(withdraw_amount),
                 Some("".to_string()),
-                self.exchange_contract_id.clone(),
+                self.data().exchange_contract_id.clone(),
                 1,
                 Gas(30_000_000_000_000),
             )
@@ -144,7 +147,7 @@ impl Contract {
                 compounder.seed_id,
                 U128(amount),
                 "".to_string(),
-                self.farm_contract_id.clone(),
+                self.data().farm_contract_id.clone(),
                 1,
                 Gas(180_000_000_000_000),
             )
@@ -154,7 +157,7 @@ impl Contract {
                 receiver_id,
                 U128(withdraw_amount),
                 Some("".to_string()),
-                self.exchange_contract_id.clone(),
+                self.data().exchange_contract_id.clone(),
                 1,
                 Gas(30_000_000_000_000),
             ))
@@ -173,6 +176,7 @@ impl Contract {
         // assert!(mft_transfer_result.is_ok());
 
         let strat = self
+            .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
@@ -208,7 +212,7 @@ impl Contract {
                 min_amount_out,
             }],
             None,
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             1,
             Gas(20_000_000_000_000),
         )
@@ -221,7 +225,7 @@ impl Contract {
         ext_exchange::get_pool_shares(
             pool_id,
             account_id,
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             0,
             Gas(10_000_000_000_000),
         )
@@ -238,7 +242,7 @@ impl Contract {
             pool_id,
             amounts,
             min_amounts,
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             970000000000000000000,
             Gas(30_000_000_000_000),
         )
@@ -249,7 +253,7 @@ impl Contract {
     pub fn call_user_register(&self, account_id: AccountId) -> Promise {
         ext_exchange::storage_deposit(
             account_id,
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             10000000000000000000000,
             Gas(3_000_000_000_000),
         )
@@ -268,7 +272,7 @@ impl Contract {
             token_id,
             amount,
             msg,
-            self.exchange_contract_id.clone(),
+            self.data().exchange_contract_id.clone(),
             1,
             Gas(80_000_000_000_000),
         )
@@ -285,7 +289,7 @@ impl Contract {
             token_id,
             amount,
             unregister,
-            self.farm_contract_id.clone(),
+            self.data().farm_contract_id.clone(),
             1,
             Gas(180_000_000_000_000),
         )
