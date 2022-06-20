@@ -1,6 +1,6 @@
 [package]
 name = "auto_compounder"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Pollum"]
 edition = "2021"
 
@@ -15,6 +15,7 @@ futures = "0.3"
 log = "0.4"
 console_log = { version = "0.2", optional = true }
 uint = "0.8"
+percentage = "0.1.0"
 
 
 [dev-dependencies]
