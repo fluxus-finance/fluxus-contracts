@@ -19,6 +19,11 @@ impl Contract {
         self.data_mut().farm_contract_id = contract_id;
     }
 
+    pub fn update_treasure_contract(&mut self, contract_id: AccountId) {
+        self.is_owner();
+        self.data_mut().treasure_contract_id = contract_id;
+    }
+
     /// Returns allowed_accounts
     pub fn get_allowed_accounts(&self) -> Vec<AccountId> {
         self.is_owner();
