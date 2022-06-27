@@ -1,4 +1,2 @@
 target/**
-scripts/neardev/**
-scripts/.env
 Cargo.lock
