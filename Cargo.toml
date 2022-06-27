@@ -1,4 +1,5 @@
 [workspace]
 members = [
     "fluxus-safe",
+    "fluxus-treasurer",
 ]
