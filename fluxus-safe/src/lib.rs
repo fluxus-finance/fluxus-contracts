@@ -151,10 +151,6 @@ pub trait Callbacks {
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         token_id: String,
     );
-    fn callback_post_claim_reward_2(
-        #[callback_result] claim_reward_result: Result<(), PromiseError>,
-        token_id: String,
-    );
     fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
     fn swap_to_auto(
         &mut self,
