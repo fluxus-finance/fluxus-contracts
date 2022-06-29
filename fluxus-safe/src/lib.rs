@@ -1,5 +1,6 @@
 use near_sdk::PromiseError;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
@@ -14,7 +15,7 @@ use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
     assert_one_yocto, env, ext_contract, log, near_bindgen, require, AccountId, Balance,
-    BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseResult,
+    BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseResult,PromiseOrValue
 };
 
 use percentage::Percentage;
@@ -46,6 +47,8 @@ use fluxus_strat::*;
 mod actions_of_strat;
 
 mod owner;
+
+mod multi_fungible_token;
 
 #[derive(BorshStorageKey, BorshSerialize)]
 pub(crate) enum StorageKey {
@@ -100,6 +103,14 @@ pub struct ContractData {
 
     // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
     users_total_near_deposited: HashMap<AccountId, u128>,
+
+
+    //
+    //users_shares_by_seed: Vec<HashMap<String, u128>>,
+    user_shares_by_seed_id: HashMap<String, HashMap<String, u128>>,
+    compounders_by_seed_id: HashMap<String, HashSet<String>>,
+    total_supply_by_seed_id:  HashMap<String, u128>,
+    //
 
     // Contract address of the exchange used
     exchange_contract_id: AccountId,
@@ -276,6 +287,10 @@ impl Contract {
                 state: RunningState::Running,
                 // TODO: remove this
                 users_total_near_deposited: HashMap::new(),
+                //users_shares_by_seed: Vec::new(),
+                user_shares_by_seed_id: HashMap::new(),
+                compounders_by_seed_id: HashMap::new(),
+                total_supply_by_seed_id: HashMap::new(),
                 exchange_contract_id,
                 farm_contract_id,
                 treasure_contract_id,

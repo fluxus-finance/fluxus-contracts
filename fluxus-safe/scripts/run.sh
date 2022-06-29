@@ -4,7 +4,7 @@
 ./build.sh
 
 #Deploy with near-dev
-near dev-deploy --wasmFile ../res/auto_compounder.wasm
+near dev-deploy --wasmFile ../res/fluxus_safe.wasm
 
 source neardev/dev-account.env
 echo $CONTRACT_NAME

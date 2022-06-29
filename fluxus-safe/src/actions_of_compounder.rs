@@ -186,6 +186,7 @@ impl Contract {
         // Decrement user shares
         compounder.decrement_user_shares(&account_id, amount);
     }
+
 }
 
 /// Auto-compounder ref-exchange wrapper
