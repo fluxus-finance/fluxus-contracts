@@ -95,7 +95,7 @@ pub trait RefExchange {
         amounts: Vec<U128>,
         min_amounts: Option<Vec<U128>>,
     ) -> U128;
-    fn swap(&mut self, actions: Vec<SwapAction>, referral_id: Option<AccountId>);
+    fn swap(&mut self, actions: Vec<SwapAction>, referral_id: Option<AccountId>) -> U128;
     fn mft_transfer_call(
         &mut self,
         receiver_id: AccountId,

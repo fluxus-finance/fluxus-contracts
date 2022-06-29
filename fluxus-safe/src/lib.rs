@@ -188,6 +188,11 @@ pub trait Callbacks {
         #[callback_result] claim_result: Result<(), PromiseError>,
         token_id: String,
     ) -> Promise;
+    fn callback_post_swap(
+        &mut self,
+        #[callback_result] swap_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
     fn callback_post_get_unclaimed_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
