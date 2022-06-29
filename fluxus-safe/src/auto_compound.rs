@@ -26,7 +26,7 @@ impl Contract {
             farm_id,
             env::current_account_id(),
             0,
-            Gas(130_000_000_000_000),
+            Gas(100_000_000_000_000),
         ))
     }
 
@@ -66,7 +66,7 @@ impl Contract {
                 token_id,
                 env::current_account_id(),
                 0,
-                Gas(90_000_000_000_000),
+                Gas(70_000_000_000_000),
             )),
         )
     }
@@ -79,13 +79,15 @@ impl Contract {
     ) -> Promise {
         assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
 
+        let reward_amount = reward_amount_result.unwrap();
+        assert!(reward_amount.0 > 0u128, "ERR_ZERO_REWARDS_EARNED");
+
         let strat = self
             .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
 
-        let reward_amount = reward_amount_result.unwrap();
         let compounder = strat.get_mut();
 
         // store the amount of reward earned
@@ -101,7 +103,7 @@ impl Contract {
             token_id,
             env::current_account_id(),
             0,
-            Gas(20_000_000_000_000),
+            Gas(10_000_000_000_000),
         ))
     }
 
