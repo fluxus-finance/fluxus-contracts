@@ -4,8 +4,7 @@ use std::collections::HashMap;
 use tokio::fs;
 use workspaces::network::Sandbox;
 use workspaces::prelude::*;
-use workspaces::{prelude::*, testnet, DevNetwork};
-use workspaces::{Account, AccountId, Contract, Network, Worker};
+use workspaces::{Account, AccountId, Contract, DevNetwork, Network, Worker};
 
 pub const TOTAL_GAS: u64 = 300_000_000_000_000;
 pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000;
@@ -34,26 +33,12 @@ pub struct FarmInfo {
     pub beneficiary_reward: U128,
 }
 
-const CONTRACT_ID_REF_EXC: &str = "exchange.ref-dev.testnet";
-const CONTRACT_ID_FARM: &str = "farm.leopollum.testnet";
+const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
+const CONTRACT_ID_FARM: &str = "farm101.fluxusfi.testnet";
 const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
+const CONTRACT_ID_TREASURE: &str = "treasure.mesto.testnet";
 
-pub async fn deploy_vault_contract(worker: &Worker<impl DevNetwork>) -> anyhow::Result<Contract> {
-    let wasm = fs::read("res/auto_compounder.wasm").await?;
-    let contract = worker.dev_deploy(&wasm).await?;
-
-    contract
-        .call(&worker, "new_without_pools")
-        .args_json(serde_json::json!({
-            "owner_id": contract.id().clone(),
-        }))?
-        .transact()
-        .await?;
-
-    Ok(contract)
-}
-
-pub async fn deploy_full_vault_contract(
+pub async fn deploy_safe_contract(
     token1: &Contract,
     token2: &Contract,
     reward_token: &Contract,
@@ -63,38 +48,33 @@ pub async fn deploy_full_vault_contract(
     farm_id: u64,
     worker: &Worker<impl DevNetwork>,
 ) -> anyhow::Result<Contract> {
-    let wasm = fs::read("res/auto_compounder.wasm").await?;
+    let wasm = fs::read("res/fluxus_safe.wasm").await?;
     let contract = worker.dev_deploy(&wasm).await?;
 
     contract
         .call(&worker, "new")
         .args_json(serde_json::json!({
             "owner_id": contract.id().clone(),
-            "protocol_shares": 0u128,
+            "exchange_contract_id": CONTRACT_ID_REF_EXC,
+            "farm_contract_id": CONTRACT_ID_FARM,
+            "treasure_contract_id": CONTRACT_ID_TREASURE
+        }))?
+        .transact()
+        .await?;
+
+    contract
+        .call(&worker, "create_strategy")
+        .args_json(serde_json::json!({
+            "_strategy": "".to_string(),
+            "protocol_fee": 10,
             "token1_address": token1.id().to_string(),
             "token2_address": token2.id().to_string(),
             "pool_id_token1_reward": pool_id_token1_reward,
             "pool_id_token2_reward": pool_id_token2_reward,
             "reward_token": reward_token.id().to_string(),
-            "exchange_contract_id": CONTRACT_ID_REF_EXC,
-            "farm_contract_id": CONTRACT_ID_FARM,
-            "farm_id": farm_id,
+            "farm": farm_id.to_string(),
             "pool_id": pool_id,
-            "seed_min_deposit": U128(MIN_SEED_DEPOSIT)
-        }))?
-        .transact()
-        .await?;
-
-    /* Register tokens into vault */
-    contract
-        .call(&worker, "extend_whitelisted_tokens")
-        .args_json(serde_json::json!({
-            "tokens":
-                vec![
-                    token1.id().clone(),
-                    token2.id().clone(),
-                    reward_token.id().clone(),
-                ]
+            "seed_min_deposit": MIN_SEED_DEPOSIT.to_string()
         }))?
         .transact()
         .await?;

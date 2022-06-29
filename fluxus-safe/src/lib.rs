@@ -33,8 +33,8 @@ mod utils;
 mod errors;
 use crate::errors::*;
 
-mod auto_compounder;
-use auto_compounder::*;
+pub mod auto_compounder;
+pub use auto_compounder::*;
 
 mod actions_of_compounder;
 
