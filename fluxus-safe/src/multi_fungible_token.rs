@@ -23,33 +23,38 @@ trait MFTTokenResolver {
 
 
 pub const NO_DEPOSIT: u128 = 0;
-pub const GAS_FOR_RESOLVE_TRANSFER: u128 = 20_000_000_000_000_u128;
-pub const GAS_FOR_FT_TRANSFER_CALL: u128 = 25_000_000_000_000_u128 + GAS_FOR_RESOLVE_TRANSFER;
+pub const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(20_000_000_000_000);
+pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 
 #[near_bindgen]
 impl Contract {
     
+    ///Return the u128 amount of an user for an specific seed_id (ref lp token).
     pub fn users_share_amount(&mut self, seed_id: String, user: String) -> u128 {
         let mut temp = HashMap::new();
         temp.insert(user.clone(), 0_u128);
-        let sla = (*self.data().user_shares_by_seed_id.get(&seed_id).unwrap_or(& temp)).get(&user).unwrap_or(&0_u128)
+        let sla = (*self.data().users_uxu_shares_by_seed_id.get(&seed_id).unwrap_or(& temp)).get(&user).unwrap_or(&0_u128)
         ;
         *sla
     }
 
+    ///Return the total_supply of an specific seed_id (ref lp token). 
     pub fn total_supply_amount(&mut self, seed_id: String) -> u128 {
         let result: u128 = *self.data_mut().total_supply_by_seed_id.get(&seed_id).unwrap_or(&0_u128);
         result
     }
 
-    pub fn mint_function(&mut self, seed_id: String, balance: u128, user: String) -> u128{
+    ///Assigns a uxu_share value to an user for a specific seed_id (ref lp token)
+    /// and increment the total_supply of this seed's uxu_share.
+    /// It returns the user's new balance.
+    pub fn mft_mint(&mut self, seed_id: String, balance: u128, user: String) -> u128{
 
         //Add balance to the user for this seed
         let old_amount: u128 = self.users_share_amount(seed_id.clone(), user.clone());
         let new_balance = old_amount+balance;
         let mut hash_temp = HashMap::new();
         hash_temp.insert(user, new_balance);
-        self.data_mut().user_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
+        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
 
         //Add balance to the total supply
         let old_total = self.total_supply_amount(seed_id.clone());
@@ -59,7 +64,10 @@ impl Contract {
         new_balance
     }
 
-    pub fn burn_function(&mut self, seed_id: String, balance: u128, user: String) -> u128{
+    ///Burn uxu_share value for an user in a specific seed_id (ref lp token)
+    /// and decrement the total_supply of this seed's uxu_share.
+    /// It returns the user's new balance.
+    pub fn mft_burn(&mut self, seed_id: String, balance: u128, user: String) -> u128{
         //Sub balance to the user for this seed
         let old_amount: u128 = self.users_share_amount(seed_id.clone(), user.clone());
 
@@ -68,7 +76,7 @@ impl Contract {
         let new_balance = old_amount - balance;
         let mut hash_temp = HashMap::new();
         hash_temp.insert(user, new_balance);
-        self.data_mut().user_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
+        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
 
         //Sub balance to the total supply
         let old_total = self.total_supply_amount(seed_id.clone());
@@ -77,12 +85,9 @@ impl Contract {
         //Returning the new balance
         new_balance
     }
-
-    
-    //Functions for transference
         
-    /// Transfer one of internal tokens: LP or balances.
-    /// The token_id is the seed_id
+    /// Transfer uxu_shares internally (user for user).
+    /// Token_id is a specific uxu_share.
     #[payable]
     pub fn mft_transfer(
         &mut self,
@@ -100,7 +105,7 @@ impl Contract {
             amount.0,
             memo,
         );
-    }/* */
+    }
 
     fn internal_mft_transfer(
         &mut self,
@@ -110,15 +115,10 @@ impl Contract {
         amount: u128,
         memo: Option<String>,
     ) {
-        // [AUDIT_07]
+
         assert_ne!(sender_id, receiver_id, "{}", ERR33_TRANSFER_TO_SELF);
-            
-        //let  strat = self.data_mut().strategies.get(&token_id).expect("ERR_NO_STRATEGY");
-        self.share_transfer(token_id.clone(), sender_id.clone(), receiver_id.clone(), amount.clone());
+        self.share_transfer(token_id.clone(), sender_id.clone(), receiver_id.clone(), amount);
 
-
-
-        //self.data_mut().strategies.insert(token_id, *strat);
         log!(
             "Transfer shares {} pool: {} from {} to {}",
             token_id,
@@ -126,8 +126,6 @@ impl Contract {
             sender_id,
             receiver_id
         );
-        
-            
         
         if let Some(memo) = memo {
             log!("Memo: {}", memo);
@@ -142,17 +140,18 @@ impl Contract {
         let new_balance = old_amount - amount;
         let mut hash_temp = HashMap::new();
         hash_temp.insert(sender_id, new_balance);
-        self.data_mut().user_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
+        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
         
-
         let old_amount: u128 = self.users_share_amount(seed_id.clone(), receiver_id.clone());
         let new_balance = old_amount + amount;
         let mut hash_temp = HashMap::new();
         hash_temp.insert(receiver_id, new_balance);
-        self.data_mut().user_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
+        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id, hash_temp );
     }
 
-    /* 
+    ///Transfer uxu_shares internally (account to account),
+    /// call mft_on_transfer in the receiver contract and 
+    /// refound something if it is necessary.
     #[payable]
     pub fn mft_transfer_call(
         &mut self,
@@ -168,7 +167,7 @@ impl Contract {
         self.internal_mft_transfer(
             token_id.clone(),
             sender_id.to_string(),
-            receiver_id.clone().to_string(),
+            receiver_id.to_string(),
             amount.0,
             memo,
         );
@@ -184,14 +183,15 @@ impl Contract {
         .then(ext_self::mft_resolve_transfer(
             token_id,
             sender_id,
-            receiver_id.into(),
+            receiver_id,
             amount,
             env::current_account_id(),
             NO_DEPOSIT,
             GAS_FOR_RESOLVE_TRANSFER,
         ))
         .into()
-    }*/
+    } 
+    /* */
 
     /// Returns how much was refunded back to the sender.
     /// If sender removed account in the meantime, the tokens are sent to the owner account.
@@ -214,22 +214,22 @@ impl Contract {
                 }
             }
             PromiseResult::Failed => amount.0,
-        };/*
+        };
         if unused_amount > 0 {
             
-            let receiver_balance = self.internal_mft_balance(token_id.clone(), &receiver_id);
+            let receiver_balance = self.users_share_amount(token_id.clone(), (*receiver_id).to_string());
             if receiver_balance > 0 {
                 let refund_amount = std::cmp::min(receiver_balance, unused_amount);
                 // If sender's account was deleted, we assume that they have also withdrew all the liquidity from pools.
                 // Funds are sent to the owner account.
-                let refund_to = if self.accounts.get(&sender_id).is_some() {
+                let refund_to = if self.data().accounts.get(&sender_id).is_some() {
                     sender_id
                 } else {
-                    self.owner_id.clone()
+                    self.data().owner_id.clone()
                 };
-                self.internal_mft_transfer(token_id, &receiver_id, &refund_to, refund_amount, None);
+                self.internal_mft_transfer(token_id, (*receiver_id).to_string(), refund_to.to_string(), refund_amount, None);
             } 
-        }*/
+        }
         U128(unused_amount)
     }
 

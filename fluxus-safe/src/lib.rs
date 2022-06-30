@@ -105,12 +105,17 @@ pub struct ContractData {
     users_total_near_deposited: HashMap<AccountId, u128>,
 
 
-    //
-    //users_shares_by_seed: Vec<HashMap<String, u128>>,
-    user_shares_by_seed_id: HashMap<String, HashMap<String, u128>>,
+    ///It is a map that store the seed_id and a map of users and their balance. 
+    /// illustration: map(seed[i], map(user[i], balance[i])).
+    users_uxu_shares_by_seed_id: HashMap<String, HashMap<String, u128>>,
+
+    ///Store the auto-compounders of the seeds.
+    /// illustration: map( seed[i], vec(user[i]) ).
     compounders_by_seed_id: HashMap<String, HashSet<String>>,
+
+    ///Store the uxu_share total_supply for each seed_id. 
     total_supply_by_seed_id:  HashMap<String, u128>,
-    //
+    
 
     // Contract address of the exchange used
     exchange_contract_id: AccountId,
@@ -288,7 +293,7 @@ impl Contract {
                 // TODO: remove this
                 users_total_near_deposited: HashMap::new(),
                 //users_shares_by_seed: Vec::new(),
-                user_shares_by_seed_id: HashMap::new(),
+                users_uxu_shares_by_seed_id: HashMap::new(),
                 compounders_by_seed_id: HashMap::new(),
                 total_supply_by_seed_id: HashMap::new(),
                 exchange_contract_id,
