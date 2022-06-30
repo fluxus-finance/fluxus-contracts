@@ -29,58 +29,79 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 #[near_bindgen]
 impl Contract {
     
-    ///Return the u128 amount of an user for an specific seed_id (ref lp token).
-    pub fn users_share_amount(&mut self, seed_id: String, user: String) -> u128 {
+    ///Return the u128 amount of an user for an specific uxu_share (ref lp token).
+    pub fn users_share_amount(&mut self, uxu_share: String, user: String) -> u128 {
         let mut temp = HashMap::new();
         temp.insert(user.clone(), 0_u128);
-        let sla = (*self.data().users_uxu_shares_by_seed_id.get(&seed_id).unwrap_or(& temp)).get(&user).unwrap_or(&0_u128)
+        let sla = (*self.data().users_balance_by_uxu_share.get(&uxu_share).unwrap_or(& temp)).get(&user).unwrap_or(&0_u128)
         ;
         *sla
     }
 
-    ///Return the total_supply of an specific seed_id (ref lp token). 
-    pub fn total_supply_amount(&mut self, seed_id: String) -> u128 {
-        let result: u128 = *self.data_mut().total_supply_by_seed_id.get(&seed_id).unwrap_or(&0_u128);
+    ///Register a seed into the users_balance_by_uxu_share
+    pub fn register_seed(&mut self, uxu_share: String) {
+        let mut temp = HashMap::new();
+        temp.insert("".to_string(), 0_u128);
+        self.data_mut().users_balance_by_uxu_share.insert(uxu_share, temp);
+        
+    }
+
+    ///Return users_balance of a specific uxu_share
+    #[inline]
+    pub fn users_share_map_by_uxu_share(&self, uxu_share: String)  -> HashMap<String, u128> {
+        let temp = self.data().users_balance_by_uxu_share.get(&uxu_share).unwrap();
+        self.do_clone(temp)
+    }
+
+    ///Clone a HashMap<String, u128>
+    pub fn do_clone(&self, data: &HashMap<String,u128>) -> HashMap<String, u128> {
+        data.clone()
+    } 
+
+    ///Return the total_supply of an specific uxu_share (ref lp token). 
+    pub fn total_supply_amount(&mut self, uxu_share: String) -> u128 {
+        let result: u128 = *self.data_mut().total_supply_by_uxu_share.get(&uxu_share).unwrap_or(&0_u128);
         result
     }
 
-    ///Assigns a uxu_share value to an user for a specific seed_id (ref lp token)
+    ///Assigns a uxu_share value to an user for a specific uxu_share (ref lp token)
     /// and increment the total_supply of this seed's uxu_share.
     /// It returns the user's new balance.
-    pub fn mft_mint(&mut self, seed_id: String, balance: u128, user: String) -> u128{
+    pub fn mft_mint(&mut self, uxu_share: String, balance: u128, user: String) -> u128{
 
         //Add balance to the user for this seed
-        let old_amount: u128 = self.users_share_amount(seed_id.clone(), user.clone());
+        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
         let new_balance = old_amount+balance;
-        let mut hash_temp = HashMap::new();
+        log!("{} + {} = new_balance {}", old_amount, balance, new_balance);
+        let mut hash_temp = self.users_share_map_by_uxu_share(uxu_share.clone());
+
         hash_temp.insert(user, new_balance);
-        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
+        self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp);
 
         //Add balance to the total supply
-        let old_total = self.total_supply_amount(seed_id.clone());
-        self.data_mut().total_supply_by_seed_id.insert(seed_id, old_total + balance);
+        let old_total = self.total_supply_amount(uxu_share.clone());
+        self.data_mut().total_supply_by_uxu_share.insert(uxu_share,  old_total + balance);
 
         //Returning the new balance
         new_balance
     }
 
-    ///Burn uxu_share value for an user in a specific seed_id (ref lp token)
+    ///Burn uxu_share value for an user in a specific uxu_share (ref lp token)
     /// and decrement the total_supply of this seed's uxu_share.
     /// It returns the user's new balance.
-    pub fn mft_burn(&mut self, seed_id: String, balance: u128, user: String) -> u128{
+    pub fn mft_burn(&mut self, uxu_share: String, balance: u128, user: String) -> u128{
         //Sub balance to the user for this seed
-        let old_amount: u128 = self.users_share_amount(seed_id.clone(), user.clone());
-
+        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
         assert!(old_amount >= balance);
-
         let new_balance = old_amount - balance;
-        let mut hash_temp = HashMap::new();
+        log!("{} - {} = new_balance {}", old_amount, balance, new_balance);
+        let mut hash_temp = self.users_share_map_by_uxu_share(uxu_share.clone());
         hash_temp.insert(user, new_balance);
-        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
+        self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp );
 
         //Sub balance to the total supply
-        let old_total = self.total_supply_amount(seed_id.clone());
-        self.data_mut().total_supply_by_seed_id.insert(seed_id, old_total - balance);
+        let old_total = self.total_supply_amount(uxu_share.clone());
+        self.data_mut().total_supply_by_uxu_share.insert(uxu_share, old_total - balance);
 
         //Returning the new balance
         new_balance
@@ -97,6 +118,7 @@ impl Contract {
         memo: Option<String>,
     ) {
         assert_one_yocto();
+        log!("{}",env::predecessor_account_id().to_string());
         self.assert_contract_running();
         self.internal_mft_transfer(
             token_id,
@@ -120,7 +142,7 @@ impl Contract {
         self.share_transfer(token_id.clone(), sender_id.clone(), receiver_id.clone(), amount);
 
         log!(
-            "Transfer shares {} pool: {} from {} to {}",
+            "Transfer shares {}: {} from {} to {}",
             token_id,
             amount,
             sender_id,
@@ -132,21 +154,27 @@ impl Contract {
         }
     }
 
-    pub fn share_transfer(&mut self, seed_id: String, sender_id: String, receiver_id: String, amount: u128) {
+    pub fn share_transfer(&mut self, uxu_share: String, sender_id: String, receiver_id: String, amount: u128) {
 
-        let old_amount: u128 = self.users_share_amount(seed_id.clone(), sender_id.clone());
+        log!("{} and {}", sender_id, uxu_share);
+        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), sender_id.clone());
+        log!("{} > = {}", old_amount, amount);
         assert!(old_amount>=amount);
-
+        log!("{} - {}", old_amount, amount);
         let new_balance = old_amount - amount;
-        let mut hash_temp = HashMap::new();
+        log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
+
+        let mut hash_temp = self.users_share_map_by_uxu_share(uxu_share.clone());
         hash_temp.insert(sender_id, new_balance);
-        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id.clone(), hash_temp );
+        self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp );
+
         
-        let old_amount: u128 = self.users_share_amount(seed_id.clone(), receiver_id.clone());
+        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), receiver_id.clone());
         let new_balance = old_amount + amount;
-        let mut hash_temp = HashMap::new();
+        log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
+        let mut hash_temp = self.users_share_map_by_uxu_share(uxu_share.clone());
         hash_temp.insert(receiver_id, new_balance);
-        self.data_mut().users_uxu_shares_by_seed_id.insert(seed_id, hash_temp );
+        self.data_mut().users_balance_by_uxu_share.insert(uxu_share, hash_temp );
     }
 
     ///Transfer uxu_shares internally (account to account),
@@ -191,7 +219,6 @@ impl Contract {
         ))
         .into()
     } 
-    /* */
 
     /// Returns how much was refunded back to the sender.
     /// If sender removed account in the meantime, the tokens are sent to the owner account.

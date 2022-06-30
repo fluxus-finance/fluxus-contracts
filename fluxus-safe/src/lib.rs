@@ -105,17 +105,19 @@ pub struct ContractData {
     users_total_near_deposited: HashMap<AccountId, u128>,
 
 
-    ///It is a map that store the seed_id and a map of users and their balance. 
-    /// illustration: map(seed[i], map(user[i], balance[i])).
-    users_uxu_shares_by_seed_id: HashMap<String, HashMap<String, u128>>,
+    ///It is a map that store the uxu_share and a map of users and their balance. 
+    /// illustration: map(uxu_share[i], map(user[i], balance[i])).
+    users_balance_by_uxu_share: HashMap<String, HashMap<String, u128>>,
 
     ///Store the auto-compounders of the seeds.
     /// illustration: map( seed[i], vec(user[i]) ).
     compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
     ///Store the uxu_share total_supply for each seed_id. 
-    total_supply_by_seed_id:  HashMap<String, u128>,
+    total_supply_by_uxu_share:  HashMap<String, u128>,
     
+    ///Store the uxu_share for each seed_id. 
+    uxu_share_by_seed_id:  HashMap<String, String>,
 
     // Contract address of the exchange used
     exchange_contract_id: AccountId,
@@ -293,9 +295,10 @@ impl Contract {
                 // TODO: remove this
                 users_total_near_deposited: HashMap::new(),
                 //users_shares_by_seed: Vec::new(),
-                users_uxu_shares_by_seed_id: HashMap::new(),
+                users_balance_by_uxu_share: HashMap::new(),
                 compounders_by_seed_id: HashMap::new(),
-                total_supply_by_seed_id: HashMap::new(),
+                total_supply_by_uxu_share: HashMap::new(),
+                uxu_share_by_seed_id: HashMap::new(),
                 exchange_contract_id,
                 farm_contract_id,
                 treasure_contract_id,
