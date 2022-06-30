@@ -1,18 +1,42 @@
 mod utils;
 
 use near_units::parse_near;
-use workspaces::{network::DevAccountDeployer, Account, AccountId, Contract, Network, Worker};
+use workspaces::{
+    network::{DevAccountDeployer, Sandbox},
+    Account, AccountId, Contract, Network, Worker,
+};
 
 const TOTAL_GAS: u64 = 300_000_000_000_000;
 
 const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 
-/// Runs the full cycle of auto-compound
-async fn do_auto_compound(
+/// Runs the full cycle of auto-compound and fast forward
+async fn do_auto_compound_with_fast_forward(
     contract: &Contract,
+    farm: &Contract,
     token_id: &String,
-    worker: &Worker<impl Network>,
+    blocks_to_forward: u64,
+    fast_forward_token: &mut u64,
+    worker: &Worker<Sandbox>,
 ) -> anyhow::Result<()> {
+    if blocks_to_forward > 0 {
+        let block_info = worker.view_latest_block().await?;
+        println!(
+            "BlockInfo {fast_forward_token} pre-fast_forward {:?}",
+            block_info
+        );
+
+        worker.fast_forward(blocks_to_forward).await?;
+
+        let block_info = worker.view_latest_block().await?;
+        println!(
+            "BlockInfo {fast_forward_token} post-fast_forward {:?}",
+            block_info
+        );
+
+        *fast_forward_token += 1;
+    }
+
     let res = contract
         .call(worker, "harvest")
         .args_json(serde_json::json!({ "token_id": token_id }))?
@@ -45,8 +69,6 @@ async fn do_auto_compound(
         .await?;
     // println!("autocompounds_liquidity_and_stake {:#?}\n", res);
 
-    // utils::log_farm_seeds(&contract, &farm, &worker).await?;
-
     Ok(())
 }
 
@@ -60,7 +82,7 @@ async fn get_user_shares(
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
     let res = contract
-        .call(&worker, "get_user_shares")
+        .call(worker, "get_user_shares")
         .args_json(serde_json::json!({
             "account_id": account.id(),
             "token_id": token_id,
@@ -91,7 +113,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let exchange = utils::deploy_exchange(
         &owner,
         &exchange_id,
-        vec![&token_1.id(), &token_2.id(), &token_reward.id()],
+        vec![token_1.id(), token_2.id(), token_reward.id()],
         &worker,
     )
     .await?;
@@ -152,7 +174,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let farm = utils::deploy_farm(&owner, &seed_id, &token_reward, &worker).await?;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 3: Deploy Vault contract
+    // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
 
     let contract = utils::deploy_safe_contract(
@@ -168,10 +190,10 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     .await?;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 4: Initialize Vault
+    // Stage 4: Initialize Safe
     ///////////////////////////////////////////////////////////////////////////
 
-    /* Register vault into farm contract */
+    /* Register into farm contract */
     let res = contract
         .as_account()
         .call(&worker, farm.id(), "storage_deposit")
@@ -202,7 +224,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // println!("mft_register {:#?}", res);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 5: Start interacting with Vault
+    // Stage 5: Start interacting with Safe
     ///////////////////////////////////////////////////////////////////////////
 
     let initial_owner_shares: String =
@@ -235,24 +257,20 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 6: Fast forward in the future
+    // Stage 6: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo pre-fast_forward {:?}", block_info);
+    let mut fast_forward_counter: u64 = 0;
 
-    worker.fast_forward(700).await?;
-
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo post-fast_forward {:?}", block_info);
-
-    // utils::log_farm_info(&farm, &seed_id, &worker).await?;
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Stage 7: Auto-compound calls
-    ///////////////////////////////////////////////////////////////////////////
-
-    do_auto_compound(&contract, &token_id, &worker).await?;
+    do_auto_compound_with_fast_forward(
+        &contract,
+        &farm,
+        &token_id,
+        700,
+        &mut fast_forward_counter,
+        &worker,
+    )
+    .await?;
 
     let owner_deposited_shares: u128 = utils::str_to_u128(&initial_owner_shares);
 
@@ -266,7 +284,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 8: Stake with another account
+    // Stage 7: Stake with another account
     ///////////////////////////////////////////////////////////////////////////
 
     // add liquidity for account 1
@@ -284,11 +302,11 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // Get account 1 shares
     let account1_initial_shares: String =
-        utils::get_pool_shares(&account_1, &exchange, pool_token1_token2.clone(), &worker).await?;
+        utils::get_pool_shares(&account_1, &exchange, pool_token1_token2, &worker).await?;
 
     let pool_id: String = format!(":{}", pool_token1_token2);
 
-    // /* Stake */
+    /* Stake */
     let res = account_1
         .call(&worker, exchange.id(), "mft_transfer_call")
         .args_json(serde_json::json!({
@@ -314,25 +332,21 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 9: Fast forward in the future
+    // Stage 8: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo pre-fast_forward {:?}", block_info);
-
-    worker.fast_forward(900).await?;
-
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo post-fast_forward {:?}", block_info);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Stage 10: Run another round of auto-compound
-    ///////////////////////////////////////////////////////////////////////////
-
-    do_auto_compound(&contract, &token_id, &worker).await?;
+    do_auto_compound_with_fast_forward(
+        &contract,
+        &farm,
+        &token_id,
+        900,
+        &mut fast_forward_counter,
+        &worker,
+    )
+    .await?;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 11: Assert owner and account_1 earned shares from auto-compounder strategy
+    // Stage 9: Assert owner and account_1 earned shares from auto-compounder strategy
     ///////////////////////////////////////////////////////////////////////////
 
     // owner shares
@@ -356,7 +370,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 12: Withdraw from Vault and assert received shares are correct
+    // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
 
     let res = owner
