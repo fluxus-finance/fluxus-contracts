@@ -37,37 +37,15 @@ async fn do_auto_compound_with_fast_forward(
         *fast_forward_token += 1;
     }
 
-    let res = contract
-        .call(worker, "harvest")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("claim_reward {:#?}\n", res);
-
-    let res = contract
-        .call(worker, "harvest")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("withdraw_of_reward {:#?}\n", res);
-
-    let res = contract
-        .call(worker, "harvest")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("autocompounds_swap {:#?}\n", res);
-
-    let res = contract
-        .call(worker, "harvest")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("autocompounds_liquidity_and_stake {:#?}\n", res);
+    for _ in 0..4 {
+        let res = contract
+            .call(worker, "harvest")
+            .args_json(serde_json::json!({ "token_id": token_id }))?
+            .gas(TOTAL_GAS)
+            .transact()
+            .await?;
+        // println!("{:#?}\n", res);
+    }
 
     Ok(())
 }
