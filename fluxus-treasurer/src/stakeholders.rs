@@ -9,7 +9,7 @@ impl Contract {
 
         let mut total_fees: u128 = 0u128;
 
-        for (acc_id, account_fee) in self.stakeholders_fees.iter() {
+        for (acc_id, account_fee) in self.data().stakeholders_fees.iter() {
             assert!(
                 *acc_id != account_id,
                 "TREASURER::ERR_ADDRESS_ALREADY_EXIST"
@@ -24,8 +24,11 @@ impl Contract {
             "TREASURER::ERR_FEE_EXCEEDS_MAXIMUM_VALUE"
         );
 
-        self.stakeholders_fees.insert(account_id.clone(), fee);
-        self.stakeholders_amount_available
+        self.data_mut()
+            .stakeholders_fees
+            .insert(account_id.clone(), fee);
+        self.data_mut()
+            .stakeholders_amount_available
             .insert(account_id.clone(), 0u128);
 
         format!(
@@ -37,7 +40,7 @@ impl Contract {
     /// Removes account from stakeholders_fee
     pub fn remove_stakeholder(&mut self, account_id: AccountId) {
         self.is_owner();
-        self.stakeholders_fees.remove(&account_id);
+        self.data_mut().stakeholders_fees.remove(&account_id);
     }
 
     pub fn update_stakeholder_percentage(
@@ -47,12 +50,12 @@ impl Contract {
     ) -> String {
         self.is_owner();
         assert!(
-            self.stakeholders_fees.contains_key(&account_id),
+            self.data().stakeholders_fees.contains_key(&account_id),
             "TREASURER::ERR_ACCOUNT_DOES_NOT_EXIST"
         );
 
         let mut total_fees = new_percentage;
-        for (account, percentage) in self.stakeholders_fees.iter() {
+        for (account, percentage) in self.data().stakeholders_fees.iter() {
             if account != &account_id {
                 total_fees += percentage;
             }
@@ -63,7 +66,8 @@ impl Contract {
             "TREASURER::ERR_FEE_EXCEEDS_MAXIMUM_VALUE"
         );
 
-        self.stakeholders_fees
+        self.data_mut()
+            .stakeholders_fees
             .insert(account_id.clone(), new_percentage);
 
         format! { "The percentage for {} is now {}", account_id, new_percentage}
@@ -72,7 +76,7 @@ impl Contract {
     /// Returns stakeholders and associated fees
     pub fn get_stakeholders(&self) -> HashMap<AccountId, u128> {
         self.is_owner();
-        self.stakeholders_fees.clone()
+        self.data().stakeholders_fees.clone()
     }
 }
 

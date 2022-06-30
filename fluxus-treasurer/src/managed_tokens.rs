@@ -8,14 +8,14 @@ impl Contract {
     pub fn register_token(&mut self, token: AccountId, pool_id: u64) -> Promise {
         self.is_owner();
         assert_eq!(
-            self.token_to_pool.contains_key(&token),
+            self.data().token_to_pool.contains_key(&token),
             false,
             "TREASURER::ERR_TOKEN_ALREADY_EXIST"
         );
 
         ext_exchange::register_tokens(
             vec![token.clone()],
-            self.exchange_contract_id.clone(),
+            self.exchange_acc(),
             1,
             Gas(20_000_000_000_000),
         )
@@ -47,7 +47,9 @@ impl Contract {
         assert!(register_result.is_ok(), "TREASURER::COULD_NOT_REGISTER");
         assert!(deposit_result.is_ok(), "TREASURER::COULD_NOT_DEPOSIT");
 
-        self.token_to_pool.insert(token.clone(), pool_id.clone());
+        self.data_mut()
+            .token_to_pool
+            .insert(token.clone(), pool_id.clone());
 
         format!(
             "The token {} with pool {} was added successfully",
@@ -59,11 +61,11 @@ impl Contract {
     pub fn update_token_pool(&mut self, token: AccountId, pool_id: u64) -> String {
         self.is_owner();
         assert!(
-            self.token_to_pool.contains_key(&token),
+            self.data().token_to_pool.contains_key(&token),
             "TREASURER::ERR_TOKEN_DOES_NOT_EXIST"
         );
 
-        self.token_to_pool.insert(token.clone(), pool_id);
+        self.data_mut().token_to_pool.insert(token.clone(), pool_id);
 
         format!(
             "The token {} with pool {} was updated successfully",
@@ -72,7 +74,7 @@ impl Contract {
     }
 
     pub fn get_registered_tokens(&self) -> HashMap<AccountId, u64> {
-        self.token_to_pool.clone()
+        self.data().token_to_pool.clone()
     }
 }
 
@@ -116,7 +118,10 @@ mod tests {
         let token = to_account_id("usn.near");
         let pool_id = 100u64;
 
-        contract.token_to_pool.insert(token.clone(), pool_id);
+        contract
+            .data_mut()
+            .token_to_pool
+            .insert(token.clone(), pool_id);
         contract.update_token_pool(token, pool_id + 1);
 
         let token2 = to_account_id("dai.near");
@@ -135,7 +140,10 @@ mod tests {
         let token = to_account_id("usn.near");
         let pool_id = 100u64;
 
-        contract.token_to_pool.insert(token.clone(), pool_id);
+        contract
+            .data_mut()
+            .token_to_pool
+            .insert(token.clone(), pool_id);
 
         let registered_tokens: HashMap<AccountId, u64> = contract.get_registered_tokens();
         assert_eq!(
