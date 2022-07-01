@@ -1,8 +1,10 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::PromiseError;
-use near_sdk::{env, ext_contract, near_bindgen, require, AccountId, Gas, PanicOnDefault, Promise};
+use near_sdk::{
+    env, ext_contract, near_bindgen, require, AccountId, Gas, PanicOnDefault, Promise, PromiseIndex,
+};
+use near_sdk::{PromiseError, PromiseOrValue};
 
 use std::collections::HashMap;
 use std::convert::Into;
@@ -33,7 +35,7 @@ impl fmt::Display for RunningState {
 }
 #[near_bindgen]
 #[derive(BorshSerialize, BorshDeserialize, PanicOnDefault)]
-pub struct Contract {
+pub struct ContractData {
     // Account address that have authority to update the contract state
     owner_id: AccountId,
 
@@ -57,7 +59,6 @@ pub struct Contract {
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
 pub trait ExtContract {
-    fn callback_swap(&self, #[callback_result] balance: Result<U128, PromiseError>) -> String;
     fn callback_register_token(&self, token: AccountId, pool_id: u64) -> String;
     fn get_token_return_and_swap(
         &self,
@@ -72,15 +73,15 @@ pub trait ExtContract {
         amount_in: U128,
         pool_id: u64,
     ) -> Promise;
-    fn callback_balance_of(
+    fn callback_post_swap(
         &self,
         #[callback_result] withdraw_result: Result<(), PromiseError>,
     ) -> Promise;
     fn internal_distribute(
         &mut self,
-        #[callback_result] withdraw_result: Result<(), PromiseError>,
+        #[callback_result] withdraw_result: Result<U128, PromiseError>,
         amount: U128,
-    ) -> String;
+    ) -> PromiseOrValue<String>;
     fn callback_withdraw(
         &mut self,
         #[callback_result] transfer_result: Result<(), PromiseError>,
@@ -90,33 +91,12 @@ pub trait ExtContract {
 
 #[near_bindgen]
 impl Contract {
-    /// Function that initialize the contract.
-    ///
-    /// Arguments:
-    ///
-    /// - `owner_id` - The account id that owns the contract
-    /// - `token_out` - Token address, used to distribute fees between stakeholders
-    /// - `exchange_contract_id` - The exchange that will be used to swap tokens
-    ///
-    #[init]
-    pub fn new(owner_id: AccountId, token_out: AccountId, exchange_contract_id: AccountId) -> Self {
-        Self {
-            owner_id: owner_id,
-            stakeholders_fees: HashMap::new(),
-            stakeholders_amount_available: HashMap::new(),
-            token_out,
-            token_to_pool: HashMap::new(),
-            state: RunningState::Running,
-            exchange_contract_id,
-        }
-    }
-
     /// Function responsible for swapping rewards tokens for the token distributed
-    pub fn execute_swaps(&self, token: AccountId) -> Promise {
+    pub fn execute_swaps_and_distribute(&self, token: AccountId) -> Promise {
         // self.assert_contract_running();
         // self.is_owner();
 
-        let token_pool = self.token_to_pool.get(&token);
+        let token_pool = self.data().token_to_pool.get(&token);
         let mut pool: u64 = 0;
 
         match token_pool {
@@ -129,7 +109,7 @@ impl Contract {
         ext_exchange::get_deposit(
             env::current_account_id(),
             token.clone(),
-            self.exchange_contract_id.clone(),
+            self.exchange_acc(),
             1,
             Gas(9_000_000_000_000),
         )
@@ -140,10 +120,10 @@ impl Contract {
             0,
             Gas(70_000_000_000_000),
         ))
-        .then(ext_self::callback_swap(
+        .then(ext_self::callback_post_swap(
             env::current_account_id(),
             0,
-            Gas(9_000_000_000_000),
+            Gas(100_000_000_000_000),
         ))
     }
 
@@ -165,8 +145,8 @@ impl Contract {
             pool_id,
             token.clone(),
             amount_in,
-            self.token_out.clone(),
-            self.exchange_contract_id.clone(),
+            self.data().token_out.clone(),
+            self.exchange_acc(),
             0,
             Gas(10_000_000_000_000),
         )
@@ -180,7 +160,7 @@ impl Contract {
         ))
     }
 
-    /// Swaps the token received by execute_swaps for token_out
+    /// Swaps the token received by execute_swaps_and_distribute for token_out
     #[private]
     pub fn swap(
         &self,
@@ -208,46 +188,19 @@ impl Contract {
             vec![SwapAction {
                 pool_id: pool_id,
                 token_in: token_in,
-                token_out: self.token_out.clone(),
+                token_out: self.data().token_out.clone(),
                 amount_in: Some(amount_in),
                 min_amount_out: U128(min_amount_out),
             }],
             None,
-            self.exchange_contract_id.clone(),
+            self.exchange_acc(),
             1,
             Gas(20_000_000_000_000),
         )
     }
 
-    /// Callback to ensure that the swap call was successful
     #[private]
-    pub fn callback_swap(&self, #[callback_result] balance: Result<U128, PromiseError>) -> String {
-        assert!(balance.is_ok(), "TREASURER::SWAP_FAILED");
-
-        let amount: u128 = balance.unwrap().into();
-        format!("Treasurer received {} wNEAR", amount)
-    }
-
-    /// Get amount from exchange, withdraw it and distribute amount between stakeholders
-    pub fn distribute(&self) -> Promise {
-        self.is_owner();
-
-        ext_exchange::get_deposit(
-            env::current_account_id(),
-            self.token_out.clone(),
-            self.exchange_contract_id.clone(),
-            0,
-            Gas(10_000_000_000_000),
-        )
-        .then(ext_self::callback_balance_of(
-            env::current_account_id(),
-            0,
-            Gas(100_000_000_000_000),
-        ))
-    }
-
-    #[private]
-    pub fn callback_balance_of(
+    pub fn callback_post_swap(
         &self,
         #[callback_result] deposit_result: Result<U128, PromiseError>,
     ) -> Promise {
@@ -256,10 +209,10 @@ impl Contract {
         let amount = deposit_result.unwrap();
 
         ext_exchange::withdraw(
-            self.token_out.to_string(),
+            self.data().token_out.to_string(),
             amount.clone(),
             Some(false),
-            self.exchange_contract_id.clone(),
+            self.exchange_acc(),
             1,
             Gas(60_000_000_000_000),
         )
@@ -267,16 +220,16 @@ impl Contract {
             amount,
             env::current_account_id(),
             0,
-            Gas(30_000_000_000_000),
+            Gas(20_000_000_000_000),
         ))
     }
 
     #[private]
     pub fn internal_distribute(
         &mut self,
-        #[callback_result] withdraw_result: Result<(), PromiseError>,
+        #[callback_result] withdraw_result: Result<U128, PromiseError>,
         amount: U128,
-    ) -> String {
+    ) -> PromiseOrValue<String> {
         assert!(withdraw_result.is_ok(), "TREASURER::ERR_CANNOT_GET_BALANCE");
 
         let total_amount: u128 = amount.into();
@@ -287,7 +240,7 @@ impl Contract {
         // let mut stakeholders_amounts: Vec<Stakeholder> = Vec::new();
         let mut stakeholders_amounts: HashMap<AccountId, u128> = HashMap::new();
 
-        for (account, perc) in self.stakeholders_fees.clone() {
+        for (account, perc) in self.data().stakeholders_fees.clone() {
             let percent = Percentage::from(perc);
             let amount_received: u128 = percent.apply_to(total_amount);
 
@@ -301,21 +254,27 @@ impl Contract {
             stakeholders_amounts.insert(account, amount_received);
         }
 
+        // TODO: if this goes wrong, the value was already withdraw and there is no way to distribute again
         assert!(
             total_distributed <= total_amount,
             "TREASURER::ERR_TRIED_TO_DISTRIBUTE_HIGHER_AMOUNT"
         );
 
         for (acc, amount) in stakeholders_amounts.clone() {
-            let prev_amount: &u128 = self.stakeholders_amount_available.get(&acc).unwrap();
+            let prev_amount: &u128 = self
+                .data_mut()
+                .stakeholders_amount_available
+                .get(&acc)
+                .unwrap();
 
             let current_amount: u128 = prev_amount + amount;
 
-            self.stakeholders_amount_available
+            self.data_mut()
+                .stakeholders_amount_available
                 .insert(acc, current_amount);
         }
 
-        format!("Stakeholders can already withdraw from Treasurer")
+        PromiseOrValue::Value("Stakeholders can already withdraw from Treasurer".to_string())
     }
 
     /// Transfer caller's current available amount from contract to caller
@@ -323,11 +282,15 @@ impl Contract {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
         assert!(
-            self.stakeholders_fees.contains_key(&caller_id),
+            self.data().stakeholders_fees.contains_key(&caller_id),
             "TREASURER::ERR_ACCOUNT_DOES_NOT_EXIST"
         );
 
-        let amount: &u128 = self.stakeholders_amount_available.get(&caller_id).unwrap();
+        let amount: &u128 = self
+            .data()
+            .stakeholders_amount_available
+            .get(&caller_id)
+            .unwrap();
 
         assert_ne!(*amount, 0u128, "TREASURER::ERR_WITHDRAW_ZERO_AMOUNT");
 
@@ -335,7 +298,7 @@ impl Contract {
             caller_id.clone(),
             U128(*amount),
             Some(String::from("")),
-            self.token_out.clone(),
+            self.data().token_out.clone(),
             1,
             Gas(100_000_000_000_000),
         )
@@ -359,7 +322,8 @@ impl Contract {
             "TREASURER::ERR_WITHDRAW_FROM_CONTRACT_FAILED"
         );
 
-        self.stakeholders_amount_available
+        self.data_mut()
+            .stakeholders_amount_available
             .insert(account_id.clone(), 0u128);
 
         format!("The withdraw from {} was successfully", account_id)
@@ -370,7 +334,7 @@ impl Contract {
     pub fn is_owner(&self) {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
         require!(
-            caller_acc_id == contract_id || caller_acc_id == self.owner_id,
+            caller_acc_id == contract_id || caller_acc_id == self.data().owner_id,
             "TREASURER::ERR_NOT_ALLOWED"
         );
     }
@@ -383,18 +347,79 @@ impl Contract {
 
     #[private]
     pub fn assert_contract_running(&self) {
-        match self.state {
+        match self.data().state {
             RunningState::Running => (),
             _ => env::panic_str("TREASURER::CONTRACT_PAUSED"),
         };
     }
 
     pub fn update_contract_state(&mut self, state: RunningState) -> String {
-        self.state = state;
-        format!("{} is {}", env::current_account_id(), self.state)
+        self.data_mut().state = state;
+        format!("{} is {}", env::current_account_id(), self.data().state)
     }
 
     pub fn get_contract_state(&self) -> String {
-        format!("{} is {}", env::current_account_id(), self.state)
+        format!("{} is {}", env::current_account_id(), self.data().state)
+    }
+}
+#[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+pub struct Contract {
+    data: VersionedContractData,
+}
+
+/// Versioned contract data. Allows to easily upgrade contracts.
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum VersionedContractData {
+    V0001(ContractData),
+}
+
+impl VersionedContractData {}
+
+#[near_bindgen]
+impl Contract {
+    /// Function that initialize the contract.
+    ///
+    /// Arguments:
+    ///
+    /// - `owner_id` - The account id that owns the contract
+    /// - `token_out` - Token address, used to distribute fees between stakeholders
+    /// - `exchange_contract_id` - The exchange that will be used to swap tokens
+    #[init]
+    pub fn new(owner_id: AccountId, token_out: AccountId, exchange_contract_id: AccountId) -> Self {
+        assert!(!env::state_exists(), "Already initialized");
+        let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
+
+        Self {
+            data: VersionedContractData::V0001(ContractData {
+                owner_id,
+                stakeholders_fees: HashMap::new(),
+                stakeholders_amount_available: HashMap::new(),
+                token_out,
+                token_to_pool: HashMap::new(),
+                state: RunningState::Running,
+                exchange_contract_id,
+            }),
+        }
+    }
+}
+
+impl Contract {
+    fn data(&self) -> &ContractData {
+        match &self.data {
+            VersionedContractData::V0001(data) => data,
+            _ => unimplemented!(),
+        }
+    }
+
+    fn data_mut(&mut self) -> &mut ContractData {
+        match &mut self.data {
+            VersionedContractData::V0001(data) => data,
+            _ => unimplemented!(),
+        }
+    }
+
+    fn exchange_acc(&self) -> AccountId {
+        self.data().exchange_contract_id.clone()
     }
 }
