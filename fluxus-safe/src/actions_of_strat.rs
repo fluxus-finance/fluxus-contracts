@@ -6,7 +6,6 @@ impl Contract {
     pub fn create_strategy(
         &mut self,
         _strategy: String,
-        treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
         token1_address: AccountId,
@@ -21,6 +20,8 @@ impl Contract {
         self.is_owner();
         let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id);
         let farm_id: String = format!("{}#{}", seed_id, farm);
+
+        let treasury = self.data().treasury.clone();
 
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
         self.data_mut().token_ids.push(token_id.clone());

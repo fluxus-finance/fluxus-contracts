@@ -21,7 +21,7 @@ impl Contract {
 
     pub fn update_treasure_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
-        self.data_mut().treasure_contract_id = contract_id;
+        self.data_mut().treasury.account_id = contract_id;
     }
 
     /// Returns allowed_accounts

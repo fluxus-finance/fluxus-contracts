@@ -86,8 +86,8 @@ pub struct ContractData {
     /// Set of guardians.
     guardians: UnorderedSet<AccountId>,
 
-    // Keeps tracks of how much shares the contract gained from the auto-compound
-    protocol_shares: u128,
+    /// Fees earned by the DAO
+    treasury: AccountFee,
 
     // Keeps tracks of accounts that send coins to this contract
     accounts: LookupMap<AccountId, VAccount>,
@@ -109,9 +109,6 @@ pub struct ContractData {
 
     // Contract address of the farm used
     farm_contract_id: AccountId,
-
-    // Contract address to receive earned shares from fee
-    treasure_contract_id: AccountId,
 
     // Pools used to harvest, in the ":X" format
     token_ids: Vec<String>,
@@ -283,11 +280,17 @@ impl Contract {
         assert!(!env::state_exists(), "Already initialized");
         let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
+        let treasury: AccountFee = AccountFee {
+            account_id: treasure_contract_id,
+            fee_percentage: 10,
+            current_amount: 0u128,
+        };
+
         Self {
             data: VersionedContractData::V0001(ContractData {
                 owner_id,
                 guardians: UnorderedSet::new(StorageKey::Guardian),
-                protocol_shares: 0u128,
+                treasury,
                 accounts: LookupMap::new(StorageKey::Accounts),
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
@@ -296,7 +299,6 @@ impl Contract {
                 users_total_near_deposited: HashMap::new(),
                 exchange_contract_id,
                 farm_contract_id,
-                treasure_contract_id,
                 /// List of all the pools.
                 token_ids: Vec::new(),
                 strategies: HashMap::new(),
@@ -329,6 +331,6 @@ impl Contract {
     }
 
     fn treasure_acc(&self) -> AccountId {
-        self.data().treasure_contract_id.clone()
+        self.data().treasury.account_id.clone()
     }
 }

@@ -320,7 +320,7 @@ impl Contract {
 
         ext_reward_token::ft_transfer_call(
             sentry_acc_id.clone(),
-            amount.to_string(), //Amount after withdraw the rewards
+            U128(amount),
             "".to_string(),
             compounder.reward_token.clone(),
             1,

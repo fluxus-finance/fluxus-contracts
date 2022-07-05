@@ -161,8 +161,11 @@ impl Contract {
     ) -> PromiseOrValue<U128> {
         let exchange_id = self.exchange_acc();
 
-        let strat = self
-            .data_mut()
+        let treasury_fee_percentage: u128 = self.data().treasury.fee_percentage;
+
+        let data_mut = self.data_mut();
+
+        let strat = data_mut
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -176,7 +179,7 @@ impl Contract {
         }
 
         let (remaining_amount, protocol_amount, sentry_amount, strat_creator_amount) =
-            compounder.compute_fees(compounder.last_reward_amount);
+            compounder.compute_fees(compounder.last_reward_amount, treasury_fee_percentage);
 
         // TODO: store the amount earned by the strat creator
 
@@ -187,7 +190,7 @@ impl Contract {
             .insert(env::current_account_id(), sentry_amount);
 
         // increase protocol amount to cover the case that the last transfer failed
-        compounder.admin_fees.treasury.current_amount += protocol_amount;
+        data_mut.treasury.current_amount += protocol_amount;
 
         // remaining amount to reinvest
         compounder.last_reward_amount = remaining_amount;
@@ -202,7 +205,7 @@ impl Contract {
         // or impl logic to step over the withdraw and come directly to the transfer
         PromiseOrValue::Promise(ext_reward_token::ft_transfer_call(
             exchange_id,
-            amount.to_string(), //Amount after withdraw the rewards
+            U128(amount), //Amount after withdraw the rewards
             "".to_string(),
             compounder.reward_token.clone(),
             1,
@@ -215,6 +218,9 @@ impl Contract {
     #[private]
     pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
         self.assert_strategy_running(token_id.clone());
+
+        let treasury_acc: AccountId = self.treasure_acc();
+        let treasury_curr_amount: u128 = self.data_mut().treasury.current_amount;
 
         let strat = self
             .data_mut()
@@ -247,8 +253,8 @@ impl Contract {
         // TODO: transfer value to strategy creator
         ext_exchange::mft_transfer(
             compounder.reward_token.to_string(),
-            compounder.admin_fees.treasury.account_id.clone(),
-            U128(compounder.admin_fees.treasury.current_amount),
+            treasury_acc,
+            U128(treasury_curr_amount),
             Some("".to_string()),
             self.data().exchange_contract_id.clone(),
             1,
@@ -287,8 +293,9 @@ impl Contract {
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
     ) {
-        let strat = self
-            .data_mut()
+        let data_mut = self.data_mut();
+
+        let strat = data_mut
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
@@ -301,10 +308,10 @@ impl Contract {
             return;
         }
 
-        let amount = compounder.admin_fees.treasury.current_amount;
+        let amount: u128 = data_mut.treasury.current_amount;
 
         // reset treasury amount earned since tx was successful
-        compounder.admin_fees.treasury.current_amount = 0;
+        data_mut.treasury.current_amount = 0;
 
         log!("Transfer {} to treasure succeeded", amount)
     }

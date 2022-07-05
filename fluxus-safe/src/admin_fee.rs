@@ -33,13 +33,11 @@ const UXU_STAKERS: u128 = 60;
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AdminFees {
-    /// Fees earned by the DAO
-    pub treasury: AccountFee,
     /// Fees earned by the creator of the running strategy
     pub strat_creator: AccountFee,
     /// Fee percentage earned by sentries
     pub sentries_fee: u128,
-    /// Fees earned by users how interact with the harvest method
+    /// Fees earned by users that interact with the harvest method
     pub sentries: HashMap<AccountId, u128>,
 }
 
@@ -50,7 +48,6 @@ impl AdminFees {
                 <= 100 - UXU_STAKERS
         );
         AdminFees {
-            treasury,
             strat_creator,
             sentries_fee,
             sentries: HashMap::new(),

@@ -231,9 +231,13 @@ impl AutoCompounder {
         }
     }
 
-    pub(crate) fn compute_fees(&self, reward_amount: u128) -> (u128, u128, u128, u128) {
+    pub(crate) fn compute_fees(
+        &self,
+        reward_amount: u128,
+        treasury_fee_percentage: u128,
+    ) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
-        let percent = Percentage::from(self.admin_fees.treasury.fee_percentage);
+        let percent = Percentage::from(treasury_fee_percentage);
         let protocol_amount = percent.apply_to(self.last_reward_amount);
 
         let percent = Percentage::from(self.admin_fees.sentries_fee);
