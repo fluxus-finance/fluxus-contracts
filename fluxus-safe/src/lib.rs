@@ -47,6 +47,9 @@ mod actions_of_strat;
 
 mod owner;
 
+mod admin_fee;
+use admin_fee::*;
+
 #[derive(BorshStorageKey, BorshSerialize)]
 pub(crate) enum StorageKey {
     Accounts,
@@ -144,10 +147,13 @@ pub trait Callbacks {
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_tokens_return(&self) -> (U128, U128);
     fn callback_get_token_return(&self, common_token: u64, amount_token: U128) -> (U128, U128);
-    fn callback_stake(&mut self, #[callback_result] shares_result: Result<U128, PromiseError>);
+    fn callback_stake(
+        &mut self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
     fn callback_post_get_pool_shares(
         &mut self,
-        #[callback_unwrap] minted_shares_result: U128,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         token_id: String,
     );
@@ -179,9 +185,16 @@ pub trait Callbacks {
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
         token_id: String,
     ) -> Promise;
-    fn callback_post_mft_transfer(
+    fn callback_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
+    );
+    fn callback_post_sentry_mft_transfer(
+        &mut self,
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        token_id: String,
+        sentry_id: AccountId,
+        amount_earned: u128,
     );
     fn callback_post_claim_reward(
         &self,

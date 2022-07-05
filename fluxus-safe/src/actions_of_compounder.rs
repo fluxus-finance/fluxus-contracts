@@ -294,6 +294,114 @@ impl Contract {
             Gas(180_000_000_000_000),
         )
     }
+
+    #[private]
+    pub fn send_reward_to_sentry(&mut self, token_id: String, sentry_acc_id: AccountId) -> Promise {
+        // let exchange_id: AccountId = self.exchange_acc();
+
+        let strat = self
+            .data_mut()
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+        let compounder = strat.get_mut();
+
+        let amount: u128 = *compounder
+            .admin_fees
+            .sentries
+            .get(&env::current_account_id())
+            .unwrap();
+
+        // reset default sentry address to use in the next iteration
+        compounder
+            .admin_fees
+            .sentries
+            .insert(env::current_account_id(), 0u128);
+
+        ext_reward_token::ft_transfer_call(
+            sentry_acc_id.clone(),
+            amount.to_string(), //Amount after withdraw the rewards
+            "".to_string(),
+            compounder.reward_token.clone(),
+            1,
+            Gas(20_000_000_000_000),
+        )
+        .then(ext_self::callback_post_sentry_mft_transfer(
+            token_id,
+            sentry_acc_id,
+            amount,
+            env::current_account_id(),
+            0,
+            Gas(20_000_000_000_000),
+        ))
+    }
+
+    /// Callback to verify that transfer to treasure succeeded
+    #[private]
+    pub fn callback_post_sentry_mft_transfer(
+        &mut self,
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        token_id: String,
+        sentry_id: AccountId,
+        amount_earned: u128,
+    ) {
+        // in the case where the transfer failed, the next cycle will send it plus the new amount earned
+        if ft_transfer_result.is_err() {
+            log!("Transfer to sentry failed".to_string());
+
+            let strat = self
+                .data_mut()
+                .strategies
+                .get_mut(&token_id)
+                .expect(ERR21_TOKEN_NOT_REG);
+
+            let compounder = strat.get_mut();
+
+            // store amount earned by sentry to be redeemed
+            compounder
+                .admin_fees
+                .sentries
+                .insert(sentry_id, amount_earned);
+
+            return;
+        }
+
+        log!("Transfer to {} succeeded", sentry_id)
+    }
+
+    // /// Sentry user can redeem manually earned reward
+    // pub fn redeem_reward(&self, token_id: String) -> Promise {
+    //     let sentry_acc_id = env::predecessor_account_id();
+
+    //     let strat = self
+    //         .data()
+    //         .strategies
+    //         .get(&token_id)
+    //         .expect(ERR21_TOKEN_NOT_REG);
+
+    //     let compounder = strat.get_ref();
+
+    //     assert!(compounder.admin_fees.sentries.contains_key(&sentry_acc_id));
+
+    //     let amount = *compounder.admin_fees.sentries.get(&sentry_acc_id).unwrap();
+    //     ext_exchange::mft_transfer(
+    //         compounder.reward_token.to_string(),
+    //         sentry_acc_id.clone(),
+    //         U128(amount),
+    //         Some("".to_string()),
+    //         self.data().exchange_contract_id.clone(),
+    //         1,
+    //         Gas(20_000_000_000_000),
+    //     )
+    //     .then(ext_self::callback_post_sentry_mft_transfer(
+    //         token_id,
+    //         sentry_acc_id,
+    //         amount,
+    //         env::current_account_id(),
+    //         0,
+    //         Gas(20_000_000_000_000),
+    //     ))
+    // }
 }
 
 /// Auto-compounder functionality methods

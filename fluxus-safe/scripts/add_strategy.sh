@@ -8,7 +8,9 @@ echo $reward_token
 #### Create first strategy
 near call $CONTRACT_NAME create_strategy '{
     "_strategy": "",
-    "protocol_fee": 10,
+    "treasury": { "account_id": "'$username'", "fee_percentage": 10, "current_amount" : 0 },
+    "strat_creator": { "account_id": "'$username'", "fee_percentage": 10, "current_amount" : 0 },
+    "sentry_fee": 10,
     "token1_address": "'$token1_address'", 
     "token2_address": "'$token2_address'", 
     "pool_id_token1_reward": '$pool_id_token1_reward', 

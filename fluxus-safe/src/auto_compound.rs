@@ -9,7 +9,6 @@ impl Contract {
     #[private]
     pub fn claim_reward(&mut self, token_id: String) -> Promise {
         self.assert_strategy_running(token_id.clone());
-        self.is_allowed_account();
 
         let strat = self.get_strat(&token_id);
         let seed_id: String = strat.get_ref().seed_id.clone();
@@ -130,7 +129,6 @@ impl Contract {
     #[private]
     pub fn withdraw_of_reward(&mut self, token_id: String) -> Promise {
         self.assert_strategy_running(token_id.clone());
-        self.is_allowed_account();
 
         let strat = self.get_strat(&token_id);
         let reward_token: AccountId = strat.clone().get().reward_token;
@@ -177,11 +175,34 @@ impl Contract {
             return PromiseOrValue::Value(U128(0));
         }
 
+        let (remaining_amount, protocol_amount, sentry_amount, strat_creator_amount) =
+            compounder.compute_fees(compounder.last_reward_amount);
+
+        // TODO: store the amount earned by the strat creator
+
+        // store sentry amount under contract account id to be used in the last step
+        compounder
+            .admin_fees
+            .sentries
+            .insert(env::current_account_id(), sentry_amount);
+
+        // increase protocol amount to cover the case that the last transfer failed
+        compounder.admin_fees.treasury.current_amount += protocol_amount;
+
+        // remaining amount to reinvest
+        compounder.last_reward_amount = remaining_amount;
+
+        // amount sent to ref, both remaining value and treasury
+        let amount = remaining_amount + protocol_amount;
+
         compounder.next_cycle();
 
+        // TODO: does not make sense to move to the next cycle step if this call fails
+        // we could just return one step back, in order to retry,
+        // or impl logic to step over the withdraw and come directly to the transfer
         PromiseOrValue::Promise(ext_reward_token::ft_transfer_call(
             exchange_id,
-            compounder.last_reward_amount.to_string(), //Amount after withdraw the rewards
+            amount.to_string(), //Amount after withdraw the rewards
             "".to_string(),
             compounder.reward_token.clone(),
             1,
@@ -194,9 +215,6 @@ impl Contract {
     #[private]
     pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
         self.assert_strategy_running(token_id.clone());
-        self.is_allowed_account();
-
-        let treasure_id = self.treasure_acc();
 
         let strat = self
             .data_mut()
@@ -222,34 +240,21 @@ impl Contract {
             "ERR_NO_REWARD_AVAILABLE_TO_SWAP"
         );
 
-        // apply fee to reward amount
-        // increase last_fee_amount, to cover the case that the last transfer somehow failed
-        let percent = Percentage::from(compounder.protocol_fee);
-
-        let fee_amount = percent.apply_to(compounder.last_reward_amount);
-        compounder.last_fee_amount += fee_amount;
-
-        // remaining amount to reinvest
-        let reward_amount = compounder.last_reward_amount - fee_amount;
-
-        // ensure that the value used is less than or equal to the current available amount
-        assert!(
-            reward_amount + fee_amount <= compounder.last_reward_amount,
-            "ERR"
-        );
+        let reward_amount = compounder.last_reward_amount;
 
         let amount_in = U128(reward_amount / 2);
 
+        // TODO: transfer value to strategy creator
         ext_exchange::mft_transfer(
             compounder.reward_token.to_string(),
-            treasure_id,
-            U128(compounder.last_fee_amount),
+            compounder.admin_fees.treasury.account_id.clone(),
+            U128(compounder.admin_fees.treasury.current_amount),
             Some("".to_string()),
             self.data().exchange_contract_id.clone(),
             1,
             Gas(20_000_000_000_000),
         )
-        .then(ext_self::callback_post_mft_transfer(
+        .then(ext_self::callback_post_treasury_mft_transfer(
             token_id.clone(),
             env::current_account_id(),
             0,
@@ -277,7 +282,7 @@ impl Contract {
 
     /// Callback to verify that transfer to treasure succeeded
     #[private]
-    pub fn callback_post_mft_transfer(
+    pub fn callback_post_treasury_mft_transfer(
         &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
@@ -296,10 +301,10 @@ impl Contract {
             return;
         }
 
-        let amount = compounder.last_fee_amount;
+        let amount = compounder.admin_fees.treasury.current_amount;
 
-        // ensures that no duplicated value is sent to treasure
-        compounder.last_fee_amount = 0;
+        // reset treasury amount earned since tx was successful
+        compounder.admin_fees.treasury.current_amount = 0;
 
         log!("Transfer {} to treasure succeeded", amount)
     }
@@ -543,7 +548,60 @@ impl Contract {
     #[private]
     pub fn autocompounds_liquidity_and_stake(&mut self, token_id: String) -> Promise {
         self.assert_strategy_running(token_id.clone());
-        self.is_allowed_account();
+
+        let strat = self
+            .data()
+            .strategies
+            .get(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+        let compounder = strat.get_ref();
+
+        let pool_id: u64 = compounder.pool_id;
+
+        let token1_amount = compounder.available_balance[0];
+        let token2_amount = compounder.available_balance[1];
+
+        // send reward to contract caller
+        self.send_reward_to_sentry(token_id.clone(), env::predecessor_account_id())
+            // Add liquidity
+            .then(ext_exchange::add_liquidity(
+                pool_id,
+                vec![U128(token1_amount), U128(token2_amount)],
+                None,
+                self.data().exchange_contract_id.clone(),
+                970000000000000000000, // TODO: create const to do a meaningful name to this value
+                Gas(30_000_000_000_000),
+            ))
+            .then(ext_self::callback_stake(
+                token_id.clone(),
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+            // Get the shares
+            .then(ext_exchange::get_pool_shares(
+                pool_id,
+                env::current_account_id(),
+                self.data().exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+            // Update user balance and stake
+            .then(ext_self::callback_post_get_pool_shares(
+                token_id,
+                env::current_account_id(),
+                0,
+                Gas(120_000_000_000_000),
+            ))
+    }
+
+    #[private]
+    pub fn callback_stake(
+        &mut self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+        token_id: String,
+    ) -> U128 {
+        assert!(shares_result.is_ok(), "ERR");
 
         let strat = self
             .data_mut()
@@ -552,50 +610,21 @@ impl Contract {
             .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
-        let pool_id: u64 = compounder.pool_id;
-
-        let token1_amount = compounder.available_balance[0];
-        let token2_amount = compounder.available_balance[1];
-
         // ensure that in the next run we won't have a balance unless previous steps succeeds
         compounder.available_balance[0] = 0u128;
         compounder.available_balance[1] = 0u128;
 
-        // Add liquidity
-        self.call_add_liquidity(
-            pool_id,
-            vec![U128(token1_amount), U128(token2_amount)],
-            None,
-        )
-        // Get the shares
-        .then(ext_self::callback_stake(
-            env::current_account_id(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
-        .and(ext_exchange::get_pool_shares(
-            pool_id,
-            env::current_account_id(),
-            self.data().exchange_contract_id.clone(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
-        // Update user balance and stake
-        .then(ext_self::callback_post_get_pool_shares(
-            token_id,
-            env::current_account_id(),
-            0,
-            Gas(120_000_000_000_000),
-        ))
-    }
+        let shares_received = shares_result.unwrap().0;
 
-    #[private]
-    pub fn callback_stake(
-        &self,
-        #[callback_result] shares_result: Result<U128, PromiseError>,
-    ) -> U128 {
-        assert!(shares_result.is_ok(), "ERR");
-        shares_result.unwrap()
+        let mut total_shares: u128 = 0;
+
+        for (_, balance) in compounder.user_shares.iter() {
+            total_shares += balance.total;
+        }
+
+        compounder.balance_update(total_shares, shares_received);
+
+        U128(shares_received)
     }
 
     /// Receives shares from auto-compound and stake it
@@ -603,28 +632,16 @@ impl Contract {
     #[private]
     pub fn callback_post_get_pool_shares(
         &mut self,
-        #[callback_unwrap] minted_shares_result: U128,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
         assert!(total_shares_result.is_ok(), "ERR");
-        let shares_amount = minted_shares_result.0;
 
         let strat = self.get_strat_mut(&token_id);
 
         let compounder = strat.get_mut();
 
         compounder.next_cycle();
-
-        if shares_amount > 0 {
-            let mut total_shares: u128 = 0;
-
-            for (_, balance) in compounder.user_shares.iter() {
-                total_shares += balance.total;
-            }
-
-            compounder.balance_update(total_shares, shares_amount);
-        };
 
         let accumulated_shares = total_shares_result.unwrap().0;
 
