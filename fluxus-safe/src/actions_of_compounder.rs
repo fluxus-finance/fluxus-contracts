@@ -297,8 +297,6 @@ impl Contract {
 
     #[private]
     pub fn send_reward_to_sentry(&mut self, token_id: String, sentry_acc_id: AccountId) -> Promise {
-        // let exchange_id: AccountId = self.exchange_acc();
-
         let strat = self
             .data_mut()
             .strategies
