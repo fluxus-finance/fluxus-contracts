@@ -64,6 +64,16 @@ impl Contract {
         result
     }
 
+    ///Return the total_supply of an specific uxu_share (ref lp token). 
+    pub fn total_supply_amount_converting(&mut self, token_id: String) -> u128 {
+        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
+
+        let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
+
+        let result: u128 = *self.data_mut().total_supply_by_uxu_share.get(&fft_share_id).unwrap_or(&0_u128);
+        result
+    }
+
     ///Assigns a uxu_share value to an user for a specific uxu_share (ref lp token)
     /// and increment the total_supply of this seed's uxu_share.
     /// It returns the user's new balance.
@@ -71,7 +81,7 @@ impl Contract {
 
         //Add balance to the user for this seed
         let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
-        let mut balance:u128;
+        let balance:u128;
         let total_sup = self.total_supply_amount(uxu_share.clone());
         if total_sup == 0{
             balance = amount;

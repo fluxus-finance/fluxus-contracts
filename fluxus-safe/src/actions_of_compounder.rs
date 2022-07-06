@@ -36,24 +36,30 @@ impl Contract {
         // TODO: remove generic promise check
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
 
+        //Total fft_share
+        let total_fft = self.total_supply_amount_converting(token_id.clone()); 
+
         let data = self.data_mut();
 
+
+        /*
         let strat = data
             .strategies
             .get_mut(&token_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
         let compounder = strat.get_mut();
+        */
 
-        //Total fft_share
-        let fft_share_id = data.uxu_share_by_seed_id.get(&token_id).unwrap().clone();
-        let total_fft = self.total_supply_amount(fft_share_id);//////////////////////////////////
+
+
 
         //Total seed_id
-        let mut total_seed = *data.seed_id_amount.get(&token_id.clone()).unwrap_or(&0_u128);
+        let mut total_seed = *data.seed_id_amount.get(&token_id).unwrap_or(&0_u128);
         total_seed += shares;
-        self.increment_seed_total(token_id.clone(), total_seed);
-        
+        //self.increment_seed_total(token_id.clone(), total_seed);
+        self.data_mut().seed_id_amount.insert(token_id.clone(), total_seed);
+
         let fft_share_amount = shares*total_fft/total_seed;
 
         self.mft_mint(token_id.clone(), fft_share_amount, account_id.to_string());
@@ -61,16 +67,43 @@ impl Contract {
         // increment total shares deposited by account
         //compounder.increment_user_shares(&account_id, shares);
 
-        format!("The {} added {} to {}", account_id, shares, token_id.clone())
+        format!("The {} added {} to {}", account_id, fft_share_amount, token_id)
     }
 
+    /* 
     fn increment_seed_total(&mut self, seed_id: String, amount: u128) {
         self.data_mut().seed_id_amount.insert(seed_id, amount);
     }
+    */
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
+    pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
+
+        let mut user_fft_shares = self.users_share_amount(token_id.clone(), caller_id.to_string());
+
+        if let Some(amount_withdrawal) = amount_withdrawal{
+            assert!(u128::from(amount_withdrawal) <= user_fft_shares);
+            user_fft_shares = u128::from(amount_withdrawal);
+
+        }
+
+        //Total fft_share
+        let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&token_id).unwrap().clone();
+        let total_fft = self.total_supply_amount(fft_share_id);//////////////////////////////////
+
+        //Total seed_id
+        let total_seed = *self.data_mut().seed_id_amount.get(&token_id).unwrap_or(&0_u128);
+        
+
+        //Converting fft_shares in seed_id:
+        let user_shares = user_fft_shares*total_seed/total_fft;
+
+
+
+
+
+
 
         let strat = self
             .data()
@@ -92,25 +125,6 @@ impl Contract {
         );
         */
 
-        let mut user_fft_shares = self.users_share_amount(token_id.clone(), caller_id.clone().to_string());
-
-        if amount_withdrawal.is_some(){
-
-            assert!(u128::from(amount_withdrawal.unwrap()) <= user_fft_shares);
-            user_fft_shares = u128::from(amount_withdrawal.unwrap());
-
-        }
-
-        //Total fft_share
-        let fft_share_id = self.data().uxu_share_by_seed_id.get(&token_id).unwrap().clone();
-        let total_fft = self.total_supply_amount(fft_share_id);//////////////////////////////////
-
-        //Total seed_id
-        let total_seed = *self.data().seed_id_amount.get(&token_id.clone()).unwrap_or(&0_u128);
-        
-
-        //Converting fft_shares in seed_id:
-        let user_shares = user_fft_shares*total_seed/total_fft;
 
 
 
@@ -118,7 +132,7 @@ impl Contract {
         assert!(
             user_shares >= amount.0,
             "{} is trying to withdrawal {} and only has {}",
-            caller_id.clone(),
+            caller_id,
             amount.0,
             user_shares
         );
