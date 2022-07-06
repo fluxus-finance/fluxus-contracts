@@ -59,18 +59,30 @@ impl Contract {
     } 
 
     ///Return the total_supply of an specific uxu_share (ref lp token). 
-    pub fn total_supply_amount(&mut self, uxu_share: String) -> u128 {
-        let result: u128 = *self.data_mut().total_supply_by_uxu_share.get(&uxu_share).unwrap_or(&0_u128);
+    pub fn total_supply_amount(&mut self, uxu_share: &String) -> u128 {
+        let result: u128 = *self.data_mut().total_supply_by_uxu_share.get(uxu_share).unwrap_or(&0_u128);
         result
     }
 
     ///Assigns a uxu_share value to an user for a specific uxu_share (ref lp token)
     /// and increment the total_supply of this seed's uxu_share.
     /// It returns the user's new balance.
-    pub fn mft_mint(&mut self, uxu_share: String, balance: u128, user: String) -> u128{
+    pub fn mft_mint(&mut self, uxu_share: String, amount: u128, user: String) -> u128{ 
 
         //Add balance to the user for this seed
         let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
+        let mut balance:u128;
+        let total_sup = self.total_supply_amount(&uxu_share.clone());
+        if total_sup == 0{
+            balance = amount;
+        }
+        else{
+            balance = (amount*(total_sup+amount))/total_sup;
+
+
+        }
+
+
         let new_balance = old_amount+balance;
         log!("{} + {} = new_balance {}", old_amount, balance, new_balance);
         let mut hash_temp = self.users_share_map_by_uxu_share(uxu_share.clone());
@@ -79,7 +91,7 @@ impl Contract {
         self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp);
 
         //Add balance to the total supply
-        let old_total = self.total_supply_amount(uxu_share.clone());
+        let old_total = self.total_supply_amount(&uxu_share.clone());
         self.data_mut().total_supply_by_uxu_share.insert(uxu_share,  old_total + balance);
 
         //Returning the new balance
@@ -100,7 +112,7 @@ impl Contract {
         self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp );
 
         //Sub balance to the total supply
-        let old_total = self.total_supply_amount(uxu_share.clone());
+        let old_total = self.total_supply_amount(&uxu_share.clone());
         self.data_mut().total_supply_by_uxu_share.insert(uxu_share, old_total - balance);
 
         //Returning the new balance
@@ -260,6 +272,119 @@ impl Contract {
         U128(unused_amount)
     }
 
-
 }
 
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::{testing_env, VMContext};
+
+    fn get_context() -> VMContextBuilder {
+        let mut builder = VMContextBuilder::new();
+        builder
+            .current_account_id(to_account_id("auto_compounder.near"))
+            .signer_account_id(to_account_id("auto_compounder.near"))
+            .predecessor_account_id(to_account_id("auto_compounder.near"))
+            .attached_deposit(1);
+        builder
+    }
+    
+
+    pub fn to_account_id(value: &str) -> AccountId {
+        value.parse().unwrap()
+    }
+
+    fn create_account() -> Account {
+        let account_struct = Account::new(&to_account_id("fluxus.near"));
+        account_struct
+    }
+
+    #[test]
+    fn test_mint() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut account = create_account();
+        let mut contract = Contract::new("leopollum.testnet".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
+        
+        //Registering seed
+        contract.register_seed("uxu_share_1".to_string());
+
+        //Minting uxu_share
+        let mut deposit = contract.mft_mint("uxu_share_1".to_string(),10_u128, "user1".to_string());
+        assert_eq!(deposit, 10_u128);
+
+        //Checking balance
+        let mut balance = contract.users_share_amount("uxu_share_1".to_string(), "user1".to_string());
+        assert_eq!(balance, 10_u128);
+
+        //Minting more uxu_share
+        deposit = contract.mft_mint("uxu_share_1".to_string(),10_u128, "user1".to_string());
+        assert_eq!(deposit, 20_u128);
+
+    }
+
+    #[test]
+    fn test_burn() {
+        let context = get_context();
+        testing_env!(context.build());
+
+        let mut account = create_account();
+        let mut contract = Contract::new("leopollum.testnet".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
+
+        //Seed register 
+        contract.register_seed("uxu_share_1".to_string());
+
+        //Minting uxu_share
+        let mut deposit = contract.mft_mint("uxu_share_1".to_string(),10_u128, "user1".to_string());
+        assert_eq!(deposit, 10_u128);
+
+        //burning uxu_share
+        let mut balance = contract.mft_burn("uxu_share_1".to_string(),2_u128, "user1".to_string());
+        assert_eq!(balance, 8_u128);
+
+        //Checking total supply
+        balance = contract.total_supply_amount(&"uxu_share_1".to_string());
+        assert_eq!(balance, 8_u128);
+    }
+
+    #[test]
+    fn test_transfer() {
+        let context = get_context();
+        testing_env!(context.build());
+        let mut account = create_account();
+        let mut contract = Contract::new("leopollum.testnet".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
+        
+        //Seed register 
+        contract.register_seed("uxu_share_1".to_string());
+
+        //Minting balance for users
+        let mut balance_user1 = contract.mft_mint("uxu_share_1".to_string(),10_u128, "auto_compounder.near".to_string());
+        assert_eq!(balance_user1, 10_u128);
+        let mut balance_user2 = contract.mft_mint("uxu_share_1".to_string(),10_u128, "user2".to_string());
+        assert_eq!(balance_user2, 10_u128);
+        let mut balance_user3 = contract.mft_mint("uxu_share_1".to_string(),999_u128, "user3".to_string());
+        assert_eq!(balance_user3, 999_u128);
+
+        //Checking total supply
+        let total_supply = contract.total_supply_amount(&"uxu_share_1".to_string());
+        assert_eq!(total_supply, 1019_u128);
+
+        //Transferring uxu_shares
+        contract.mft_transfer("uxu_share_1".to_string(), "user2".to_string(), U128::from(5_u128), None);
+        balance_user1 = contract.users_share_amount("uxu_share_1".to_string(), "auto_compounder.near".to_string());
+        assert_eq!(balance_user1, 5_u128);
+        balance_user2 = contract.users_share_amount("uxu_share_1".to_string(), "user2".to_string());
+        assert_eq!(balance_user2, 15_u128);
+
+        //Transferring uxu_shares
+        contract.mft_transfer("uxu_share_1".to_string(), "user3".to_string(), U128::from(5_u128), None);
+        balance_user1 = contract.users_share_amount("uxu_share_1".to_string(), "auto_compounder.near".to_string());
+        assert_eq!(balance_user1, 0_u128);
+        balance_user3 = contract.users_share_amount("uxu_share_1".to_string(), "user3".to_string());
+        assert_eq!(balance_user3, 1004_u128);
+    }
+
+}

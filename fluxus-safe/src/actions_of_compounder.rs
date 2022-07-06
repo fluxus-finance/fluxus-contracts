@@ -44,6 +44,14 @@ impl Contract {
 
         let compounder = strat.get_mut();
 
+        //Total fft_share
+        let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&token_id).unwrap();
+        let total = self.total_supply_amount(fft_share_id);
+        //Total seed_id
+
+        let shares = 0;
+
+
         // increment total shares deposited by account
         compounder.increment_user_shares(&account_id, shares);
 

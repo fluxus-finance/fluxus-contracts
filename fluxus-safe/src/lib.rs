@@ -110,7 +110,7 @@ pub struct ContractData {
     users_balance_by_uxu_share: HashMap<String, HashMap<String, u128>>,
 
     ///Store the auto-compounders of the seeds.
-    /// illustration: map( seed[i], vec(user[i]) ).
+    /// illustration: map( seed[i], vec(user[i]) ).//TODO
     compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
     ///Store the uxu_share total_supply for each seed_id. 
