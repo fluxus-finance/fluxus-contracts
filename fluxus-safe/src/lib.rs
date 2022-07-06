@@ -119,6 +119,9 @@ pub struct ContractData {
     ///Store the uxu_share for each seed_id. 
     uxu_share_by_seed_id:  HashMap<String, String>,
 
+    ///Store the uxu_share for each seed_id. 
+    seed_id_amount:  HashMap<String, u128>,
+
     // Contract address of the exchange used
     exchange_contract_id: AccountId,
 
@@ -299,6 +302,7 @@ impl Contract {
                 compounders_by_seed_id: HashMap::new(),
                 total_supply_by_uxu_share: HashMap::new(),
                 uxu_share_by_seed_id: HashMap::new(),
+                seed_id_amount: HashMap::new(),
                 exchange_contract_id,
                 farm_contract_id,
                 treasure_contract_id,

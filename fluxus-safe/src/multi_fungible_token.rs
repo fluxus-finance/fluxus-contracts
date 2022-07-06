@@ -59,8 +59,8 @@ impl Contract {
     } 
 
     ///Return the total_supply of an specific uxu_share (ref lp token). 
-    pub fn total_supply_amount(&mut self, uxu_share: &String) -> u128 {
-        let result: u128 = *self.data_mut().total_supply_by_uxu_share.get(uxu_share).unwrap_or(&0_u128);
+    pub fn total_supply_amount(&mut self, uxu_share: String) -> u128 {
+        let result: u128 = *self.data_mut().total_supply_by_uxu_share.get(&uxu_share).unwrap_or(&0_u128);
         result
     }
 
@@ -72,7 +72,7 @@ impl Contract {
         //Add balance to the user for this seed
         let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
         let mut balance:u128;
-        let total_sup = self.total_supply_amount(&uxu_share.clone());
+        let total_sup = self.total_supply_amount(uxu_share.clone());
         if total_sup == 0{
             balance = amount;
         }
@@ -91,7 +91,7 @@ impl Contract {
         self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp);
 
         //Add balance to the total supply
-        let old_total = self.total_supply_amount(&uxu_share.clone());
+        let old_total = self.total_supply_amount(uxu_share.clone());
         self.data_mut().total_supply_by_uxu_share.insert(uxu_share,  old_total + balance);
 
         //Returning the new balance
@@ -112,7 +112,7 @@ impl Contract {
         self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp );
 
         //Sub balance to the total supply
-        let old_total = self.total_supply_amount(&uxu_share.clone());
+        let old_total = self.total_supply_amount(uxu_share.clone());
         self.data_mut().total_supply_by_uxu_share.insert(uxu_share, old_total - balance);
 
         //Returning the new balance
