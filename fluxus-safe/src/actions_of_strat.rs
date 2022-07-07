@@ -38,7 +38,7 @@ impl Contract {
 
         let uxu_share_id = self.new_uxu_share(seed_id.clone()); 
         if let Some(id) = uxu_share_id {
-            
+            log!("Registering maps for {} - {}", id, seed_id);
             //Registering id for the specific seed
             self.data_mut().uxu_share_by_seed_id.insert(seed_id, id.clone());
 

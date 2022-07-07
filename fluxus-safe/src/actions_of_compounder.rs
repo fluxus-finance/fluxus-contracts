@@ -37,10 +37,15 @@ impl Contract {
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
 
         //Total fft_share
-        let total_fft = self.total_supply_amount_converting(token_id.clone()); 
+        let mut id = token_id;
+        id.remove(0).to_string();
+
+        let total_fft = self.total_supply_amount_converting(id.clone()); //token_id.clone()
+        let uxu_share_id = self.convert_pool_id_in_uxu_share(id.clone());
+
 
         let data = self.data_mut();
-
+        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
 
         /*
         let strat = data
@@ -55,19 +60,29 @@ impl Contract {
 
 
         //Total seed_id
-        let mut total_seed = *data.seed_id_amount.get(&token_id).unwrap_or(&0_u128);
-        total_seed += shares;
+        let  total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);///////////
+        
         //self.increment_seed_total(token_id.clone(), total_seed);
-        self.data_mut().seed_id_amount.insert(token_id.clone(), total_seed);
+        self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);///////////
 
-        let fft_share_amount = shares*total_fft/total_seed;
+        let fft_share_amount;
+        if total_seed == 0{
+            log!("fft_shares_amount = shares");
+            fft_share_amount = shares;
+        }
+        else{
 
-        self.mft_mint(token_id.clone(), fft_share_amount, account_id.to_string());
+            fft_share_amount = shares*total_fft/(total_seed+shares);
+            log!("{} * {} /{} will be = {}",shares,total_fft, total_seed,fft_share_amount );
+
+        }
+        log!("{} {} will be minted for {}",fft_share_amount, uxu_share_id,account_id.to_string() );
+        self.mft_mint(uxu_share_id, fft_share_amount, account_id.to_string());
 
         // increment total shares deposited by account
         //compounder.increment_user_shares(&account_id, shares);
 
-        format!("The {} added {} to {}", account_id, fft_share_amount, token_id)
+        format!("The {} added {} to {}", account_id, fft_share_amount, seed_id)
     }
 
     /* 
@@ -80,7 +95,13 @@ impl Contract {
     pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
-        let mut user_fft_shares = self.users_share_amount(token_id.clone(), caller_id.to_string());
+        let mut id = token_id.clone();
+        id.remove(0).to_string();
+
+        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
+
+        let fft_share_id = self.convert_pool_id_in_uxu_share(id);
+        let mut user_fft_shares = self.users_share_amount(fft_share_id, caller_id.to_string());
 
         if let Some(amount_withdrawal) = amount_withdrawal{
             assert!(u128::from(amount_withdrawal) <= user_fft_shares);
@@ -88,12 +109,13 @@ impl Contract {
 
         }
 
+
         //Total fft_share
-        let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&token_id).unwrap().clone();
+        let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
         let total_fft = self.total_supply_amount(fft_share_id);//////////////////////////////////
 
         //Total seed_id
-        let total_seed = *self.data_mut().seed_id_amount.get(&token_id).unwrap_or(&0_u128);
+        let total_seed = *self.data_mut().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
         
 
         //Converting fft_shares in seed_id:
@@ -231,7 +253,13 @@ impl Contract {
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
 
-        let fft_share_id = self.data().uxu_share_by_seed_id.get(&token_id).unwrap().clone();
+
+        let mut id = token_id;
+        id.remove(0).to_string();
+        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
+
+
+        let fft_share_id = self.data().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
         self.mft_burn(fft_share_id, amount, account_id.to_string());
 
         /* 

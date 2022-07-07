@@ -67,11 +67,18 @@ impl Contract {
     ///Return the total_supply of an specific uxu_share (ref lp token). 
     pub fn total_supply_amount_converting(&mut self, token_id: String) -> u128 {
         let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
-
+        log!("Total supply of: {}", seed_id);
         let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
 
         let result: u128 = *self.data_mut().total_supply_by_uxu_share.get(&fft_share_id).unwrap_or(&0_u128);
         result
+    }
+    pub fn convert_pool_id_in_uxu_share(&mut self, token_id: String) -> String {
+        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
+        
+        let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
+        log!("fft id is: {}", fft_share_id);
+        fft_share_id
     }
 
     ///Assigns a uxu_share value to an user for a specific uxu_share (ref lp token)
