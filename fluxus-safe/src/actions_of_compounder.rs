@@ -313,7 +313,7 @@ impl Contract {
         compounder
             .admin_fees
             .sentries
-            .insert(env::current_account_id(), 0u128);
+            .remove(&env::current_account_id());
 
         ext_reward_token::ft_transfer_call(
             sentry_acc_id.clone(),

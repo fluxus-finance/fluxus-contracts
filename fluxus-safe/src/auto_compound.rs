@@ -138,22 +138,44 @@ impl Contract {
 
         let compounder = strat.get_ref();
 
-        let amount_to_withdraw = compounder.last_reward_amount;
+        if !compounder
+            .admin_fees
+            .sentries
+            .contains_key(&env::current_account_id())
+        {
+            let amount_to_withdraw = compounder.last_reward_amount;
+            ext_farm::withdraw_reward(
+                reward_token.to_string(),
+                U128(amount_to_withdraw),
+                "false".to_string(),
+                self.data().farm_contract_id.clone(),
+                1,
+                Gas(180_000_000_000_000),
+            )
+            .then(ext_self::callback_post_withdraw(
+                token_id,
+                env::current_account_id(),
+                0,
+                Gas(80_000_000_000_000),
+            ))
+        } else {
+            ext_reward_token::ft_transfer_call(
+                self.exchange_acc(),
+                U128(compounder.last_reward_amount + self.data().treasury.current_amount), //Amount after withdraw the rewards
+                "".to_string(),
+                compounder.reward_token.clone(),
+                1,
+                Gas(40_000_000_000_000),
+            )
+            .then(ext_self::callback_post_ft_transfer(
+                token_id,
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ))
+        }
 
-        ext_farm::withdraw_reward(
-            reward_token.to_string(),
-            U128(amount_to_withdraw),
-            "false".to_string(),
-            self.data().farm_contract_id.clone(),
-            1,
-            Gas(180_000_000_000_000),
-        )
-        .then(ext_self::callback_post_withdraw(
-            token_id,
-            env::current_account_id(),
-            0,
-            Gas(60_000_000_000_000),
-        ))
+        // do B
     }
 
     #[private]
@@ -162,6 +184,8 @@ impl Contract {
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
         token_id: String,
     ) -> PromiseOrValue<U128> {
+        assert!(withdraw_result.is_ok(), "ERR_WITHDRAW_FROM_FARM_FAILED");
+
         let exchange_id = self.exchange_acc();
 
         let treasury_fee_percentage: u128 = self.data().treasury.fee_percentage;
@@ -174,12 +198,6 @@ impl Contract {
             .expect(ERR21_TOKEN_NOT_REG);
 
         let compounder = strat.get_mut();
-
-        if withdraw_result.is_err() {
-            compounder.last_reward_amount = 0u128;
-            log!("ERR_WITHDRAW_FROM_FARM_FAILED");
-            return PromiseOrValue::Value(U128(0));
-        }
 
         let (remaining_amount, protocol_amount, sentry_amount, strat_creator_amount) =
             compounder.compute_fees(compounder.last_reward_amount, treasury_fee_percentage);
@@ -201,19 +219,40 @@ impl Contract {
         // amount sent to ref, both remaining value and treasury
         let amount = remaining_amount + protocol_amount;
 
-        compounder.next_cycle();
+        PromiseOrValue::Promise(
+            ext_reward_token::ft_transfer_call(
+                exchange_id,
+                U128(amount), //Amount after withdraw the rewards
+                "".to_string(),
+                compounder.reward_token.clone(),
+                1,
+                Gas(40_000_000_000_000),
+            )
+            .then(ext_self::callback_post_ft_transfer(
+                token_id,
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            )),
+        )
+    }
 
-        // TODO: does not make sense to move to the next cycle step if this call fails
-        // we could just return one step back, in order to retry,
-        // or impl logic to step over the withdraw and come directly to the transfer
-        PromiseOrValue::Promise(ext_reward_token::ft_transfer_call(
-            exchange_id,
-            U128(amount), //Amount after withdraw the rewards
-            "".to_string(),
-            compounder.reward_token.clone(),
-            1,
-            Gas(40_000_000_000_000),
-        ))
+    #[private]
+    pub fn callback_post_ft_transfer(
+        &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        token_id: String,
+    ) {
+        assert!(transfer_result.is_ok());
+
+        let data_mut = self.data_mut();
+        let strat = data_mut
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        let compounder = strat.get_mut();
+        compounder.next_cycle();
     }
 
     /// Step 3

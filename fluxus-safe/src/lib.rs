@@ -225,6 +225,11 @@ pub trait Callbacks {
         token_id: String,
         farm_id: String,
     ) -> Promise;
+    fn callback_post_ft_transfer(
+        &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
 }
 const F: u128 = 100000000000000000000000000000; // rename this const
 
