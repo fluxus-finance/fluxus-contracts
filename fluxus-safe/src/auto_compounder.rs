@@ -40,9 +40,6 @@ pub struct AutoCompounder {
     /// This will be used to store owned amount if ft_transfer to treasure fails
     pub last_fee_amount: u128,
 
-    /// Used to guarantee that both swaps succeeds, which avoids repeated steps
-    pub skip_swaps: bool,
-
     /// Address of the first token used by pool
     pub token1_address: AccountId,
 
@@ -142,7 +139,6 @@ impl AutoCompounder {
             slippage: 99u128,
             last_reward_amount: 0u128,
             last_fee_amount: 0u128,
-            skip_swaps: false,
             token1_address,
             token2_address,
             pool_id_token1_reward,
@@ -297,7 +293,6 @@ impl VersionedCompounder {
             slippage: 99u128,
             last_reward_amount: 0u128,
             last_fee_amount: 0u128,
-            skip_swaps: false,
             token1_address,
             token2_address,
             pool_id_token1_reward,

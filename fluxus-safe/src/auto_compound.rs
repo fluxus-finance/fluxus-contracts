@@ -288,7 +288,7 @@ impl Contract {
 
         // This works by increasing gradually the slippage allowed
         // It will be used only in the cases where the first swaps succeed but not the second
-        if compounder.skip_swaps {
+        if compounder.available_balance[0] > 0 {
             common_token = 1;
 
             return self
@@ -558,7 +558,7 @@ impl Contract {
                 token_in2,
                 token_out2,
                 Some(amount_in_2),
-                token2_min_out,
+                U128(token2_min_out.0 * 10),
                 contract_id,
                 0,
                 Gas(30_000_000_000_000),
@@ -578,14 +578,20 @@ impl Contract {
         #[callback_result] swap_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
-        assert!(swap_result.is_ok(), "ERR_FIRST_SWAP_FAILED");
-
         let strat = self
             .data_mut()
             .strategies
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
+
+        if swap_result.is_err() {
+            log!("ERR_FIRST_SWAP_FAILED");
+            if 100u128 - compounder.slippage < MAX_SLIPPAGE_ALLOWED {
+                // increment slippage
+                compounder.slippage -= 1;
+            }
+        }
 
         compounder.available_balance[0] = swap_result.unwrap().0;
 
@@ -608,7 +614,6 @@ impl Contract {
         let compounder = strat.get_mut();
 
         if swap_result.is_err() {
-            compounder.skip_swaps = true;
             if 100u128 - compounder.slippage < MAX_SLIPPAGE_ALLOWED {
                 // increment slippage
                 compounder.slippage -= 1;
@@ -622,8 +627,6 @@ impl Contract {
         compounder.last_reward_amount = 0;
         // token_2 balance to liquidity
         compounder.available_balance[1] = swap_result.unwrap().0;
-        // reset skip_swaps
-        compounder.skip_swaps = false;
         // reset slippage
         compounder.slippage = 100 - MIN_SLIPPAGE_ALLOWED;
         // after both swaps succeeded, it's ready to stake
