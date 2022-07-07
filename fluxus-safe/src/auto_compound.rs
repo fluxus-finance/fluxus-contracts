@@ -2,6 +2,9 @@ use near_sdk::PromiseOrValue;
 
 use crate::*;
 
+const MAX_SLIPPAGE_ALLOWED: u128 = 20;
+const MIN_SLIPPAGE_ALLOWED: u128 = 1;
+
 #[near_bindgen]
 impl Contract {
     /// Step 1
@@ -217,23 +220,24 @@ impl Contract {
     /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
     #[private]
     pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
+        // TODO: take string as ref
         self.assert_strategy_running(token_id.clone());
 
         let treasury_acc: AccountId = self.treasure_acc();
         let treasury_curr_amount: u128 = self.data_mut().treasury.current_amount;
 
         let strat = self
-            .data_mut()
+            .data()
             .strategies
-            .get_mut(&token_id)
+            .get(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
-        let compounder = strat.get_mut();
+        let compounder = strat.get_ref();
 
         let token1 = compounder.token1_address.clone();
         let token2 = compounder.token2_address.clone();
         let reward = compounder.reward_token.clone();
 
-        let mut common_token = 0;
+        let mut common_token = 9999;
 
         if token1 == reward {
             common_token = 1;
@@ -241,12 +245,30 @@ impl Contract {
             common_token = 2;
         }
 
-        assert!(
-            compounder.last_reward_amount > 0,
-            "ERR_NO_REWARD_AVAILABLE_TO_SWAP"
-        );
-
         let reward_amount = compounder.last_reward_amount;
+
+        // This works by increasing gradually the slippage allowed
+        // It will be used only in the cases where the first swaps succeed but not the second
+        if compounder.skip_swaps {
+            common_token = 1;
+
+            return self
+                .get_tokens_return(
+                    token_id.clone(),
+                    U128(compounder.available_balance[0]),
+                    U128(reward_amount),
+                    common_token,
+                )
+                .then(ext_self::swap_to_auto(
+                    token_id,
+                    U128(compounder.available_balance[0]),
+                    U128(reward_amount),
+                    common_token,
+                    env::current_account_id(),
+                    0,
+                    Gas(140_000_000_000_000),
+                ));
+        }
 
         let amount_in = U128(reward_amount / 2);
 
@@ -265,25 +287,18 @@ impl Contract {
             env::current_account_id(),
             0,
             Gas(20_000_000_000_000),
-        ))
-        .then(ext_self::get_tokens_return(
-            token_id.clone(),
-            amount_in,
-            amount_in,
-            common_token,
-            env::current_account_id(),
-            0,
-            Gas(60_000_000_000_000),
-        ))
-        .then(ext_self::swap_to_auto(
-            token_id,
-            amount_in,
-            amount_in,
-            common_token,
-            env::current_account_id(),
-            0,
-            Gas(140_000_000_000_000),
-        ))
+        ));
+
+        self.get_tokens_return(token_id.clone(), amount_in, amount_in, common_token)
+            .then(ext_self::swap_to_auto(
+                token_id,
+                amount_in,
+                amount_in,
+                common_token,
+                env::current_account_id(),
+                0,
+                Gas(140_000_000_000_000),
+            ))
     }
 
     /// Callback to verify that transfer to treasure succeeded
@@ -294,13 +309,6 @@ impl Contract {
         token_id: String,
     ) {
         let data_mut = self.data_mut();
-
-        let strat = data_mut
-            .strategies
-            .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
-
-        let compounder = strat.get_mut();
 
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
@@ -319,18 +327,16 @@ impl Contract {
     #[private]
     pub fn get_tokens_return(
         &self,
-        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
         common_token: u64,
     ) -> Promise {
-        assert!(ft_transfer_result.is_ok(), "ERR_REWARD_TRANSFER_FAILED");
-
         let strat = self.get_strat(&token_id);
         let compounder = strat.get_ref();
 
         if common_token == 1 {
+            // TODO: can be shortened by call_get_return
             ext_exchange::get_return(
                 compounder.pool_id_token2_reward,
                 compounder.reward_token.clone(),
@@ -402,8 +408,6 @@ impl Contract {
 
         let amount: U128 = token_out.unwrap();
 
-        assert!(amount.0 > 0u128, "ERR_SLIPPAGE_TOO_HIGH");
-
         if common_token == 1 {
             (amount_token, amount)
         } else {
@@ -422,9 +426,6 @@ impl Contract {
 
         let amount_token1: U128 = token1_out.unwrap();
         let amount_token2: U128 = token2_out.unwrap();
-
-        assert!(amount_token1.0 > 0u128, "ERR_SLIPPAGE_TOO_HIGH");
-        assert!(amount_token2.0 > 0u128, "ERR_SLIPPAGE_TOO_HIGH");
 
         (amount_token1, amount_token2)
     }
@@ -463,9 +464,6 @@ impl Contract {
         token1_min_out = U128(percent.apply_to(token1_min_out.0));
         token2_min_out = U128(percent.apply_to(token2_min_out.0));
 
-        compounder.available_balance[0] = token1_min_out.0;
-        compounder.available_balance[1] = token2_min_out.0;
-
         log!(
             "min amount out: {} for {} and {} for {}",
             token1_min_out.0,
@@ -473,9 +471,6 @@ impl Contract {
             token2_min_out.0,
             token_out2
         );
-
-        //Actualization of reward amount
-        compounder.last_reward_amount = 0;
 
         if common_token == 1 {
             self.call_swap(
@@ -513,7 +508,12 @@ impl Contract {
                 Some(amount_in_1),
                 token1_min_out,
             )
-            // TODO: should use and
+            .then(ext_self::callback_post_first_swap(
+                token_id.clone(),
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ))
             .then(ext_self::call_swap(
                 pool_id_to_swap2,
                 token_in2,
@@ -522,7 +522,7 @@ impl Contract {
                 token2_min_out,
                 contract_id,
                 0,
-                Gas(40_000_000_000_000),
+                Gas(30_000_000_000_000),
             ))
             .then(ext_self::callback_post_swap(
                 token_id,
@@ -534,12 +534,12 @@ impl Contract {
     }
 
     #[private]
-    pub fn callback_post_swap(
+    pub fn callback_post_first_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
-        assert!(swap_result.is_ok(), "ERR_SWAP_FAILED");
+        assert!(swap_result.is_ok(), "ERR_FIRST_SWAP_FAILED");
 
         let strat = self
             .data_mut()
@@ -547,6 +547,47 @@ impl Contract {
             .get_mut(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
+
+        compounder.available_balance[0] = swap_result.unwrap().0;
+
+        // First swap succeeded, thus decrement the last reward_amount
+        let amount_used: u128 = compounder.last_reward_amount / 2;
+        compounder.last_reward_amount -= amount_used;
+    }
+
+    #[private]
+    pub fn callback_post_swap(
+        &mut self,
+        #[callback_result] swap_result: Result<U128, PromiseError>,
+        token_id: String,
+    ) {
+        let data_mut = self.data_mut();
+        let strat = data_mut
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+        let compounder = strat.get_mut();
+
+        if swap_result.is_err() {
+            compounder.skip_swaps = true;
+            if 100u128 - compounder.slippage < MAX_SLIPPAGE_ALLOWED {
+                // increment slippage
+                compounder.slippage -= 1;
+            }
+            // TODO: cannot panic because this would invalidate the slippage update
+            log!("ERR_SECOND_SWAP_FAILED");
+            return;
+        }
+
+        // no more rewards to spend
+        compounder.last_reward_amount = 0;
+        // token_2 balance to liquidity
+        compounder.available_balance[1] = swap_result.unwrap().0;
+        // reset skip_swaps
+        compounder.skip_swaps = false;
+        // reset slippage
+        compounder.slippage = 100 - MIN_SLIPPAGE_ALLOWED;
+        // after both swaps succeeded, it's ready to stake
         compounder.next_cycle();
     }
 

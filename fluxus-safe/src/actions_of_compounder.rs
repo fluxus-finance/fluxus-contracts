@@ -196,16 +196,15 @@ impl Contract {
     #[payable]
     pub fn call_swap(
         &mut self,
-        pool_id_to_swap: u64,
+        pool_id: u64,
         token_in: AccountId,
         token_out: AccountId,
         amount_in: Option<U128>,
         min_amount_out: U128,
     ) -> Promise {
-        assert!(self.check_promise(), "Previous tx failed.");
         ext_exchange::swap(
             vec![SwapAction {
-                pool_id: pool_id_to_swap,
+                pool_id,
                 token_in,
                 token_out,
                 amount_in,

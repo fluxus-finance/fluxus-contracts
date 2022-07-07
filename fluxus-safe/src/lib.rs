@@ -122,7 +122,7 @@ pub trait Callbacks {
     fn call_get_pool_shares(&mut self, pool_id: u64, account_id: AccountId) -> String;
     fn call_swap(
         &self,
-        pool_id_to_swap: u64,
+        pool_id: u64,
         token_in: AccountId,
         token_out: AccountId,
         amount_in: Option<U128>,
@@ -171,7 +171,6 @@ pub trait Callbacks {
     fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(
         &self,
-        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
@@ -198,6 +197,11 @@ pub trait Callbacks {
         #[callback_result] claim_result: Result<(), PromiseError>,
         token_id: String,
     ) -> Promise;
+    fn callback_post_first_swap(
+        &mut self,
+        #[callback_result] swap_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
     fn callback_post_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
