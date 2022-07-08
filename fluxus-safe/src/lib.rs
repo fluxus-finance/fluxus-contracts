@@ -55,7 +55,6 @@ pub(crate) enum StorageKey {
     Accounts,
     Whitelist,
     AccountTokens { account_id: AccountId },
-    Shares { pool_id: u64 },
     Guardian,
 }
 
@@ -186,7 +185,7 @@ pub trait Callbacks {
         token_id: String,
         account_id: AccountId,
     );
-    fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
+    // fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(
         &self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
@@ -228,7 +227,6 @@ pub trait Callbacks {
         farm_id: String,
     ) -> Promise;
 }
-const F: u128 = 100000000000000000000000000000; // rename this const
 
 construct_uint! {
     /// 256-bit unsigned integer.
@@ -315,13 +313,14 @@ impl Contract {
 }
 
 impl Contract {
+    #[allow(unreachable_patterns)]
     fn data(&self) -> &ContractData {
         match &self.data {
             VersionedContractData::V0001(data) => data,
             _ => unimplemented!(),
         }
     }
-
+    #[allow(unreachable_patterns)]
     fn data_mut(&mut self) -> &mut ContractData {
         match &mut self.data {
             VersionedContractData::V0001(data) => data,

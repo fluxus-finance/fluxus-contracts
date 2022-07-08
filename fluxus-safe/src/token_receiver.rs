@@ -97,6 +97,7 @@ impl MFTTokenReceiver for Contract {
 
         let amount_in_u128: u128 = amount.into();
 
+        assert!(msg.is_empty(), "ERR_MSG_INCORRECT");
         //Check: is the amount sent above or equal the minimum deposit?
         assert!(
             amount_in_u128 >= compounder.seed_min_deposit.into(),
