@@ -245,7 +245,10 @@ impl Contract {
         #[callback_result] transfer_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
-        assert!(transfer_result.is_ok());
+        if transfer_result.is_err() {
+            log!("ERR_TRANSFER_TO_EXCHANGE");
+            return;
+        }
 
         let data_mut = self.data_mut();
         let strat = data_mut

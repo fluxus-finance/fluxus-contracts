@@ -303,17 +303,12 @@ impl Contract {
             .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
-        let amount: u128 = *compounder
+        // reset default sentry address and get last earned amount
+        let amount = compounder
             .admin_fees
             .sentries
-            .get(&env::current_account_id())
+            .remove(&env::current_account_id())
             .unwrap();
-
-        // reset default sentry address to use in the next iteration
-        compounder
-            .admin_fees
-            .sentries
-            .remove(&env::current_account_id());
 
         ext_reward_token::ft_transfer_call(
             sentry_acc_id.clone(),

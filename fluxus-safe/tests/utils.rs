@@ -1,5 +1,4 @@
-use borsh::{BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
+use anyhow::Ok;
 use near_sdk::json_types::U128;
 use near_units::{parse_gas, parse_near};
 use std::collections::HashMap;
@@ -14,6 +13,8 @@ pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000;
 type FarmId = String;
 type SeedId = String;
 use near_sdk::serde::{Deserialize, Serialize};
+
+use fluxus_safe::AccountFee;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -54,9 +55,10 @@ pub struct PoolInfo {
 const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 const CONTRACT_ID_FARM: &str = "farm101.fluxusfi.testnet";
 const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
-const CONTRACT_ID_TREASURE: &str = "treasure.mesto.testnet";
 
 pub async fn deploy_safe_contract(
+    owner: &Account,
+    treasure: &Contract,
     token1: &Contract,
     token2: &Contract,
     reward_token: &Contract,
@@ -69,22 +71,31 @@ pub async fn deploy_safe_contract(
     let wasm = fs::read("res/fluxus_safe.wasm").await?;
     let contract = worker.dev_deploy(&wasm).await?;
 
-    contract
+    let res = contract
         .call(worker, "new")
         .args_json(serde_json::json!({
-            "owner_id": contract.id().clone(),
+            "owner_id": owner.id(),
             "exchange_contract_id": CONTRACT_ID_REF_EXC,
             "farm_contract_id": CONTRACT_ID_FARM,
-            "treasure_contract_id": CONTRACT_ID_TREASURE
+            "treasure_contract_id": treasure.id()
         }))?
         .transact()
         .await?;
 
-    contract
+    // println!("deploy safe -> {:#?}", res);
+
+    let strat: AccountFee = AccountFee {
+        account_id: owner.id().parse().unwrap(),
+        fee_percentage: 10,
+        current_amount: 0,
+    };
+
+    let res = contract
         .call(worker, "create_strategy")
         .args_json(serde_json::json!({
             "_strategy": "".to_string(),
-            "protocol_fee": 10,
+            "strat_creator": strat,
+            "sentry_fee": 10,
             "token1_address": token1.id().to_string(),
             "token2_address": token2.id().to_string(),
             "pool_id_token1_reward": pool_id_token1_reward,
@@ -96,6 +107,31 @@ pub async fn deploy_safe_contract(
         }))?
         .transact()
         .await?;
+
+    // println!("create strategy -> {:#?}", res);
+
+    Ok(contract)
+}
+
+pub async fn deploy_treasure(
+    owner: &Account,
+    token_out: &Contract,
+    worker: &Worker<Sandbox>,
+) -> anyhow::Result<Contract> {
+    let wasm = fs::read("../fluxus-treasurer/res/fluxus_treasurer.wasm").await?;
+    let contract = worker.dev_deploy(&wasm).await?;
+
+    let res = contract
+        .call(worker, "new")
+        .args_json(serde_json::json!({
+            "owner_id": owner.id(),
+            "token_out": token_out.id(),
+            "exchange_contract_id": CONTRACT_ID_REF_EXC,
+        }))?
+        .transact()
+        .await?;
+
+    // println!("deploy treasury -> {:#?}", res);
 
     Ok(contract)
 }
@@ -229,7 +265,7 @@ pub async fn deploy_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    println!("ft_transfer_call -> {:#?}", res);
+    // println!("ft_transfer_call -> {:#?}", res);
 
     // TODO: require farm state is Running
 
@@ -441,7 +477,7 @@ pub async fn register_into_contracts(
     contracts_id: Vec<&AccountId>,
 ) -> anyhow::Result<()> {
     for contract_id in contracts_id {
-        account
+        let res = account
             .call(worker, &contract_id, "storage_deposit")
             .args_json(serde_json::json!({
                 "registration_only": false,
@@ -449,6 +485,8 @@ pub async fn register_into_contracts(
             .deposit(parse_near!("1 N"))
             .transact()
             .await?;
+
+        // println!("{:#?}", res);
     }
 
     Ok(())
@@ -476,13 +514,13 @@ pub async fn log_farm_seeds(
     farm: &Contract,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<()> {
-    let res = farm
+    let seeds = farm
         .call(worker, "list_user_seeds")
         .args_json(serde_json::json!({ "account_id": auto_compounder.id().to_string() }))?
         .transact()
         .await?;
 
-    println!("list_user_seeds {:#?}", res);
+    println!("list_user_seeds {:#?}", seeds);
     Ok(())
 }
 

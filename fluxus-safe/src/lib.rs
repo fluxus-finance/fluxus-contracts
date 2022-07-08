@@ -47,8 +47,8 @@ mod actions_of_strat;
 
 mod owner;
 
-mod admin_fee;
-use admin_fee::*;
+pub mod admin_fee;
+pub use admin_fee::*;
 
 #[derive(BorshStorageKey, BorshSerialize)]
 pub(crate) enum StorageKey {
