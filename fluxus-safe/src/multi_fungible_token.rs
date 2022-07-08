@@ -45,17 +45,29 @@ impl Contract {
         self.data_mut().users_balance_by_uxu_share.insert(uxu_share, temp);
         
     }
+     
+    pub fn seed_total_amount(& self, token_id: String) -> u128{
+        let mut id = token_id;
+        id.remove(0).to_string();
+        let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, id);
+
+        let temp = self.data().seed_id_amount.get(&seed_id).unwrap();
+        self.do_clone_u128(temp)
+    }
 
     ///Return users_balance of a specific uxu_share
     #[inline]
     pub fn users_share_map_by_uxu_share(&self, uxu_share: String)  -> HashMap<String, u128> {
         let temp = self.data().users_balance_by_uxu_share.get(&uxu_share).unwrap();
-        self.do_clone(temp)
+        self.do_clone_hash(temp)
     }
 
     ///Clone a HashMap<String, u128>
-    pub fn do_clone(&self, data: &HashMap<String,u128>) -> HashMap<String, u128> {
+    pub fn do_clone_hash(&self, data: &HashMap<String,u128>) -> HashMap<String, u128> {
         data.clone()
+    } 
+    pub fn do_clone_u128(&self, data: &u128) -> u128 {
+        *data
     } 
 
     ///Return the total_supply of an specific uxu_share (ref lp token). 
@@ -352,7 +364,7 @@ mod tests {
         assert_eq!(balance, 8_u128);
 
         //Checking total supply
-        balance = contract.total_supply_amount(&"uxu_share_1".to_string());
+        balance = contract.total_supply_amount("uxu_share_1".to_string());
         assert_eq!(balance, 8_u128);
     }
 
@@ -375,7 +387,7 @@ mod tests {
         assert_eq!(balance_user3, 999_u128);
 
         //Checking total supply
-        let total_supply = contract.total_supply_amount(&"uxu_share_1".to_string());
+        let total_supply = contract.total_supply_amount("uxu_share_1".to_string());
         assert_eq!(total_supply, 1019_u128);
 
         //Transferring uxu_shares
