@@ -138,6 +138,7 @@ impl Contract {
 
         let compounder = strat.get_ref();
 
+        // contract_id does not exist on sentries
         if !compounder
             .admin_fees
             .sentries
@@ -159,6 +160,7 @@ impl Contract {
                 Gas(80_000_000_000_000),
             ))
         } else {
+            // the withdraw succeeded but not the transfer
             ext_reward_token::ft_transfer_call(
                 self.exchange_acc(),
                 U128(compounder.last_reward_amount + self.data().treasury.current_amount), //Amount after withdraw the rewards
@@ -558,7 +560,7 @@ impl Contract {
                 token_in2,
                 token_out2,
                 Some(amount_in_2),
-                U128(token2_min_out.0 * 10),
+                U128(token2_min_out.0),
                 contract_id,
                 0,
                 Gas(30_000_000_000_000),
