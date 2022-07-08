@@ -33,63 +33,47 @@ impl Contract {
         account_id: AccountId,
         shares: u128,
     ) -> String {
-        // TODO: remove generic promise check
+      
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
-
-        //Total fft_share
+        
         let mut id = token_id;
         id.remove(0).to_string();
-
-        let total_fft = self.total_supply_amount_converting(id.clone()); //token_id.clone()
+        
+        //Total fft_share
+        let total_fft = self.total_supply_amount_converting(id.clone()); 
+        log!("total fft is = {}", total_fft);
         let uxu_share_id = self.convert_pool_id_in_uxu_share(id.clone());
-
 
         let data = self.data_mut();
         let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
 
-        /*
-        let strat = data
-            .strategies
-            .get_mut(&token_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
-
-        let compounder = strat.get_mut();
-        */
-
-
-
-
         //Total seed_id
-        let  total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);///////////
-        
-        //self.increment_seed_total(token_id.clone(), total_seed);
-        self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);///////////
+        let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        log!("total seed is = {}", total_seed);
+
+        /* 
+        if account_id.to_string() == "leopollum.testnet"{
+            self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares+1000000000_u128);
+
+        }
+        */
+        self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);
 
         let fft_share_amount;
-        if total_seed == 0{
+        if total_fft == 0{ 
             log!("fft_shares_amount = shares");
             fft_share_amount = shares;
         }
         else{
-
-            fft_share_amount = shares*total_fft/(total_seed+shares);
+            fft_share_amount = shares*total_fft/(total_seed);
             log!("{} * {} /{} will be = {}",shares,total_fft, total_seed,fft_share_amount );
-
         }
+
         log!("{} {} will be minted for {}",fft_share_amount, uxu_share_id,account_id.to_string() );
         self.mft_mint(uxu_share_id, fft_share_amount, account_id.to_string());
 
-        // increment total shares deposited by account
-        //compounder.increment_user_shares(&account_id, shares);
-
         format!("The {} added {} to {}", account_id, fft_share_amount, seed_id)
     }
-
-    /* 
-    fn increment_seed_total(&mut self, seed_id: String, amount: u128) {
-        self.data_mut().seed_id_amount.insert(seed_id, amount);
-    }
-    */
 
     /// Withdraw user lps and send it to the contract.
     pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
@@ -101,7 +85,7 @@ impl Contract {
         let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
 
         let fft_share_id = self.convert_pool_id_in_uxu_share(id);
-        let mut user_fft_shares = self.users_share_amount(fft_share_id, caller_id.to_string());
+        let mut user_fft_shares = self.users_share_amount(fft_share_id.clone(), caller_id.to_string());
 
         if let Some(amount_withdrawal) = amount_withdrawal{
             assert!(u128::from(amount_withdrawal) <= user_fft_shares);
@@ -109,22 +93,17 @@ impl Contract {
 
         }
 
-
         //Total fft_share
-        let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
-        let total_fft = self.total_supply_amount(fft_share_id);//////////////////////////////////
+        let total_fft = self.total_supply_amount(fft_share_id);
+        log!("total fft is = {}", total_fft);
 
         //Total seed_id
         let total_seed = *self.data_mut().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
-        
+        log!("total seed is = {}", total_seed);
 
         //Converting fft_shares in seed_id:
         let user_shares = user_fft_shares*total_seed/total_fft;
-
-
-
-
-
+        log!("{} * {} /{} will be = {}",user_fft_shares,total_seed, total_fft,user_shares );
 
 
         let strat = self
@@ -134,21 +113,6 @@ impl Contract {
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
         let compounder = strat.clone().get();
-
-        /* 
-        let user_shares = compounder
-            .user_shares
-            .get(&caller_id)
-            .expect("ERR_ACCOUNT_DOES_NOT_EXIST");
-
-        assert!(
-            user_shares.total != 0,
-            "User does not have enough lps to withdraw"
-        );
-        */
-
-
-
 
         let amount: U128 = amount_withdrawal.unwrap_or(U128(user_shares));
         assert!(
@@ -180,7 +144,7 @@ impl Contract {
         .then(ext_self::callback_withdraw_shares(
             token_id,
             caller_id,
-            amount.0,
+            user_fft_shares,
             contract_id,
             0,
             Gas(20_000_000_000_000),
