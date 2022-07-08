@@ -2,77 +2,76 @@ mod utils;
 
 use near_units::parse_near;
 use workspaces::{
-    network::{DevAccountDeployer, TopLevelAccountCreator},
-    operations::Transaction,
+    network::{DevAccountDeployer, Sandbox},
     Account, AccountId, Contract, Network, Worker,
 };
 
 const TOTAL_GAS: u64 = 300_000_000_000_000;
 
-const CONTRACT_ID_REF_EXC: &str = "exchange.ref-dev.testnet";
+const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 
-/// Runs the full cycle of auto-compound
-async fn do_auto_compound(
+/// Runs the full cycle of auto-compound and fast forward
+async fn do_auto_compound_with_fast_forward(
     contract: &Contract,
     farm: &Contract,
-    worker: &Worker<impl Network>,
+    token_id: &String,
+    blocks_to_forward: u64,
+    fast_forward_token: &mut u64,
+    worker: &Worker<Sandbox>,
 ) -> anyhow::Result<()> {
-    let res = contract
-        .call(&worker, "claim_reward")
-        .args_json(serde_json::json!({}))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("claim_reward {:#?}\n", res);
+    if blocks_to_forward > 0 {
+        let block_info = worker.view_latest_block().await?;
+        println!(
+            "BlockInfo {fast_forward_token} pre-fast_forward {:?}",
+            block_info
+        );
 
-    let res = contract
-        .call(&worker, "withdraw_of_reward")
-        .args_json(serde_json::json!({}))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("withdraw_of_reward {:#?}\n", res);
+        worker.fast_forward(blocks_to_forward).await?;
 
-    let res = contract
-        .call(&worker, "autocompounds_swap")
-        .args_json(serde_json::json!({}))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("autocompounds_swap {:#?}\n", res);
+        let block_info = worker.view_latest_block().await?;
+        println!(
+            "BlockInfo {fast_forward_token} post-fast_forward {:?}",
+            block_info
+        );
 
-    let res = contract
-        .call(&worker, "autocompounds_liquidity_and_stake")
-        .args_json(serde_json::json!({}))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    // println!("autocompounds_liquidity_and_stake {:#?}\n", res);
+        *fast_forward_token += 1;
+    }
 
-    // utils::log_farm_seeds(&contract, &farm, &worker).await?;
+    for _ in 0..4 {
+        let res = contract
+            .call(worker, "harvest")
+            .args_json(serde_json::json!({ "token_id": token_id }))?
+            .gas(TOTAL_GAS)
+            .transact()
+            .await?;
+        // println!("{:#?}\n", res);
+    }
 
     Ok(())
 }
+
+use fluxus_safe::{self, SharesBalance};
 
 /// Return the number of shares that the account has in the auto-compound contract
 async fn get_user_shares(
     contract: &Contract,
     account: &Account,
+    token_id: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
     let res = contract
-        .call(&worker, "get_user_shares")
+        .call(worker, "get_user_shares")
         .args_json(serde_json::json!({
-            "account_id": account.id()
+            "account_id": account.id(),
+            "token_id": token_id,
         }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?;
 
-    let account_shares: String = res.json()?;
-    let shares: u128 = utils::str_to_u128(&account_shares);
+    let account_shares: SharesBalance = res.json()?;
 
-    Ok(shares)
+    Ok(account_shares.total)
 }
 
 #[tokio::test]
@@ -92,7 +91,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let exchange = utils::deploy_exchange(
         &owner,
         &exchange_id,
-        vec![&token_1.id(), &token_2.id(), &token_reward.id()],
+        vec![token_1.id(), token_2.id(), token_reward.id()],
         &worker,
     )
     .await?;
@@ -153,10 +152,10 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let farm = utils::deploy_farm(&owner, &seed_id, &token_reward, &worker).await?;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 3: Deploy Vault contract
+    // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
 
-    let contract = utils::deploy_full_vault_contract(
+    let contract = utils::deploy_safe_contract(
         &token_1,
         &token_2,
         &token_reward,
@@ -169,10 +168,10 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     .await?;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 4: Initialize Vault
+    // Stage 4: Initialize Safe
     ///////////////////////////////////////////////////////////////////////////
 
-    /* Register vault into farm contract */
+    /* Register into farm contract */
     let res = contract
         .as_account()
         .call(&worker, farm.id(), "storage_deposit")
@@ -203,19 +202,19 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // println!("mft_register {:#?}", res);
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 5: Start interacting with Vault
+    // Stage 5: Start interacting with Safe
     ///////////////////////////////////////////////////////////////////////////
 
     let initial_owner_shares: String =
         utils::get_pool_shares(&owner, &exchange, pool_token1_token2, &worker).await?;
 
-    let pool_id: String = format!(":{}", pool_token1_token2);
+    let token_id: String = format!(":{}", pool_token1_token2);
 
     /* Stake */
     let res = owner
         .call(&worker, exchange.id(), "mft_transfer_call")
         .args_json(serde_json::json!({
-            "token_id": pool_id,
+            "token_id": token_id,
             "receiver_id": contract.id().to_string(),
             "amount": initial_owner_shares.clone(),
             "msg": ""
@@ -226,7 +225,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .await?;
     // println!("mft_transfer_call {:#?}\n", res);
 
-    let owner_shares_on_contract = get_user_shares(&contract, &owner, &worker).await?;
+    let owner_shares_on_contract = get_user_shares(&contract, &owner, &token_id, &worker).await?;
 
     // assert that contract received the correct number of shares
     assert_eq!(
@@ -236,29 +235,25 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 6: Fast forward in the future
+    // Stage 6: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo pre-fast_forward {:?}", block_info);
+    let mut fast_forward_counter: u64 = 0;
 
-    worker.fast_forward(700).await?;
-
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo post-fast_forward {:?}", block_info);
-
-    // utils::log_farm_info(&farm, &seed_id, &worker).await?;
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Stage 7: Auto-compound calls
-    ///////////////////////////////////////////////////////////////////////////
-
-    do_auto_compound(&contract, &farm, &worker).await?;
+    do_auto_compound_with_fast_forward(
+        &contract,
+        &farm,
+        &token_id,
+        700,
+        &mut fast_forward_counter,
+        &worker,
+    )
+    .await?;
 
     let owner_deposited_shares: u128 = utils::str_to_u128(&initial_owner_shares);
 
     // Get owner shares from auto-compound contract
-    let round1_owner_shares: u128 = get_user_shares(&contract, &owner, &worker).await?;
+    let round1_owner_shares: u128 = get_user_shares(&contract, &owner, &token_id, &worker).await?;
 
     // Assert the current value is higher than the initial value deposited
     assert!(
@@ -267,7 +262,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 8: Stake with another account
+    // Stage 7: Stake with another account
     ///////////////////////////////////////////////////////////////////////////
 
     // add liquidity for account 1
@@ -285,7 +280,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // Get account 1 shares
     let account1_initial_shares: String =
-        utils::get_pool_shares(&account_1, &exchange, pool_token1_token2.clone(), &worker).await?;
+        utils::get_pool_shares(&account_1, &exchange, pool_token1_token2, &worker).await?;
 
     let pool_id: String = format!(":{}", pool_token1_token2);
 
@@ -304,7 +299,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .await?;
     // println!("mft_transfer_call {:#?}\n", res);
 
-    let account1_shares_on_contract = get_user_shares(&contract, &account_1, &worker).await?;
+    let account1_shares_on_contract =
+        get_user_shares(&contract, &account_1, &token_id, &worker).await?;
 
     // assert that contract received the correct number of shares
     assert_eq!(
@@ -314,29 +310,25 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 9: Fast forward in the future
+    // Stage 8: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo pre-fast_forward {:?}", block_info);
-
-    worker.fast_forward(900).await?;
-
-    let block_info = worker.view_latest_block().await?;
-    println!("BlockInfo post-fast_forward {:?}", block_info);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Stage 10: Run another round of auto-compound
-    ///////////////////////////////////////////////////////////////////////////
-
-    do_auto_compound(&contract, &farm, &worker).await?;
+    do_auto_compound_with_fast_forward(
+        &contract,
+        &farm,
+        &token_id,
+        900,
+        &mut fast_forward_counter,
+        &worker,
+    )
+    .await?;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 11: Assert owner and account_1 earned shares from auto-compounder strategy
+    // Stage 9: Assert owner and account_1 earned shares from auto-compounder strategy
     ///////////////////////////////////////////////////////////////////////////
 
     // owner shares
-    let round2_owner_shares: u128 = get_user_shares(&contract, &owner, &worker).await?;
+    let round2_owner_shares: u128 = get_user_shares(&contract, &owner, &token_id, &worker).await?;
 
     assert!(
         round2_owner_shares > round1_owner_shares,
@@ -344,7 +336,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     // get account 1 shares from auto-compounder contract
-    let round2_account1_shares: u128 = get_user_shares(&contract, &account_1, &worker).await?;
+    let round2_account1_shares: u128 =
+        get_user_shares(&contract, &account_1, &token_id, &worker).await?;
 
     // parse String to u128
     let account1_initial_shares: u128 = utils::str_to_u128(&account1_initial_shares);
@@ -355,19 +348,19 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 12: Withdraw from Vault and assert received shares are correct
+    // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
 
     let res = owner
         .call(&worker, contract.id(), "unstake")
-        .args_json(serde_json::json!({}))?
+        .args_json(serde_json::json!({ "token_id": token_id }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?;
 
     let res = account_1
         .call(&worker, contract.id(), "unstake")
-        .args_json(serde_json::json!({}))?
+        .args_json(serde_json::json!({ "token_id": token_id }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?;
