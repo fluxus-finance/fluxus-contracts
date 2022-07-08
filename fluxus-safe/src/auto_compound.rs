@@ -517,6 +517,7 @@ impl Contract {
         );
 
         if common_token == 1 {
+            compounder.available_balance[0] = amount_in_1.0;
             self.call_swap(
                 pool_id_to_swap2,
                 token_in2,
@@ -531,6 +532,7 @@ impl Contract {
                 Gas(20_000_000_000_000),
             ))
         } else if common_token == 2 {
+            compounder.available_balance[1] = amount_in_2.0;
             self.call_swap(
                 pool_id_to_swap1,
                 token_in1,
