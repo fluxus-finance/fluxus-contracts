@@ -84,21 +84,10 @@ impl Contract {
     ///Assigns a uxu_share value to an user for a specific uxu_share (ref lp token)
     /// and increment the total_supply of this seed's uxu_share.
     /// It returns the user's new balance.
-    pub fn mft_mint(&mut self, uxu_share: String, amount: u128, user: String) -> u128{ 
+    pub fn mft_mint(&mut self, uxu_share: String, balance: u128, user: String) -> u128{ 
 
         //Add balance to the user for this seed
         let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
-        let balance:u128;
-        let total_sup = self.total_supply_amount(uxu_share.clone());
-        if total_sup == 0{
-            balance = amount;
-        }
-        else{
-            balance = (amount*(total_sup+amount))/total_sup;
-
-
-        }
-
 
         let new_balance = old_amount+balance;
         log!("{} + {} = new_balance {}", old_amount, balance, new_balance);

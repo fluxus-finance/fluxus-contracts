@@ -51,13 +51,18 @@ impl Contract {
         let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
         log!("total seed is = {}", total_seed);
 
-        /* 
-        if account_id.to_string() == "leopollum.testnet"{
-            self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares+1000000000_u128);
+        log!("account_id is = {}",account_id);
+        /*if account_id.to_string() == "leopollum.testnet"{
+            log!("We are inside if account");
+            self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares+1000000000000000000_u128);
 
         }
         */
-        self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);
+        //else{
+            self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);
+        //}
+         
+       
 
         let fft_share_amount;
         if total_fft == 0{ 
