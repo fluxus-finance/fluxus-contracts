@@ -26,15 +26,6 @@ impl VersionedStrategy {
     }
 
     // TODO: impl
-    // pub fn strategy_cycle(&mut self) {
-    //     match self {
-    //         VersionedStrategy::AutoCompounder(strat) => {
-    //             strat.strategy_cycle();
-    //         }
-    //     }
-    // }
-
-    // TODO: impl
     // pub fn get_strategy_id(&self) -> StratId {
     //     match self {
     //         VersionedStrategy::AutoCompounder(strat) => strat.strategy_id.clone(),

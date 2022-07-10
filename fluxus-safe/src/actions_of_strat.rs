@@ -72,4 +72,13 @@ impl Contract {
         
         uxu_share_id
     } 
+    pub fn harvest(&mut self, token_id: String) -> Promise {
+        let strat = self.get_strat(&token_id).get();
+        match strat.cycle_stage {
+            AutoCompounderCycle::ClaimReward => self.claim_reward(token_id),
+            AutoCompounderCycle::Withdrawal => self.withdraw_of_reward(token_id),
+            AutoCompounderCycle::Swap => self.autocompounds_swap(token_id),
+            AutoCompounderCycle::Stake => self.autocompounds_liquidity_and_stake(token_id),
+        }
+    }
 }

@@ -70,7 +70,7 @@ impl Contract {
             fft_share_amount = shares;
         }
         else{
-            fft_share_amount = shares*total_fft/(total_seed);
+            fft_share_amount = (U256::from(shares)*U256::from(total_fft)/U256::from(total_seed)).as_u128();
             log!("{} * {} /{} will be = {}",shares,total_fft, total_seed,fft_share_amount );
         }
 
@@ -92,11 +92,12 @@ impl Contract {
         let fft_share_id = self.convert_pool_id_in_uxu_share(id);
         let mut user_fft_shares = self.users_share_amount(fft_share_id.clone(), caller_id.to_string());
 
-        if let Some(amount_withdrawal) = amount_withdrawal{
-            assert!(u128::from(amount_withdrawal) <= user_fft_shares);
-            user_fft_shares = u128::from(amount_withdrawal);
+        //The user tries to unstake their lp tokens not their fft_shares so the below commented code must to be removed
+        // if let Some(amount_withdrawal) = amount_withdrawal{
+        //     assert!(u128::from(amount_withdrawal) <= user_fft_shares);
+        //     user_fft_shares = u128::from(amount_withdrawal);
 
-        }
+        // }
 
         //Total fft_share
         let total_fft = self.total_supply_amount(fft_share_id);
@@ -106,8 +107,8 @@ impl Contract {
         let total_seed = *self.data_mut().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
         log!("total seed is = {}", total_seed);
 
-        //Converting fft_shares in seed_id:
-        let user_shares = user_fft_shares*total_seed/total_fft;
+        //Converting user total fft_shares in seed_id:
+        let user_shares = (U256::from(user_fft_shares)*U256::from(total_seed)/U256::from(total_fft)).as_u128();
         log!("{} * {} /{} will be = {}",user_fft_shares,total_seed, total_fft,user_shares );
 
 
@@ -119,7 +120,18 @@ impl Contract {
 
         let compounder = strat.clone().get();
 
-        let amount: U128 = amount_withdrawal.unwrap_or(U128(user_shares));
+        let amount: U128;
+        if let Some(amount_withdrawal) = amount_withdrawal{
+                assert!(u128::from(amount_withdrawal) <= user_shares, "{} is trying to withdrawal {} and only has {}",
+                caller_id,
+                amount_withdrawal.0,
+                user_shares );
+                amount = amount_withdrawal;
+                user_fft_shares = (U256::from(amount_withdrawal.0)*U256::from(total_fft)/U256::from(total_seed)).as_u128();
+        }
+        else{
+            amount = U128(user_shares);
+        }
         assert!(
             user_shares >= amount.0,
             "{} is trying to withdrawal {} and only has {}",
@@ -149,6 +161,7 @@ impl Contract {
         .then(ext_self::callback_withdraw_shares(
             token_id,
             caller_id,
+            amount.0,
             user_fft_shares,
             contract_id,
             0,
@@ -217,6 +230,7 @@ impl Contract {
         token_id: String,
         account_id: AccountId,
         amount: Balance,
+        fft_shares: Balance
     ) {
         // TODO: remove generic promise check
         assert!(self.check_promise());
@@ -224,12 +238,13 @@ impl Contract {
 
 
         let mut id = token_id;
+        let data = self.data_mut();
         id.remove(0).to_string();
-        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
-
-
+        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
+        let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        self.data_mut().seed_id_amount.insert(seed_id.clone(),total_seed - amount);
         let fft_share_id = self.data().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
-        self.mft_burn(fft_share_id, amount, account_id.to_string());
+        self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
 
         /* 
         let strat = self

@@ -26,6 +26,9 @@ pub struct AutoCompounder {
     // State is used to update the contract to a Paused/Running state
     pub state: AutoCompounderState,
 
+    /// Used to keep track of the current stage of the auto-compound cycle
+    pub cycle_stage: AutoCompounderCycle,
+
     /// Slippage applied to swaps, range from 0 to 100.
     /// Defaults to 5%. The value will be computed as 100 - slippage
     pub slippage: u128,
@@ -89,9 +92,10 @@ impl From<&AutoCompounderState> for String {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Clone)]
+#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(crate = "near_sdk::serde")]
 pub enum AutoCompounderCycle {
-    Reward,
+    ClaimReward,
     Withdrawal,
     Swap,
     Stake,
@@ -100,7 +104,7 @@ pub enum AutoCompounderCycle {
 impl From<&AutoCompounderCycle> for String {
     fn from(cycle: &AutoCompounderCycle) -> Self {
         match *cycle {
-            AutoCompounderCycle::Reward => String::from("Reward"),
+            AutoCompounderCycle::ClaimReward => String::from("Reward"),
             AutoCompounderCycle::Withdrawal => String::from("Withdrawal"),
             AutoCompounderCycle::Swap => String::from("Swap"),
             AutoCompounderCycle::Stake => String::from("Stake"),
@@ -127,6 +131,7 @@ impl AutoCompounder {
             protocol_fee,
             protocol_shares: 0u128,
             state: AutoCompounderState::Running,
+            cycle_stage: AutoCompounderCycle::ClaimReward,
             slippage: 95u128,
             last_reward_amount: 0u128,
             last_fee_amount: 0u128,
@@ -212,6 +217,15 @@ impl AutoCompounder {
     //     user_shares.total = new_shares;
     //     self.user_shares.insert(account_id.clone(), user_shares);
     // }
+
+    pub(crate) fn next_cycle(&mut self) {
+        match self.cycle_stage {
+            AutoCompounderCycle::ClaimReward => self.cycle_stage = AutoCompounderCycle::Withdrawal,
+            AutoCompounderCycle::Withdrawal => self.cycle_stage = AutoCompounderCycle::Swap,
+            AutoCompounderCycle::Swap => self.cycle_stage = AutoCompounderCycle::Stake,
+            AutoCompounderCycle::Stake => self.cycle_stage = AutoCompounderCycle::ClaimReward,
+        }
+    }
 }
 
 /// Versioned Farmer, used for lazy upgrade.
@@ -242,6 +256,7 @@ impl VersionedCompounder {
             protocol_fee,
             protocol_shares: 0u128,
             state: AutoCompounderState::Running,
+            cycle_stage: AutoCompounderCycle::ClaimReward,
             slippage: 95u128,
             last_reward_amount: 0u128,
             last_fee_amount: 0u128,

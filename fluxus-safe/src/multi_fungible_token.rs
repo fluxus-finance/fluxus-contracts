@@ -29,13 +29,27 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 #[near_bindgen]
 impl Contract {
     
-    ///Return the u128 amount of an user for an specific uxu_share (ref lp token).
+     ///Return the u128 amount of an user for an specific uxu_share (ref lp token).
     pub fn users_share_amount(&mut self, uxu_share: String, user: String) -> u128 {
         let mut temp = HashMap::new();
         temp.insert(user.clone(), 0_u128);
         let sla = (*self.data().users_balance_by_uxu_share.get(&uxu_share).unwrap_or(& temp)).get(&user).unwrap_or(&0_u128)
         ;
         *sla
+    }
+    /// Return the u128 amount a user has in seed_id.
+    pub fn user_share_seed_id(&mut self, seed_id: String, user: String) -> u128 {
+        let fft_name :String;
+        if let Some(fft_resp) = self.data().uxu_share_by_seed_id.get(&seed_id) {
+            fft_name = fft_resp.clone();
+        }
+         else {
+            env::panic_str("E1: seed_id doesn't exist");
+        }
+        let user_fft_shares = self.users_share_amount(fft_name.clone(),user);
+        let total_fft = self.total_supply_amount(fft_name);
+        let total_seed = *self.data().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        (U256::from(user_fft_shares)*U256::from(total_seed)/U256::from(total_fft)).as_u128()
     }
 
     ///Register a seed into the users_balance_by_uxu_share
