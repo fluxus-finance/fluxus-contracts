@@ -206,6 +206,7 @@ pub trait Callbacks {
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
         token_id: String,
+        common_token: u64,
     );
     fn callback_post_get_unclaimed_reward(
         &self,

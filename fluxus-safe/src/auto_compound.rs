@@ -517,6 +517,7 @@ impl Contract {
         );
 
         if common_token == 1 {
+            // use the entire amount for the common token
             compounder.available_balance[0] = amount_in_1.0;
             self.call_swap(
                 pool_id_to_swap2,
@@ -527,11 +528,13 @@ impl Contract {
             )
             .then(ext_self::callback_post_swap(
                 token_id,
+                common_token,
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
             ))
         } else if common_token == 2 {
+            // use the entire amount for the common token
             compounder.available_balance[1] = amount_in_2.0;
             self.call_swap(
                 pool_id_to_swap1,
@@ -542,6 +545,7 @@ impl Contract {
             )
             .then(ext_self::callback_post_swap(
                 token_id,
+                common_token,
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
@@ -572,6 +576,7 @@ impl Contract {
             ))
             .then(ext_self::callback_post_swap(
                 token_id,
+                common_token,
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
@@ -612,6 +617,7 @@ impl Contract {
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
         token_id: String,
+        common_token: u64,
     ) {
         let data_mut = self.data_mut();
         let strat = data_mut
@@ -632,8 +638,14 @@ impl Contract {
 
         // no more rewards to spend
         compounder.last_reward_amount = 0;
-        // token_2 balance to liquidity
-        compounder.available_balance[1] = swap_result.unwrap().0;
+        // update balance to add liquidity
+        if common_token == 1 {
+            // update missing balance
+            compounder.available_balance[1] = swap_result.unwrap().0;
+        } else if common_token == 2 {
+            // update missing balance
+            compounder.available_balance[0] = swap_result.unwrap().0;
+        }
         // reset slippage
         compounder.slippage = 100 - MIN_SLIPPAGE_ALLOWED;
         // after both swaps succeeded, it's ready to stake
