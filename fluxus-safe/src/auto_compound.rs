@@ -645,6 +645,8 @@ impl Contract {
         } else if common_token == 2 {
             // update missing balance
             compounder.available_balance[0] = swap_result.unwrap().0;
+        } else {
+            compounder.available_balance[1] = swap_result.unwrap().0;
         }
         // reset slippage
         compounder.slippage = 100 - MIN_SLIPPAGE_ALLOWED;
