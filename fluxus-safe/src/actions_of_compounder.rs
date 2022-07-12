@@ -122,12 +122,8 @@ impl Contract {
 
         let amount: U128;
         if let Some(amount_withdrawal) = amount_withdrawal{
-                assert!(u128::from(amount_withdrawal) <= user_shares, "{} is trying to withdrawal {} and only has {}",
-                caller_id,
-                amount_withdrawal.0,
-                user_shares );
-                amount = amount_withdrawal;
-                user_fft_shares = (U256::from(amount_withdrawal.0)*U256::from(total_fft)/U256::from(total_seed)).as_u128();
+            amount = amount_withdrawal;
+            user_fft_shares = (U256::from(amount_withdrawal.0)*U256::from(total_fft)/U256::from(total_seed)).as_u128();
         }
         else{
             amount = U128(user_shares);
