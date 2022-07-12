@@ -213,6 +213,10 @@ pub trait Callbacks {
         #[callback_result] claim_result: Result<(), PromiseError>,
         token_id: String,
     );
+    fn callback_post_unclaimed_reward(
+        &self,
+        #[callback_result] reward_result: Result<U128, PromiseError>,
+    );
     fn callback_get_pool_shares(
         &self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
