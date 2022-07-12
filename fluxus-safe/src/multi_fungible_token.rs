@@ -339,7 +339,7 @@ mod tests {
         testing_env!(context.build());
 
         let mut account = create_account();
-        let mut contract = Contract::new("leopollum.testnet".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
+        let mut contract = Contract::new("auto_compounder.near".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
         
         //Registering seed
         contract.register_seed("uxu_share_1".to_string());
@@ -364,7 +364,7 @@ mod tests {
         testing_env!(context.build());
 
         let mut account = create_account();
-        let mut contract = Contract::new("leopollum.testnet".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
+        let mut contract = Contract::new("auto_compounder.near".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
 
         //Seed register 
         contract.register_seed("uxu_share_1".to_string());
@@ -387,7 +387,7 @@ mod tests {
         let context = get_context();
         testing_env!(context.build());
         let mut account = create_account();
-        let mut contract = Contract::new("leopollum.testnet".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
+        let mut contract = Contract::new("auto_compounder.near".parse().unwrap(),"ref-finance-101.testnet".parse().unwrap(),"farm101.fluxusfi.testnet".parse().unwrap(), "dev-1656420526638-61041719201929".parse().unwrap() );
         
         //Seed register 
         contract.register_seed("uxu_share_1".to_string());

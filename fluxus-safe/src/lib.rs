@@ -186,7 +186,6 @@ pub trait Callbacks {
         token_id: String,
         account_id: AccountId,
     );
-    // fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(
         &self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
@@ -299,9 +298,7 @@ impl Contract {
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
                 state: RunningState::Running,
-                // TODO: remove this
                 users_total_near_deposited: HashMap::new(),
-                //users_shares_by_seed: Vec::new(),
                 users_balance_by_uxu_share: HashMap::new(),
                 compounders_by_seed_id: HashMap::new(),
                 total_supply_by_uxu_share: HashMap::new(),

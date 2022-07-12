@@ -4,7 +4,6 @@ echo $CONTRACT_NAME
 source .env
 echo $username
 echo $reward_token
-treasure_contract_id=dev-1656420526638-61041719201929
 
 #### Initialize contract
 near call $CONTRACT_NAME new '{ "owner_id":"'$username'", "exchange_contract_id": "'$exchange_contract_id'", 

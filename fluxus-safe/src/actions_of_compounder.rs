@@ -52,18 +52,11 @@ impl Contract {
         log!("total seed is = {}", total_seed);
 
         log!("account_id is = {}",account_id);
-        /*if account_id.to_string() == "leopollum.testnet"{
-            log!("We are inside if account");
-            self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares+1000000000000000000_u128);
-
-        }
-        */
-        //else{
-            self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);
-        //}
+   
+        self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);
+        
          
-       
-
+    
         let fft_share_amount;
         if total_fft == 0{ 
             log!("fft_shares_amount = shares");
@@ -91,13 +84,6 @@ impl Contract {
 
         let fft_share_id = self.convert_pool_id_in_uxu_share(id);
         let mut user_fft_shares = self.users_share_amount(fft_share_id.clone(), caller_id.to_string());
-
-        //The user tries to unstake their lp tokens not their fft_shares so the below commented code must to be removed
-        // if let Some(amount_withdrawal) = amount_withdrawal{
-        //     assert!(u128::from(amount_withdrawal) <= user_fft_shares);
-        //     user_fft_shares = u128::from(amount_withdrawal);
-
-        // }
 
         //Total fft_share
         let total_fft = self.total_supply_amount(fft_share_id);

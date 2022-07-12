@@ -6,7 +6,7 @@ echo $username
 
 
 #### Initialize contract
-near call $CONTRACT_NAME new '{"owner_id":"leopollum.testnet", "token_out": "wrap.testnet", "exchange_contract_id": "ref-finance-101.testnet"}' --accountId leopollum.testnet
+near call $CONTRACT_NAME new '{"owner_id":'$username', "token_out": "wrap.testnet", "exchange_contract_id": "ref-finance-101.testnet"}' --accountId leopollum.testnet
 
 
 #### Register contract 
@@ -21,7 +21,7 @@ near call $token_out storage_deposit '{"account_id": "'$CONTRACT_NAME'", "regist
 near call $CONTRACT_NAME register_token '{ "token" : "'$token_in'", "pool_id": '$pool_token_in' }' --accountId $CONTRACT_NAME --gas $total_gas 
 
 # Add stakeholder account
-near call $CONTRACT_NAME add_stakeholder '{ "account_id": "leopollum.testnet", "fee": '$fee' }' --accountId $CONTRACT_NAME
+near call $CONTRACT_NAME add_stakeholder '{ "account_id": '$username', "fee": '$fee' }' --accountId $CONTRACT_NAME
 
 # Get contracts stakeholders
 near call $CONTRACT_NAME get_stakeholders '{}' --accountId $CONTRACT_NAME
