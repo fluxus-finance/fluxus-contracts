@@ -174,22 +174,25 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let seed_id: String = format! {"{}@{}", CONTRACT_ID_REF_EXC, pool_token1_token2};
 
     // Create farm
-    let farm = utils::deploy_farm(&owner, &seed_id, &token_reward, &worker).await?;
+    let farm = utils::deploy_farm(&owner, &worker).await?;
+    let farm_0 = utils::create_farm(&owner, &farm, &seed_id, &token_reward, &worker).await?;
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
 
-    let contract = utils::deploy_safe_contract(
+    let contract = utils::deploy_safe_contract(&account_2, &treasury, &worker).await?;
+
+    utils::create_strategy(
         &account_2,
-        &treasury,
+        &contract,
         &token_1,
         &token_2,
         &token_reward,
         pool_token1_reward,
         pool_token2_reward,
         pool_token1_token2,
-        0,
+        farm_0,
         &worker,
     )
     .await?;

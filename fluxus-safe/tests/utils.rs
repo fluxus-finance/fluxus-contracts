@@ -56,9 +56,9 @@ const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 const CONTRACT_ID_FARM: &str = "farm101.fluxusfi.testnet";
 const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
 
-pub async fn deploy_safe_contract(
+pub async fn create_strategy(
     owner: &Account,
-    treasure: &Contract,
+    safe_contract: &Contract,
     token1: &Contract,
     token2: &Contract,
     reward_token: &Contract,
@@ -67,30 +67,14 @@ pub async fn deploy_safe_contract(
     pool_id: u64,
     farm_id: u64,
     worker: &Worker<impl DevNetwork>,
-) -> anyhow::Result<Contract> {
-    let wasm = fs::read("res/fluxus_safe.wasm").await?;
-    let contract = worker.dev_deploy(&wasm).await?;
-
-    let res = contract
-        .call(worker, "new")
-        .args_json(serde_json::json!({
-            "owner_id": owner.id(),
-            "exchange_contract_id": CONTRACT_ID_REF_EXC,
-            "farm_contract_id": CONTRACT_ID_FARM,
-            "treasure_contract_id": treasure.id()
-        }))?
-        .transact()
-        .await?;
-
-    // println!("deploy safe -> {:#?}", res);
-
+) -> anyhow::Result<()> {
     let strat: AccountFee = AccountFee {
         account_id: owner.id().parse().unwrap(),
         fee_percentage: 10,
         current_amount: 0,
     };
 
-    let res = contract
+    let res = safe_contract
         .call(worker, "create_strategy")
         .args_json(serde_json::json!({
             "_strategy": "".to_string(),
@@ -109,6 +93,30 @@ pub async fn deploy_safe_contract(
         .await?;
 
     // println!("create strategy -> {:#?}", res);
+
+    Ok(())
+}
+
+pub async fn deploy_safe_contract(
+    owner: &Account,
+    treasure: &Contract,
+    worker: &Worker<impl DevNetwork>,
+) -> anyhow::Result<Contract> {
+    let wasm = fs::read("res/fluxus_safe.wasm").await?;
+    let contract = worker.dev_deploy(&wasm).await?;
+
+    let res = contract
+        .call(worker, "new")
+        .args_json(serde_json::json!({
+            "owner_id": owner.id(),
+            "exchange_contract_id": CONTRACT_ID_REF_EXC,
+            "farm_contract_id": CONTRACT_ID_FARM,
+            "treasure_contract_id": treasure.id()
+        }))?
+        .transact()
+        .await?;
+
+    // println!("deploy safe -> {:#?}", res);
 
     Ok(contract)
 }
@@ -189,12 +197,68 @@ pub async fn deploy_exchange(
     Ok(ref_finance)
 }
 
-pub async fn deploy_farm(
+pub async fn create_farm(
     owner: &Account,
+    farm: &Contract,
     seed_id: &String,
     token_reward: &Contract,
     worker: &Worker<Sandbox>,
-) -> anyhow::Result<Contract> {
+) -> anyhow::Result<u64> {
+    let reward_per_session: String = parse_near!("1000 N").to_string();
+    let res = owner
+        .call(worker, farm.id(), "create_simple_farm")
+        .args_json(serde_json::json!({
+            "terms": {
+                "seed_id": seed_id,
+                "reward_token": token_reward.id(),
+                "start_at": 0,
+                "reward_per_session": reward_per_session,
+                "session_interval": 10
+            },
+            "min_deposit": Some(U128(MIN_SEED_DEPOSIT))
+        }))?
+        .deposit(parse_near!("0.1 N"))
+        .gas(parse_gas!("200 Tgas") as u64)
+        .transact()
+        .await?;
+    println!("{:#?}", res);
+
+    let farm_id: String = res.json()?;
+    println!("farm id {farm_id}");
+    println!("{:#?}", farm_id.split("#"));
+
+    let res = token_reward
+        .call(worker, "storage_deposit")
+        .args_json(serde_json::json!({
+            "account_id": farm.id(),
+        }))?
+        .deposit(parse_near!("0.00125 N"))
+        .gas(parse_gas!("200 Tgas") as u64)
+        .transact()
+        .await?;
+    println!("register farm into reward token -> {:#?}", res);
+
+    let amount: String = parse_near!("100000000 N").to_string();
+
+    let res = owner
+        .call(worker, token_reward.id(), "ft_transfer_call")
+        .args_json(serde_json::json!({
+            "receiver_id": farm.id(),
+            "amount": amount,
+            "msg": farm_id
+        }))?
+        .deposit(parse_near!("1 yN"))
+        .gas(parse_gas!("200 Tgas") as u64)
+        .transact()
+        .await?;
+    println!("ft_transfer_call -> {:#?}", res);
+
+    let id = farm_id.chars().last().unwrap().to_digit(10).unwrap() as u64;
+
+    Ok(id)
+}
+
+pub async fn deploy_farm(owner: &Account, worker: &Worker<Sandbox>) -> anyhow::Result<Contract> {
     let testnet = workspaces::testnet().await?;
 
     let farm_acc: AccountId = CONTRACT_ID_FARM.parse().unwrap();
@@ -222,50 +286,6 @@ pub async fn deploy_farm(
 
     // increase reward per session in order to try to swap in the pool for a value that
     // is higher than the pool contains
-
-    let reward_per_session: String = parse_near!("1000 N").to_string();
-    owner
-        .call(worker, farm.id(), "create_simple_farm")
-        .args_json(serde_json::json!({
-            "terms": {
-                "seed_id": seed_id,
-                "reward_token": token_reward.id(),
-                "start_at": 0,
-                "reward_per_session": reward_per_session,
-                "session_interval": 10
-            },
-            "min_deposit": Some(U128(MIN_SEED_DEPOSIT))
-        }))?
-        .deposit(parse_near!("0.1 N"))
-        .gas(parse_gas!("200 Tgas") as u64)
-        .transact()
-        .await?;
-
-    let res = token_reward
-        .call(worker, "storage_deposit")
-        .args_json(serde_json::json!({
-            "account_id": farm.id(),
-        }))?
-        .deposit(parse_near!("0.00125 N"))
-        .gas(parse_gas!("200 Tgas") as u64)
-        .transact()
-        .await?;
-    // println!("register farm into reward token -> {:#?}", res);
-
-    let farm_id = format!("{}#0", seed_id);
-    let amount: String = parse_near!("100000000 N").to_string();
-    let res = owner
-        .call(worker, token_reward.id(), "ft_transfer_call")
-        .args_json(serde_json::json!({
-            "receiver_id": farm.id(),
-            "amount": amount,
-            "msg": farm_id
-        }))?
-        .deposit(parse_near!("1 yN"))
-        .gas(parse_gas!("200 Tgas") as u64)
-        .transact()
-        .await?;
-    // println!("ft_transfer_call -> {:#?}", res);
 
     // TODO: require farm state is Running
 
