@@ -660,30 +660,128 @@ impl Contract {
     pub fn autocompounds_liquidity_and_stake(&mut self, token_id: String) -> Promise {
         self.assert_strategy_running(token_id.clone());
 
-        let strat = self
-            .data()
-            .strategies
-            .get(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+        // send reward to contract caller
+        self.send_reward_to_sentry(token_id, env::predecessor_account_id())
+    }
+
+    #[private]
+    pub fn send_reward_to_sentry(&self, token_id: String, sentry_acc_id: AccountId) -> Promise {
+        let strat = self.get_strat(&token_id);
         let compounder = strat.get_ref();
+
+        ext_reward_token::storage_balance_of(
+            sentry_acc_id.clone(),
+            compounder.reward_token.clone(),
+            0,
+            Gas(10_000_000_000_000),
+        )
+        .then(ext_self::callback_post_sentry(
+            token_id,
+            sentry_acc_id,
+            compounder.reward_token.clone(),
+            env::current_account_id(),
+            0,
+            Gas(240_000_000_000_000),
+        ))
+    }
+
+    pub fn callback_post_sentry(
+        &mut self,
+        #[callback_result] result: Result<Option<StorageBalance>, PromiseError>,
+        token_id: String,
+        sentry_acc_id: AccountId,
+        reward_token: AccountId,
+    ) -> Promise {
+        // TODO: propagate error
+        match result {
+            Ok(balance_op) => match balance_op {
+                Some(balance) => assert!(balance.total.0 > 1),
+                _ => env::panic_str("ERR"),
+            },
+            Err(_) => env::panic_str("ERR"),
+        }
+
+        let strat = self
+            .data_mut()
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+        let compounder = strat.get_mut();
+
+        // reset default sentry address and get last earned amount
+        let amount = compounder
+            .admin_fees
+            .sentries
+            .remove(&env::current_account_id())
+            .unwrap();
+
+        log!("amount {}", amount);
+
+        ext_reward_token::ft_transfer(
+            sentry_acc_id.clone(),
+            U128(amount),
+            Some("".to_string()),
+            reward_token,
+            1,
+            Gas(20_000_000_000_000),
+        )
+        .then(ext_self::callback_post_sentry_mft_transfer(
+            token_id,
+            sentry_acc_id,
+            amount,
+            env::current_account_id(),
+            0,
+            Gas(200_000_000_000_000),
+        ))
+    }
+
+    /// Callback to verify that transfer to treasure succeeded
+    #[private]
+    pub fn callback_post_sentry_mft_transfer(
+        &mut self,
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        token_id: String,
+        sentry_id: AccountId,
+        amount_earned: u128,
+    ) -> PromiseOrValue<u64> {
+        // in the case where the transfer failed, the next cycle will send it plus the new amount earned
+        if ft_transfer_result.is_err() {
+            log!("Transfer to sentry failed".to_string());
+
+            let strat = self
+                .data_mut()
+                .strategies
+                .get_mut(&token_id)
+                .expect(ERR21_TOKEN_NOT_REG);
+
+            let compounder = strat.get_mut();
+
+            // store amount earned by sentry to be redeemed
+            compounder
+                .admin_fees
+                .sentries
+                .insert(sentry_id, amount_earned);
+        }
+
+        let strat = self.get_strat(&token_id);
+        let compounder = strat.get_ref();
+        // let farm_id: String = compounder.farm_id.clone();
 
         let pool_id: u64 = compounder.pool_id;
 
         let token1_amount = compounder.available_balance[0];
         let token2_amount = compounder.available_balance[1];
 
-        // send reward to contract caller
-        self.send_reward_to_sentry(token_id.clone(), env::predecessor_account_id())
-            // Add liquidity
-            .then(ext_exchange::add_liquidity(
+        PromiseOrValue::Promise(
+            ext_exchange::add_liquidity(
                 pool_id,
                 vec![U128(token1_amount), U128(token2_amount)],
                 None,
                 self.data().exchange_contract_id.clone(),
                 970000000000000000000, // TODO: create const to do a meaningful name to this value
                 Gas(30_000_000_000_000),
-            ))
-            .then(ext_self::callback_stake(
+            )
+            .then(ext_self::callback_post_add_liquidity(
                 token_id.clone(),
                 env::current_account_id(),
                 0,
@@ -703,11 +801,12 @@ impl Contract {
                 env::current_account_id(),
                 0,
                 Gas(120_000_000_000_000),
-            ))
+            )),
+        )
     }
 
     #[private]
-    pub fn callback_stake(
+    pub fn callback_post_add_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
         token_id: String,
@@ -752,6 +851,7 @@ impl Contract {
 
         let compounder = strat.get_mut();
 
+        // TODO: should this be after a callback to call_stake?
         compounder.next_cycle();
 
         let accumulated_shares = total_shares_result.unwrap().0;

@@ -144,7 +144,7 @@ pub trait Callbacks {
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_tokens_return(&self) -> (U128, U128);
     fn callback_get_token_return(&self, common_token: u64, amount_token: U128) -> (U128, U128);
-    fn callback_stake(
+    fn callback_post_add_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
         token_id: String,
@@ -234,6 +234,13 @@ pub trait Callbacks {
         &mut self,
         #[callback_result] transfer_result: Result<U128, PromiseError>,
         token_id: String,
+    );
+    fn callback_post_sentry(
+        &self,
+        #[callback_result] result: Result<U128, PromiseError>,
+        token_id: String,
+        sentry_acc_id: AccountId,
+        reward_token: AccountId,
     );
 }
 const F: u128 = 100000000000000000000000000000; // rename this const
