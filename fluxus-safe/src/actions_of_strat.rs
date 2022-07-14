@@ -68,7 +68,6 @@ impl Contract {
         } else {
             let num: u128 =
                 u128::try_from(self.data_mut().uxu_share_by_seed_id.keys().len()).unwrap() + 1_u128;
-            // uxu_share_id = Some("uxu_share_".to_string()+&num.to_string());
             uxu_share_id = Some(format!("uxu_share_{num}"));
             log!(
                 "new uxu_share created: {} for seed_id {}",
