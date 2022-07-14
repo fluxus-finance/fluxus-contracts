@@ -6,7 +6,7 @@ echo $username
 
 
 #### Initialize contract
-near call $CONTRACT_NAME new '{"owner_id":'$username', "token_out": "wrap.testnet", "exchange_contract_id": "ref-finance-101.testnet"}' --accountId leopollum.testnet
+near call $CONTRACT_NAME new '{"owner_id":'$username', "token_out": "'$token_out'", "exchange_contract_id": "ref-finance-101.testnet"}' --accountId leopollum.testnet
 
 
 #### Register contract 

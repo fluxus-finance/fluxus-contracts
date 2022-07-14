@@ -30,7 +30,7 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 impl Contract {
     
      ///Return the u128 amount of an user for an specific uxu_share (ref lp token).
-    pub fn users_share_amount(&mut self, uxu_share: String, user: String) -> u128 {
+    pub fn users_fft_share_amount(&mut self, uxu_share: String, user: String) -> u128 {
         let mut temp = HashMap::new();
         temp.insert(user.clone(), 0_u128);
         let sla = (*self.data().users_balance_by_uxu_share.get(&uxu_share).unwrap_or(& temp)).get(&user).unwrap_or(&0_u128)
@@ -46,7 +46,7 @@ impl Contract {
          else {
             env::panic_str("E1: seed_id doesn't exist");
         }
-        let user_fft_shares = self.users_share_amount(fft_name.clone(),user);
+        let user_fft_shares = self.users_fft_share_amount(fft_name.clone(),user);
         let total_fft = self.total_supply_amount(fft_name);
         let total_seed = *self.data().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
         (U256::from(user_fft_shares)*U256::from(total_seed)/U256::from(total_fft)).as_u128()
@@ -66,23 +66,15 @@ impl Contract {
         let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, id);
 
         let temp = self.data().seed_id_amount.get(&seed_id).unwrap();
-        self.do_clone_u128(temp)
+        temp.clone()
     }
 
     ///Return users_balance of a specific uxu_share
     #[inline]
     pub fn users_share_map_by_uxu_share(&self, uxu_share: String)  -> HashMap<String, u128> {
         let temp = self.data().users_balance_by_uxu_share.get(&uxu_share).unwrap();
-        self.do_clone_hash(temp)
+        temp.clone()
     }
-
-    ///Clone a HashMap<String, u128>
-    pub fn do_clone_hash(&self, data: &HashMap<String,u128>) -> HashMap<String, u128> {
-        data.clone()
-    } 
-    pub fn do_clone_u128(&self, data: &u128) -> u128 {
-        *data
-    } 
 
     ///Return the total_supply of an specific uxu_share (ref lp token). 
     pub fn total_supply_amount(&mut self, uxu_share: String) -> u128 {
@@ -91,7 +83,7 @@ impl Contract {
     }
 
     ///Return the total_supply of an specific uxu_share (ref lp token). 
-    pub fn total_supply_amount_converting(&mut self, token_id: String) -> u128 {
+    pub fn total_supply_by_pool_id(&mut self, token_id: String) -> u128 {
         let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
         log!("Total supply of: {}", seed_id);
         let fft_share_id = self.data_mut().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
@@ -113,7 +105,7 @@ impl Contract {
     pub fn mft_mint(&mut self, uxu_share: String, balance: u128, user: String) -> u128{ 
 
         //Add balance to the user for this seed
-        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
+        let old_amount: u128 = self.users_fft_share_amount(uxu_share.clone(), user.clone());
 
         let new_balance = old_amount+balance;
         log!("{} + {} = new_balance {}", old_amount, balance, new_balance);
@@ -135,7 +127,7 @@ impl Contract {
     /// It returns the user's new balance.
     pub fn mft_burn(&mut self, uxu_share: String, balance: u128, user: String) -> u128{
         //Sub balance to the user for this seed
-        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), user.clone());
+        let old_amount: u128 = self.users_fft_share_amount(uxu_share.clone(), user.clone());
         assert!(old_amount >= balance);
         let new_balance = old_amount - balance;
         log!("{} - {} = new_balance {}", old_amount, balance, new_balance);
@@ -201,7 +193,7 @@ impl Contract {
     pub fn share_transfer(&mut self, uxu_share: String, sender_id: String, receiver_id: String, amount: u128) {
 
         log!("{} and {}", sender_id, uxu_share);
-        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), sender_id.clone());
+        let old_amount: u128 = self.users_fft_share_amount(uxu_share.clone(), sender_id.clone());
         log!("{} > = {}", old_amount, amount);
         assert!(old_amount>=amount);
         log!("{} - {}", old_amount, amount);
@@ -213,7 +205,7 @@ impl Contract {
         self.data_mut().users_balance_by_uxu_share.insert(uxu_share.clone(), hash_temp );
 
         
-        let old_amount: u128 = self.users_share_amount(uxu_share.clone(), receiver_id.clone());
+        let old_amount: u128 = self.users_fft_share_amount(uxu_share.clone(), receiver_id.clone());
         let new_balance = old_amount + amount;
         log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
         let mut hash_temp = self.users_share_map_by_uxu_share(uxu_share.clone());
@@ -288,7 +280,7 @@ impl Contract {
         };
         if unused_amount > 0 {
             
-            let receiver_balance = self.users_share_amount(token_id.clone(), (*receiver_id).to_string());
+            let receiver_balance = self.users_fft_share_amount(token_id.clone(), (*receiver_id).to_string());
             if receiver_balance > 0 {
                 let refund_amount = std::cmp::min(receiver_balance, unused_amount);
                 // If sender's account was deleted, we assume that they have also withdrew all the liquidity from pools.
@@ -349,7 +341,7 @@ mod tests {
         assert_eq!(deposit, 10_u128);
 
         //Checking balance
-        let mut balance = contract.users_share_amount("uxu_share_1".to_string(), "user1".to_string());
+        let mut balance = contract.users_fft_share_amount("uxu_share_1".to_string(), "user1".to_string());
         assert_eq!(balance, 10_u128);
 
         //Minting more uxu_share
@@ -406,16 +398,16 @@ mod tests {
 
         //Transferring uxu_shares
         contract.mft_transfer("uxu_share_1".to_string(), "user2".to_string(), U128::from(5_u128), None);
-        balance_user1 = contract.users_share_amount("uxu_share_1".to_string(), "auto_compounder.near".to_string());
+        balance_user1 = contract.users_fft_share_amount("uxu_share_1".to_string(), "auto_compounder.near".to_string());
         assert_eq!(balance_user1, 5_u128);
-        balance_user2 = contract.users_share_amount("uxu_share_1".to_string(), "user2".to_string());
+        balance_user2 = contract.users_fft_share_amount("uxu_share_1".to_string(), "user2".to_string());
         assert_eq!(balance_user2, 15_u128);
 
         //Transferring uxu_shares
         contract.mft_transfer("uxu_share_1".to_string(), "user3".to_string(), U128::from(5_u128), None);
-        balance_user1 = contract.users_share_amount("uxu_share_1".to_string(), "auto_compounder.near".to_string());
+        balance_user1 = contract.users_fft_share_amount("uxu_share_1".to_string(), "auto_compounder.near".to_string());
         assert_eq!(balance_user1, 0_u128);
-        balance_user3 = contract.users_share_amount("uxu_share_1".to_string(), "user3".to_string());
+        balance_user3 = contract.users_fft_share_amount("uxu_share_1".to_string(), "user3".to_string());
         assert_eq!(balance_user3, 1004_u128);
     }
 

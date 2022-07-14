@@ -40,7 +40,7 @@ impl Contract {
         id.remove(0).to_string();
         
         //Total fft_share
-        let total_fft = self.total_supply_amount_converting(id.clone()); 
+        let total_fft = self.total_supply_by_pool_id(id.clone()); 
         log!("total fft is = {}", total_fft);
         let uxu_share_id = self.convert_pool_id_in_uxu_share(id.clone());
 
@@ -49,9 +49,6 @@ impl Contract {
 
         //Total seed_id
         let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
-        log!("total seed is = {}", total_seed);
-
-        log!("account_id is = {}",account_id);
    
         self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);
         
@@ -59,12 +56,10 @@ impl Contract {
     
         let fft_share_amount;
         if total_fft == 0{ 
-            log!("fft_shares_amount = shares");
             fft_share_amount = shares;
         }
         else{
             fft_share_amount = (U256::from(shares)*U256::from(total_fft)/U256::from(total_seed)).as_u128();
-            log!("{} * {} /{} will be = {}",shares,total_fft, total_seed,fft_share_amount );
         }
 
         log!("{} {} will be minted for {}",fft_share_amount, uxu_share_id,account_id.to_string() );
@@ -83,19 +78,16 @@ impl Contract {
         let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
 
         let fft_share_id = self.convert_pool_id_in_uxu_share(id);
-        let mut user_fft_shares = self.users_share_amount(fft_share_id.clone(), caller_id.to_string());
+        let mut user_fft_shares = self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
 
         //Total fft_share
         let total_fft = self.total_supply_amount(fft_share_id);
-        log!("total fft is = {}", total_fft);
 
         //Total seed_id
         let total_seed = *self.data_mut().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
-        log!("total seed is = {}", total_seed);
 
         //Converting user total fft_shares in seed_id:
         let user_shares = (U256::from(user_fft_shares)*U256::from(total_seed)/U256::from(total_fft)).as_u128();
-        log!("{} * {} /{} will be = {}",user_fft_shares,total_seed, total_fft,user_shares );
 
 
         let strat = self
@@ -228,18 +220,6 @@ impl Contract {
         let fft_share_id = self.data().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
         self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
 
-        /* 
-        let strat = self
-            .data_mut()
-            .strategies
-            .get_mut(&token_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
-
-        let compounder = strat.get_mut();
-
-        // Decrement user shares
-        compounder.decrement_user_shares(&account_id, amount);
-        */
     }
 
 }

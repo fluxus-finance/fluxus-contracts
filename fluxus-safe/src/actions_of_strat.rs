@@ -38,7 +38,7 @@ impl Contract {
 
         let uxu_share_id = self.new_uxu_share(seed_id.clone()); 
         if let Some(id) = uxu_share_id {
-            log!("Registering maps for {} - {}", id, seed_id);
+            log!("Registering {} - {}", id, seed_id);
             //Registering id for the specific seed
             self.data_mut().uxu_share_by_seed_id.insert(seed_id, id.clone());
 
@@ -67,7 +67,7 @@ impl Contract {
         else{
             let num: u128 = u128::try_from(self.data_mut().uxu_share_by_seed_id.keys().len()).unwrap() + 1_u128;
             uxu_share_id = Some("uxu_share_".to_string()+&num.to_string());
-            log!("new uxu_share created: {} for seed_id {}", uxu_share_id.clone().unwrap(),seed_id);
+            format!("new uxu_share created: {} for seed_id {}", uxu_share_id.clone().unwrap(),seed_id);
         }
         
         uxu_share_id
