@@ -609,22 +609,23 @@ impl Contract {
     ) {
         assert!(total_shares_result.is_ok(), "ERR");
         let shares_amount = minted_shares_result.0;
+        let total_seed = self.seed_total_amount(token_id.clone());//data.seed_id_amount.get(&seed_id);
+
+        let data = self.data_mut();
+
+        let mut id = token_id.clone();
+        id.remove(0).to_string();
+        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
+
+        data.seed_id_amount.insert(seed_id,total_seed + shares_amount);
+
+
 
         let strat = self.get_strat_mut(&token_id);
 
         let compounder = strat.get_mut();
 
         compounder.next_cycle();
-
-        if shares_amount > 0 {
-            let mut total_shares: u128 = 0;
-
-            for (_, balance) in compounder.user_shares.iter() {
-                total_shares += balance.total;
-            }
-
-            compounder.balance_update(total_shares, shares_amount);
-        };
 
         let accumulated_shares = total_shares_result.unwrap().0;
 

@@ -81,6 +81,7 @@ pub trait MFTTokenReceiver {
 #[near_bindgen]
 impl MFTTokenReceiver for Contract {
     /// Callback on receiving tokens by this contract.
+    #[allow(unused)]
     fn mft_on_transfer(
         &mut self,
         token_id: String,

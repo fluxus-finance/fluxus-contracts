@@ -5,7 +5,7 @@ source .env
 echo $username
 
 # #### User shares on auto-compouder contract
-near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_id": "'$token_id'" }'
+near view $CONTRACT_NAME user_share_seed_id '{ "seed_id": "'$seed_id'", "user": "'$username'" }'
 
 ### Auto-compoter staked shares
 near view $farm_contract_id list_user_seeds '{ "account_id": "'$CONTRACT_NAME'" }' 
