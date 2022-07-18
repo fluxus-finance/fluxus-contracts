@@ -33,8 +33,8 @@ near view $CONTRACT_NAME get_strats '{}'
 #### Get state from strat, if its Running, Ended, etc.
 near view $CONTRACT_NAME get_strat_state '{"token_id": "'$token_id'" }'
 
-#### Returns struct from user {deposited: x, total: y}
-near view $CONTRACT_NAME get_user_shares '{ "account_id": "'$username'", "token_id": ":'$pool_id'" }'
+#### Returns number of shares the user has for given seed_id {deposited: x, total: y}
+near view $CONTRACT_NAME user_share_seed_id '{ "seed_id": "'$seed_id'", "user": "'$username'" }'
 
 #### Get guardians
 near view $CONTRACT_NAME get_guardians '{}'

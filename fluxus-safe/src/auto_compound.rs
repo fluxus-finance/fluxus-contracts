@@ -813,26 +813,26 @@ impl Contract {
     ) -> U128 {
         assert!(shares_result.is_ok(), "ERR");
 
-        let strat = self
-            .data_mut()
-            .strategies
-            .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+        let strat = self.get_strat_mut(&token_id);
         let compounder = strat.get_mut();
 
         // ensure that in the next run we won't have a balance unless previous steps succeeds
         compounder.available_balance[0] = 0u128;
         compounder.available_balance[1] = 0u128;
 
+        // update owned shares for given seed
         let shares_received = shares_result.unwrap().0;
 
-        let mut total_shares: u128 = 0;
+        let total_seed = self.seed_total_amount(token_id.clone());
 
-        for (_, balance) in compounder.user_shares.iter() {
-            total_shares += balance.total;
-        }
+        let data = self.data_mut();
 
-        compounder.balance_update(total_shares, shares_received);
+        let mut id = token_id.clone();
+        id.remove(0).to_string();
+        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
+
+        data.seed_id_amount
+            .insert(seed_id, total_seed + shares_received);
 
         U128(shares_received)
     }
@@ -846,12 +846,12 @@ impl Contract {
         token_id: String,
     ) {
         assert!(total_shares_result.is_ok(), "ERR");
+        // let shares_amount = minted_shares_result.0;
 
         let strat = self.get_strat_mut(&token_id);
 
         let compounder = strat.get_mut();
 
-        // TODO: should this be after a callback to call_stake?
         compounder.next_cycle();
 
         let accumulated_shares = total_shares_result.unwrap().0;

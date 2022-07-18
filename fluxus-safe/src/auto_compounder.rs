@@ -152,76 +152,6 @@ impl AutoCompounder {
         }
     }
 
-    /// Update user balances based on the user's percentage in the contract.
-    pub(crate) fn balance_update(&mut self, total: u128, shares_reward: u128) {
-        log!("new_shares_quantity is equal to {}", shares_reward);
-
-        let mut shares_distributed: U256 = U256::from(0u128);
-
-        for (account, mut shares) in self.user_shares.clone() {
-            let val = shares.total;
-            let acc_percentage = U256::from(val) * U256::from(F) / U256::from(total);
-
-            let casted_reward = U256::from(shares_reward) * acc_percentage;
-
-            let earned_shares: U256 = casted_reward / U256::from(F);
-
-            shares_distributed += earned_shares;
-
-            let new_user_balance: u128 = (U256::from(val) + earned_shares).as_u128();
-
-            shares.total = new_user_balance;
-
-            self.user_shares.insert(account.clone(), shares);
-        }
-
-        let residue: u128 = shares_reward - shares_distributed.as_u128();
-        log!("Shares residue: {}", residue);
-    }
-
-    pub(crate) fn increment_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let initial_balance = &mut SharesBalance {
-            deposited: 0u128,
-            total: 0u128,
-        };
-        let mut user_shares = self
-            .user_shares
-            .get(account_id)
-            .unwrap_or(initial_balance)
-            .clone();
-
-        let user_lps = user_shares.total;
-
-        // TODO: is it possible to use get_mut on user_shares, to avoid using insert?
-
-        if user_lps > 0 {
-            user_shares.deposited += shares;
-            user_shares.total += shares;
-            self.user_shares.insert(account_id.clone(), user_shares);
-        } else {
-            user_shares.deposited = shares;
-            user_shares.total = shares;
-            self.user_shares.insert(account_id.clone(), user_shares);
-        };
-    }
-
-    pub(crate) fn decrement_user_shares(&mut self, account_id: &AccountId, shares: Balance) {
-        let mut user_shares = self.user_shares.get(account_id).unwrap().clone();
-        let new_shares: u128 = user_shares.total - shares;
-        log!(
-            "{} had {} and now has {}",
-            account_id,
-            user_shares.total,
-            new_shares
-        );
-
-        // The following code resets the initial deposit
-        // The earned_shares will return how much the user has earned after the withdraw, not the deposit
-        user_shares.deposited = new_shares;
-        user_shares.total = new_shares;
-        self.user_shares.insert(account_id.clone(), user_shares);
-    }
-
     pub(crate) fn next_cycle(&mut self) {
         match self.cycle_stage {
             AutoCompounderCycle::ClaimReward => self.cycle_stage = AutoCompounderCycle::Withdrawal,
@@ -268,6 +198,7 @@ pub enum VersionedCompounder {
 }
 
 impl VersionedCompounder {
+    #[allow(dead_code)]
     pub fn new(
         treasury: AccountFee,
         strat_creator: AccountFee,

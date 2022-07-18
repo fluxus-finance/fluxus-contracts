@@ -52,7 +52,7 @@ pub struct PoolInfo {
     pub amp: u64,
 }
 
-const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
+ const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 const CONTRACT_ID_FARM: &str = "farm101.fluxusfi.testnet";
 const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
 
@@ -251,7 +251,7 @@ pub async fn create_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    println!("ft_transfer_call -> {:#?}", res);
+    // println!("ft_transfer_call -> {:#?}", res);
 
     let id = farm_id.chars().last().unwrap().to_digit(10).unwrap() as u64;
 
@@ -581,6 +581,9 @@ pub async fn transfer_tokens(
 
 pub fn str_to_u128(amount: &str) -> u128 {
     amount.parse::<u128>().unwrap()
+}
+pub fn str_to_i128(amount: &str) -> i128 {
+    amount.parse::<i128>().unwrap()
 }
 
 pub async fn get_pool_shares(

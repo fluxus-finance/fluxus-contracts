@@ -362,24 +362,24 @@ impl Contract {
         self.internal_save_account(&account_id, account);
     }
 
-    pub(crate) fn internal_register_account_sub(
-        &mut self,
-        account_id: &AccountId,
-        amount: Balance,
-    ) {
-        let mut account = self.internal_unwrap_or_default_account(&account_id);
-        log!(
-            "account.near_amount is = {} and amount = {}",
-            account.near_amount,
-            amount
-        );
-        account.near_amount -= amount;
-        log!(
-            "the new balance after subtracting = {}",
-            account.near_amount
-        );
-        self.internal_save_account(&account_id, account);
-    }
+    // pub(crate) fn internal_register_account_sub(
+    //     &mut self,
+    //     account_id: &AccountId,
+    //     amount: Balance,
+    // ) {
+    //     let mut account = self.internal_unwrap_or_default_account(&account_id);
+    //     log!(
+    //         "account.near_amount is = {} and amount = {}",
+    //         account.near_amount,
+    //         amount
+    //     );
+    //     account.near_amount -= amount;
+    //     log!(
+    //         "the new balance after subtracting = {}",
+    //         account.near_amount
+    //     );
+    //     self.internal_save_account(&account_id, account);
+    // }
 
     /// storage withdraw
     pub(crate) fn internal_storage_withdraw(

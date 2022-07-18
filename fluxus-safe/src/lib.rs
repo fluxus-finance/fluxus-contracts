@@ -1,5 +1,6 @@
 use near_sdk::PromiseError;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
@@ -14,7 +15,7 @@ use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
     assert_one_yocto, env, ext_contract, log, near_bindgen, require, AccountId, Balance,
-    BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseResult,
+    BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseOrValue, PromiseResult,
 };
 
 use percentage::Percentage;
@@ -50,12 +51,13 @@ mod owner;
 pub mod admin_fee;
 pub use admin_fee::*;
 
+mod multi_fungible_token;
+
 #[derive(BorshStorageKey, BorshSerialize)]
 pub(crate) enum StorageKey {
     Accounts,
     Whitelist,
     AccountTokens { account_id: AccountId },
-    Shares { pool_id: u64 },
     Guardian,
 }
 
@@ -104,6 +106,23 @@ pub struct ContractData {
     // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
     users_total_near_deposited: HashMap<AccountId, u128>,
 
+    ///It is a map that store the uxu_share and a map of users and their balance.
+    /// illustration: map(uxu_share[i], map(user[i], balance[i])).
+    users_balance_by_uxu_share: HashMap<String, HashMap<String, u128>>,
+
+    ///Store the auto-compounders of the seeds.
+    /// illustration: map( seed[i], vec(user[i]) ).//TODO
+    compounders_by_seed_id: HashMap<String, HashSet<String>>,
+
+    ///Store the uxu_share total_supply for each seed_id.
+    total_supply_by_uxu_share: HashMap<String, u128>,
+
+    ///Store the uxu_share for each seed_id.
+    uxu_share_by_seed_id: HashMap<String, String>,
+
+    ///Store the uxu_share for each seed_id.
+    seed_id_amount: HashMap<String, u128>,
+
     // Contract address of the exchange used
     exchange_contract_id: AccountId,
 
@@ -140,6 +159,7 @@ pub trait Callbacks {
         token_id: String,
         account_id: AccountId,
         amount: Balance,
+        fft_shares: Balance,
     );
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_tokens_return(&self) -> (U128, U128);
@@ -168,7 +188,6 @@ pub trait Callbacks {
         token_id: String,
         account_id: AccountId,
     );
-    fn balance_update(&mut self, vec: HashMap<AccountId, u128>, shares: String);
     fn get_tokens_return(
         &self,
         token_id: String,
@@ -243,7 +262,6 @@ pub trait Callbacks {
         reward_token: AccountId,
     );
 }
-const F: u128 = 100000000000000000000000000000; // rename this const
 
 construct_uint! {
     /// 256-bit unsigned integer.
@@ -316,8 +334,12 @@ impl Contract {
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
                 state: RunningState::Running,
-                // TODO: remove this
                 users_total_near_deposited: HashMap::new(),
+                users_balance_by_uxu_share: HashMap::new(),
+                compounders_by_seed_id: HashMap::new(),
+                total_supply_by_uxu_share: HashMap::new(),
+                uxu_share_by_seed_id: HashMap::new(),
+                seed_id_amount: HashMap::new(),
                 exchange_contract_id,
                 farm_contract_id,
                 /// List of all the pools.
@@ -329,13 +351,14 @@ impl Contract {
 }
 
 impl Contract {
+    #[allow(unreachable_patterns)]
     fn data(&self) -> &ContractData {
         match &self.data {
             VersionedContractData::V0001(data) => data,
             _ => unimplemented!(),
         }
     }
-
+    #[allow(unreachable_patterns)]
     fn data_mut(&mut self) -> &mut ContractData {
         match &mut self.data {
             VersionedContractData::V0001(data) => data,
