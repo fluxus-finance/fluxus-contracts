@@ -220,7 +220,10 @@ pub trait Callbacks {
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
         token_id: String,
-    );
+        common_token: u64,
+        amount_in: U128,
+        token_min_out: U128,
+    ) -> PromiseOrValue<u64>;
     fn callback_post_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,

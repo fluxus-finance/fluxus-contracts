@@ -176,8 +176,6 @@ impl Contract {
                 Gas(20_000_000_000_000),
             ))
         }
-
-        // do B
     }
 
     #[private]
@@ -281,7 +279,7 @@ impl Contract {
         let token2 = compounder.token2_address.clone();
         let reward = compounder.reward_token.clone();
 
-        let mut common_token = 9999;
+        let mut common_token = 0;
 
         if token1 == reward {
             common_token = 1;
@@ -531,7 +529,7 @@ impl Contract {
                 common_token,
                 env::current_account_id(),
                 0,
-                Gas(20_000_000_000_000),
+                Gas(80_000_000_000_000),
             ))
         } else if common_token == 2 {
             // use the entire amount for the common token
@@ -560,26 +558,12 @@ impl Contract {
             )
             .then(ext_self::callback_post_first_swap(
                 token_id.clone(),
-                env::current_account_id(),
-                0,
-                Gas(20_000_000_000_000),
-            ))
-            .then(ext_self::call_swap(
-                pool_id_to_swap2,
-                token_in2,
-                token_out2,
-                Some(amount_in_2),
-                U128(token2_min_out.0),
-                contract_id,
-                0,
-                Gas(30_000_000_000_000),
-            ))
-            .then(ext_self::callback_post_swap(
-                token_id,
                 common_token,
+                amount_in_2,
+                token2_min_out,
                 env::current_account_id(),
                 0,
-                Gas(20_000_000_000_000),
+                Gas(80_000_000_000_000),
             ))
         }
     }
@@ -589,7 +573,10 @@ impl Contract {
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
         token_id: String,
-    ) {
+        common_token: u64,
+        amount_in: U128,
+        token_min_out: U128,
+    ) -> PromiseOrValue<u64> {
         let strat = self
             .data_mut()
             .strategies
@@ -602,6 +589,7 @@ impl Contract {
             if 100u128 - compounder.slippage < MAX_SLIPPAGE_ALLOWED {
                 // increment slippage
                 compounder.slippage -= 1;
+                return PromiseOrValue::Value(0u64);
             }
         }
 
@@ -610,6 +598,30 @@ impl Contract {
         // First swap succeeded, thus decrement the last reward_amount
         let amount_used: u128 = compounder.last_reward_amount / 2;
         compounder.last_reward_amount -= amount_used;
+
+        let pool_id_to_swap2 = compounder.pool_id_token2_reward;
+        let token_in2 = compounder.reward_token.clone();
+        let token_out2 = compounder.token2_address.clone();
+
+        PromiseOrValue::Promise(
+            ext_self::call_swap(
+                pool_id_to_swap2,
+                token_in2,
+                token_out2,
+                Some(amount_in),
+                token_min_out,
+                env::current_account_id(),
+                0,
+                Gas(30_000_000_000_000),
+            )
+            .then(ext_self::callback_post_swap(
+                token_id,
+                common_token,
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            )),
+        )
     }
 
     #[private]

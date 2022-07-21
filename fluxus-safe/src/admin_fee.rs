@@ -3,6 +3,8 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, AccountId};
 use std::collections::HashMap;
 
+const MAX_STRAT_CREATOR_FEE: u128 = 20;
+
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AccountFee {
@@ -16,7 +18,10 @@ pub struct AccountFee {
 
 impl AccountFee {
     pub fn new(acc_id: AccountId, fee: u128) -> Self {
-        assert!((1..100).contains(&fee), "ERR_FEE_NOT_VALID");
+        assert!(
+            (0..MAX_STRAT_CREATOR_FEE + 1).contains(&fee),
+            "ERR_FEE_NOT_VALID"
+        );
 
         AccountFee {
             account_id: acc_id,
@@ -26,7 +31,7 @@ impl AccountFee {
     }
 }
 
-const UXU_STAKERS: u128 = 60;
+const FFT_STAKERS: u128 = 60;
 
 /// Maintain information about fees.
 /// Maps receiver address to percentage
@@ -45,7 +50,7 @@ impl AdminFees {
     pub fn new(treasury: AccountFee, strat_creator: AccountFee, sentries_fee: u128) -> Self {
         assert!(
             treasury.fee_percentage + strat_creator.fee_percentage + sentries_fee
-                <= 100 - UXU_STAKERS
+                <= 100 - FFT_STAKERS
         );
         AdminFees {
             strat_creator,
