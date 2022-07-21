@@ -2,7 +2,6 @@ use near_sdk::PromiseOrValue;
 
 use crate::*;
 
-const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 const MIN_SLIPPAGE_ALLOWED: u128 = 1;
 
 #[near_bindgen]
@@ -584,13 +583,12 @@ impl Contract {
             .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
+        // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
+            compounder.increase_slippage();
             log!("ERR_FIRST_SWAP_FAILED");
-            if 100u128 - compounder.slippage < MAX_SLIPPAGE_ALLOWED {
-                // increment slippage
-                compounder.slippage -= 1;
-                return PromiseOrValue::Value(0u64);
-            }
+
+            return PromiseOrValue::Value(0u64);
         }
 
         compounder.available_balance[0] = swap_result.unwrap().0;
@@ -638,12 +636,9 @@ impl Contract {
             .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
+        // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
-            if 100u128 - compounder.slippage < MAX_SLIPPAGE_ALLOWED {
-                // increment slippage
-                compounder.slippage -= 1;
-            }
-            // TODO: cannot panic because this would invalidate the slippage update
+            compounder.increase_slippage();
             log!("ERR_SECOND_SWAP_FAILED");
             return;
         }

@@ -1,5 +1,7 @@
 use crate::*;
 
+const MAX_SLIPPAGE_ALLOWED: u128 = 20;
+
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct SharesBalance {
@@ -185,6 +187,21 @@ impl AutoCompounder {
             sentry_amount,
             strat_creator_amount,
         )
+    }
+
+    pub fn increase_slippage(&mut self) {
+        if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
+            // increment slippage
+            self.slippage -= 4;
+
+            log!(
+                "Slippage updated to {}. It will applied in the next call",
+                self.slippage
+            );
+        } else {
+            self.state = AutoCompounderState::Ended;
+            log!("Slippage too high. State was updated to Ended");
+        }
     }
 }
 
