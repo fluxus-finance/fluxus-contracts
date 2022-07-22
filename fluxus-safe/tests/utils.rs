@@ -99,6 +99,49 @@ pub async fn deploy_safe_contract(
 
     Ok(contract)
 }
+pub async fn deploy_straegies(
+    token1: &Contract,
+    token2: &Contract,
+    reward_token: &Contract,
+    pool_id_token1_reward: u64,
+    pool_id_token2_reward: u64,
+    pool_id: u64,
+    farm_id: u64,
+    worker: &Worker<impl DevNetwork>,
+) -> anyhow::Result<Contract> {
+    let wasm = fs::read("res/fluxus_safe.wasm").await?;
+    let contract = worker.dev_deploy(&wasm).await?;
+
+    contract
+        .call(worker, "new")
+        .args_json(serde_json::json!({
+            "owner_id": contract.id().clone(),
+            "exchange_contract_id": CONTRACT_ID_REF_EXC,
+            "farm_contract_id": CONTRACT_ID_FARM,
+            "treasure_contract_id": CONTRACT_ID_TREASURE
+        }))?
+        .transact()
+        .await?;
+
+    contract
+        .call(worker, "create_strategy")
+        .args_json(serde_json::json!({
+            "_strategy": "".to_string(),
+            "protocol_fee": 10,
+            "token1_address": token1.id().to_string(),
+            "token2_address": token2.id().to_string(),
+            "pool_id_token1_reward": pool_id_token1_reward,
+            "pool_id_token2_reward": pool_id_token2_reward,
+            "reward_token": reward_token.id().to_string(),
+            "farm": farm_id.to_string(),
+            "pool_id": pool_id,
+            "seed_min_deposit": MIN_SEED_DEPOSIT.to_string()
+        }))?
+        .transact()
+        .await?;
+
+    Ok(contract)
+}
 
 pub async fn deploy_exchange(
     owner: &Account,
@@ -156,7 +199,7 @@ pub async fn deploy_exchange(
 pub async fn deploy_farm(
     owner: &Account,
     seed_id: &String,
-    token_reward: &Contract,
+    token_reward: Vec<&Contract>,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<Contract> {
     let testnet = workspaces::testnet().await?;
@@ -188,51 +231,54 @@ pub async fn deploy_farm(
     // is higher than the pool contains
 
     let reward_per_session: String = parse_near!("1000 N").to_string();
-    owner
-        .call(worker, farm.id(), "create_simple_farm")
-        .args_json(serde_json::json!({
-            "terms": {
-                "seed_id": seed_id,
-                "reward_token": token_reward.id(),
-                "start_at": 0,
-                "reward_per_session": reward_per_session,
-                "session_interval": 10
-            },
-            "min_deposit": Some(U128(MIN_SEED_DEPOSIT))
-        }))?
-        .deposit(parse_near!("0.1 N"))
-        .gas(parse_gas!("200 Tgas") as u64)
-        .transact()
-        .await?;
+    let mut num = 0;
+    for token_reward in token_reward{
+        owner
+            .call(worker, farm.id(), "create_simple_farm")
+            .args_json(serde_json::json!({
+                "terms": {
+                    "seed_id": seed_id,
+                    "reward_token": token_reward.id(),
+                    "start_at": 0,
+                    "reward_per_session": reward_per_session,
+                    "session_interval": 10
+                },
+                "min_deposit": Some(U128(MIN_SEED_DEPOSIT))
+            }))?
+            .deposit(parse_near!("0.1 N"))
+            .gas(parse_gas!("200 Tgas") as u64)
+            .transact()
+            .await?;
 
-    let res = token_reward
-        .call(worker, "storage_deposit")
-        .args_json(serde_json::json!({
-            "account_id": farm.id(),
-        }))?
-        .deposit(parse_near!("0.00125 N"))
-        .gas(parse_gas!("200 Tgas") as u64)
-        .transact()
-        .await?;
-    // println!("register farm into reward token -> {:#?}", res);
+        let res = token_reward
+            .call(worker, "storage_deposit")
+            .args_json(serde_json::json!({
+                "account_id": farm.id(),
+            }))?
+            .deposit(parse_near!("0.00125 N"))
+            .gas(parse_gas!("200 Tgas") as u64)
+            .transact()
+            .await?;
+        // println!("register farm into reward token -> {:#?}", res);
 
-    let farm_id = format!("{}#0", seed_id);
-    let amount: String = parse_near!("100000000 N").to_string();
-    let res = owner
-        .call(worker, token_reward.id(), "ft_transfer_call")
-        .args_json(serde_json::json!({
-            "receiver_id": farm.id(),
-            "amount": amount,
-            "msg": farm_id
-        }))?
-        .deposit(parse_near!("1 yN"))
-        .gas(parse_gas!("200 Tgas") as u64)
-        .transact()
-        .await?;
-    // println!("ft_transfer_call -> {:#?}", res);
+        let farm_id = format!("{}#{}", seed_id,num);
+        let amount: String = parse_near!("100000000 N").to_string();
+        let res = owner
+            .call(worker, token_reward.id(), "ft_transfer_call")
+            .args_json(serde_json::json!({
+                "receiver_id": farm.id(),
+                "amount": amount,
+                "msg": farm_id
+            }))?
+            .deposit(parse_near!("1 yN"))
+            .gas(parse_gas!("200 Tgas") as u64)
+            .transact()
+            .await?;
+        println!("new farmID {}", farm_id);
 
-    // TODO: require farm state is Running
-
+        // TODO: require farm state is Running
+        num = num + 1;
+    }
     Ok(farm)
 }
 

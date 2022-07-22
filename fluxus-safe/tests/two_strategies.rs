@@ -7,6 +7,7 @@ use workspaces::{
 };
 
 const TOTAL_GAS: u64 = 300_000_000_000_000;
+pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000;
 
 const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 
@@ -19,6 +20,8 @@ async fn do_auto_compound_with_fast_forward(
     fast_forward_token: &mut u64,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<()> {
+    println!("We are in the do_auto_compound_with_fast_forward ");
+
     if blocks_to_forward > 0 {
         let block_info = worker.view_latest_block().await?;
         println!(
@@ -44,7 +47,7 @@ async fn do_auto_compound_with_fast_forward(
             .gas(TOTAL_GAS)
             .transact()
             .await?;
-        // println!("{:#?}\n", res);
+        println!("harvest {:#?}\n", res);
     }
 
     Ok(())
@@ -75,8 +78,27 @@ async fn get_user_shares(
     Ok(account_shares)
 }
 
+async fn strategies_amount(
+    contract: &Contract,
+    account: &Account,
+    token_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<u128> {
+    println!("We are in the strategies_amount");
+    let res = contract
+        .call(worker, "number_of_strategies")
+        .args_json(serde_json::json!({
+            "seed_id": token_id
+        }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    let result: u128 = res.json()?;
+    Ok(result)
+}
+
 #[tokio::test]
-async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
+async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
     let owner = worker.root_account();
 
@@ -89,10 +111,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let token_1 = utils::create_custom_ft(&owner, &worker).await?;
     let token_2 = utils::create_custom_ft(&owner, &worker).await?;
     let token_reward = utils::create_custom_ft(&owner, &worker).await?;
+    let token_reward2 = utils::create_custom_ft(&owner, &worker).await?;
+
     let exchange = utils::deploy_exchange(
         &owner,
         &exchange_id,
-        vec![token_1.id(), token_2.id(), token_reward.id()],
+        vec![token_1.id(), token_2.id(), token_reward.id(),token_reward2.id()],
         &worker,
     )
     .await?;
@@ -104,8 +128,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &owner,
         &account_1,
         maplit::hashmap! {
-            token_1.id() => parse_near!("10,000 N"),
-            token_2.id() => parse_near!("10,000 N"),
+            token_1.id() => parse_near!("20,000 N"),
+            token_2.id() => parse_near!("20,000 N"),
         },
         &worker,
     )
@@ -115,7 +139,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     utils::register_into_contracts(
         &worker,
         exchange.as_account(),
-        vec![token_1.id(), token_2.id(), token_reward.id()],
+        vec![token_1.id(), token_2.id(), token_reward.id(), token_reward2.id(), exchange.id()],
     )
     .await?;
 
@@ -147,10 +171,40 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
+    let pool_token1_reward2 = utils::create_pool_with_liquidity(
+        &owner,
+        &exchange,
+        maplit::hashmap! {
+            token_1.id() => parse_near!("1 N"),
+            token_reward2.id() => parse_near!("0.000000000000001 N") ,
+        },
+        &worker,
+    )
+    .await?;
+    let pool_token2_reward2 = utils::create_pool_with_liquidity(
+        &owner,
+        &exchange,
+        maplit::hashmap! {
+            token_2.id() => parse_near!("1 N"),
+            token_reward2.id() => parse_near!("0.000000000000001 N") ,
+        },
+        &worker,
+    )
+    .await?;
+ 
+
     let seed_id: String = format! {"{}@{}", CONTRACT_ID_REF_EXC, pool_token1_token2};
 
     // Create farm
-    let farm = utils::deploy_farm(&owner, &seed_id, vec![&token_reward], &worker).await?;
+    let rewards = vec![&token_reward,&token_reward2];
+    let farm = utils::deploy_farm(&owner, &seed_id, rewards, &worker).await?;
+
+    utils::register_into_contracts(
+        &worker,
+        exchange.as_account(),
+        vec![farm.id()],
+    )
+    .await?;
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
@@ -167,6 +221,42 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &worker,
     )
     .await?;
+
+  
+    //Checking that we have one strategies now.   
+    let number_of_strats = strategies_amount(&contract, &owner, &seed_id, &worker).await?;
+    
+    assert_eq!(
+        number_of_strats,
+        1_u128,
+        "ERR: we don't have the correct number of strategies stored in the code. It is supposed to be {}", 1_u128
+    );   
+     
+    contract.call(&worker, "create_strategy")
+        .args_json(serde_json::json!({
+            "_strategy": "".to_string(),
+            "protocol_fee": 10_u64,
+            "token1_address": &token_1.id().to_string(),
+            "token2_address": &token_2.id().to_string(),
+            "pool_id_token1_reward": pool_token1_reward2,
+            "pool_id_token2_reward": pool_token2_reward2,
+            "reward_token": &token_reward2.id().to_string(),
+            "farm": "1".to_string(),
+            "pool_id": pool_token1_token2,
+            "seed_min_deposit": MIN_SEED_DEPOSIT.to_string()
+        }))?
+        .transact()
+        .await?;
+
+        
+    //Checking that we have two strategies now.
+    let number_of_strats = strategies_amount(&contract, &owner, &seed_id, &worker).await?;
+   
+    assert_eq!(
+        number_of_strats,
+        2_u128,
+        "ERR: we don't have the correct number of strategies stored in the code. It is supposed to be {}", 2_u128
+    );
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 4: Initialize Safe
@@ -185,7 +275,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     utils::register_into_contracts(
         &worker,
         contract.as_account(),
-        vec![&exchange_id, token_1.id(), token_2.id(), token_reward.id()],
+        vec![&exchange_id, token_1.id(), token_2.id(), token_reward.id(), token_reward2.id()],
     )
     .await?;
 
@@ -200,7 +290,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .deposit(parse_near!("1 N"))
         .transact()
         .await?;
-    // println!("mft_register {:#?}", res);
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 5: Start interacting with Safe
@@ -224,7 +313,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
-    // println!("mft_transfer_call {:#?}\n", res);
 
     let owner_shares_on_contract = get_user_shares(&contract, &owner, &seed_id, &worker).await?;
     // assert that contract received the correct number of shares
@@ -344,50 +432,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     assert!(
         round2_account1_shares > account1_initial_shares,
         "ERR_AUTO_COMPOUND_DOES_NOT_WORK"
-    );
-    ///////////////////////////////////////////////////////////////////////////
-    // Stage 10: Withdraw from Safe and assert received shares are correct
-    ///////////////////////////////////////////////////////////////////////////
-
-    let res = owner
-        .call(&worker, contract.id(), "unstake")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    println!("---------------------------------------------------------------------");
-    let res = account_1
-        .call(&worker, contract.id(), "unstake")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-        println!(" account_1 unstaked sucessfully {:#?}", res);
-
-    // Get owner shares from exchange
-    let owner_shares_on_exchange: String =
-        utils::get_pool_shares(&owner, &exchange, pool_token1_token2, &worker).await?;
-
-    let owner_shares_on_exchange: u128 = utils::str_to_u128(&owner_shares_on_exchange);
-
-    assert_eq!(
-        round2_owner_shares, owner_shares_on_exchange,
-        "ERR_COULD_NOT_WITHDRAW"
-    );
-
-    // Get account 1 shares from exchange
-    let account1_shares_on_exchange: String =
-        utils::get_pool_shares(&account_1, &exchange, pool_token1_token2, &worker).await?;
-
-    let account1_shares_on_exchange: u128 = utils::str_to_u128(&account1_shares_on_exchange);
-
-    // assert that contract received the correct number of shares, due to precision issues derived of recurring tithe we must not accept aboslute errors bigger than 9
-    // TODO: validates with fuzzing and way more testing to ensure absolute error is not bigger than 9
-    let round2_account1_shares_as_int = i128::try_from(round2_account1_shares).unwrap();
-    let account1_shares_on_exchange_as_int = i128::try_from(account1_shares_on_exchange).unwrap();
-    assert!(
-        (round2_account1_shares_as_int - account1_shares_on_exchange_as_int).abs() < 9,
-        "ERR: the amount of shares doesn't match there is : {} should be {}", account1_shares_on_contract,account1_initial_shares
     );
 
     Ok(())

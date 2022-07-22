@@ -1,5 +1,6 @@
 mod utils;
 
+use near_sdk::json_types::U128;
 use near_units::parse_near;
 use workspaces::{
     network::{DevAccountDeployer, Sandbox},
@@ -76,7 +77,7 @@ async fn get_user_shares(
 }
 
 #[tokio::test]
-async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
+async fn simulate_mft_burn_and_mint() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
     let owner = worker.root_account();
 
@@ -349,20 +350,149 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
 
+    //Total seed in the contract
+    let res = owner
+        .call(&worker, contract.id(), "seed_total_amount")
+        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    let seed_before_withdraw: u128 = res.json()? ;
+    println!("Total seed before the withdraw is =  {}", seed_before_withdraw);
+
+    //Total user's amount of fft_shares
+    let res = owner
+        .call(&worker, contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id, "user":owner.id().to_string()}))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    //Available to unstake
+    let unstaked:u128 = res.json()?;
+
+    //Calling unstake
     let res = owner
         .call(&worker, contract.id(), "unstake")
         .args_json(serde_json::json!({ "token_id": token_id }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?;
-    println!("---------------------------------------------------------------------");
-    let res = account_1
-        .call(&worker, contract.id(), "unstake")
+
+    //Getting user's amount of shares
+    let res = owner
+        .call(&worker, contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id, "user":owner.id().to_string()}))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    let user_amount_of_seed:u128 = res.json()?;
+
+    //Checking that the user has no balance after unstake all available.
+    assert_eq!(
+        user_amount_of_seed, 0_u128 ,
+        "User amount need to be 0 after unstake, but it is {}.", user_amount_of_seed
+    );
+
+    //Getting the total seed available in the contract
+    let res= owner
+        .call(&worker, contract.id(), "seed_total_amount")
         .args_json(serde_json::json!({ "token_id": token_id }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?;
-        println!(" account_1 unstaked sucessfully {:#?}", res);
+    let seed_after_withdraw: u128 = res.json()? ;
+    println!("Total seed is =  {}", seed_after_withdraw);
+
+    //Checking if the new amount of seed is correct
+    assert_eq!(
+        seed_after_withdraw, seed_before_withdraw - unstaked ,
+        "New amount of seed is incorrect: {} =! {} - {}",
+        seed_after_withdraw, 
+        seed_before_withdraw,
+        unstaked
+    );
+    let mut seed_total =  seed_after_withdraw;
+
+    //Getting the seed amount available for the user account_1
+    let res = account_1
+        .call(&worker, contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id, "user":account_1.id().to_string()  }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    let unstaked:u128 = res.json()?;
+
+    let withdraw1:U128 = U128::from((unstaked/2_u128));
+    
+    //Calling unstake with a half of the user's total available seed
+    let res = account_1
+        .call(&worker, contract.id(), "unstake")
+        .args_json(serde_json::json!({ "token_id": token_id , "amount_withdrawal":withdraw1 }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    println!(" account_1 unstaked successfully {:#?}", res);
+        
+    //New amount in the contract needs to be:
+    seed_total =  seed_total - unstaked/2_u128;
+
+    let res = account_1
+        .call(&worker, contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id, "user":account_1.id().to_string()  }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    let user_amount_of_seed:u128 = res.json()?;
+
+    //Checking if the user amount of shares
+    assert!(
+        user_amount_of_seed - (unstaked/2 ) < 10,
+        "User amount need to be {} after unstake, but it is {}.",(unstaked/2),  user_amount_of_seed
+    );
+
+    let unstaked:u128 = res.json()?;
+    let withdraw2:U128 = U128::from((unstaked));
+
+    //Calling unstake to withdraw the rest
+    let res = account_1
+        .call(&worker, contract.id(), "unstake")
+        .args_json(serde_json::json!({ "token_id": token_id , "amount_withdrawal": withdraw2}))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    println!(" account_1 unstaked successfully {:#?}", res);
+
+    let res= owner
+        .call(&worker, contract.id(), "seed_total_amount")
+        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    let seed_after_withdraw: u128 = res.json()? ;
+
+    //Testing the contract total amount after unstake
+    assert_eq!(
+        seed_after_withdraw, seed_total - unstaked ,
+        "New amount of seed is incorrect: {} =! {} - {}",
+        seed_after_withdraw,
+        seed_total,
+        unstaked
+    );
+
+    //Getting the user's amount of seed
+    let res = account_1
+    .call(&worker, contract.id(), "user_share_seed_id")
+    .args_json(serde_json::json!({ "seed_id": seed_id, "user":account_1.id().to_string()}))?
+    .gas(TOTAL_GAS)
+    .transact()
+    .await?;
+    let user_amount_of_seed:u128 = res.json()?;
+
+    //Testing the user new amount after unstake
+    assert_eq!(
+        user_amount_of_seed, 0_u128 ,
+        "User amount need to be 0 after unstake, but it is {}.", user_amount_of_seed
+    );
 
     // Get owner shares from exchange
     let owner_shares_on_exchange: String =
@@ -389,6 +519,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         (round2_account1_shares_as_int - account1_shares_on_exchange_as_int).abs() < 9,
         "ERR: the amount of shares doesn't match there is : {} should be {}", account1_shares_on_contract,account1_initial_shares
     );
+
+
+   
+
+
+
 
     Ok(())
 }

@@ -29,6 +29,17 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 #[near_bindgen]
 impl Contract {
     
+    ///Return the u128 number of strategies that we have for a specific seed_id.
+    pub fn number_of_strategies(&mut self, seed_id: String) -> u128 {
+        let num = self.data().compounders_by_seed_id.get(&seed_id);
+        let mut result = 0_u128; 
+        if let Some(number) = num{
+            result = (*number).len() as u128;
+        }
+        result
+    }
+
+
      ///Return the u128 amount of an user for an specific uxu_share (ref lp token).
     pub fn users_fft_share_amount(&mut self, uxu_share: String, user: String) -> u128 {
         let mut temp = HashMap::new();
@@ -49,7 +60,11 @@ impl Contract {
         let user_fft_shares = self.users_fft_share_amount(fft_name.clone(),user);
         let total_fft = self.total_supply_amount(fft_name);
         let total_seed = *self.data().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
-        (U256::from(user_fft_shares)*U256::from(total_seed)/U256::from(total_fft)).as_u128()
+        if total_fft == 0_u128 || total_seed == 0 || user_fft_shares == 0  {
+            0
+        }
+        else{
+        (U256::from(user_fft_shares)*U256::from(total_seed)/U256::from(total_fft)).as_u128()}
     }
 
     ///Register a seed into the users_balance_by_uxu_share
