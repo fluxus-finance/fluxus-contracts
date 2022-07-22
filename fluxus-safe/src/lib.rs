@@ -202,7 +202,6 @@ pub trait Callbacks {
     ) -> Promise;
     fn callback_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
-        token_id: String,
     );
     fn callback_post_sentry_mft_transfer(
         &mut self,
@@ -254,7 +253,12 @@ pub trait Callbacks {
     ) -> Promise;
     fn callback_post_ft_transfer(
         &mut self,
-        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
+    fn callback_post_creator_ft_transfer(
+        &mut self,
+        #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,
         token_id: String,
     );
     fn callback_post_sentry(

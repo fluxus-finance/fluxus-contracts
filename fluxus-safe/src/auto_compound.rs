@@ -202,6 +202,7 @@ impl Contract {
             compounder.compute_fees(compounder.last_reward_amount, treasury_fee_percentage);
 
         // TODO: store the amount earned by the strat creator
+        compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
 
         // store sentry amount under contract account id to be used in the last step
         compounder
@@ -239,10 +240,10 @@ impl Contract {
     #[private]
     pub fn callback_post_ft_transfer(
         &mut self,
-        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
         token_id: String,
     ) {
-        if transfer_result.is_err() {
+        if exchange_transfer_result.is_err() {
             log!("ERR_TRANSFER_TO_EXCHANGE");
             return;
         }
@@ -313,22 +314,40 @@ impl Contract {
 
         let amount_in = U128(reward_amount / 2);
 
-        // TODO: transfer value to strategy creator
-        ext_exchange::mft_transfer(
-            compounder.reward_token.to_string(),
-            treasury_acc,
-            U128(treasury_curr_amount),
-            Some("".to_string()),
-            self.data().exchange_contract_id.clone(),
-            1,
-            Gas(20_000_000_000_000),
-        )
-        .then(ext_self::callback_post_treasury_mft_transfer(
-            token_id.clone(),
-            env::current_account_id(),
-            0,
-            Gas(20_000_000_000_000),
-        ));
+        if treasury_curr_amount > 0 {
+            ext_exchange::mft_transfer(
+                compounder.reward_token.to_string(),
+                treasury_acc,
+                U128(treasury_curr_amount),
+                Some("".to_string()),
+                self.data().exchange_contract_id.clone(),
+                1,
+                Gas(20_000_000_000_000),
+            )
+            .then(ext_self::callback_post_treasury_mft_transfer(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ));
+        }
+
+        let strat_creator_curr_amount = compounder.admin_fees.strat_creator.current_amount;
+        if strat_creator_curr_amount > 0 {
+            ext_reward_token::ft_transfer(
+                compounder.admin_fees.strat_creator.account_id.clone(),
+                U128(strat_creator_curr_amount),
+                Some("".to_string()),
+                compounder.reward_token.clone(),
+                1,
+                Gas(20_000_000_000_000),
+            )
+            .then(ext_self::callback_post_creator_ft_transfer(
+                token_id.clone(),
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ));
+        }
 
         self.get_tokens_return(token_id.clone(), amount_in, amount_in, common_token)
             .then(ext_self::swap_to_auto(
@@ -347,13 +366,12 @@ impl Contract {
     pub fn callback_post_treasury_mft_transfer(
         &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
-        token_id: String,
     ) {
         let data_mut = self.data_mut();
 
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
-            log!("Transfer to treasure failed".to_string());
+            log!("Transfer to treasure failed");
             return;
         }
 
@@ -363,6 +381,24 @@ impl Contract {
         data_mut.treasury.current_amount = 0;
 
         log!("Transfer {} to treasure succeeded", amount)
+    }
+
+    #[private]
+    pub fn callback_post_creator_ft_transfer(
+        &mut self,
+        #[callback_result] strat_creator_transfer_result: Result<(), PromiseError>,
+        token_id: String,
+    ) {
+        if strat_creator_transfer_result.is_err() {
+            log!("ERR_TRANSFER_TO_CREATOR");
+            return;
+        }
+
+        let strat = self.get_strat_mut(&token_id);
+        let compounder = strat.get_mut();
+
+        compounder.admin_fees.strat_creator.current_amount = 0;
+        log!("Transfer fees to the creator of the strategy succeeded");
     }
 
     #[private]
