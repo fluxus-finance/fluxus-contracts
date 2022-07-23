@@ -108,28 +108,34 @@ pub struct ContractData {
 
     ///It is a map that store the uxu_share and a map of users and their balance.
     /// illustration: map(uxu_share[i], map(user[i], balance[i])).
+    /// TODO: Change HashMap for LookupMap as it is more gas efficient
     users_balance_by_uxu_share: HashMap<String, HashMap<String, u128>>,
 
     ///Store the auto-compounders of the seeds.
     /// illustration: map( seed[i], vec(user[i]) ).//TODO
     compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
-    ///Store the uxu_share total_supply for each seed_id.
-    total_supply_by_uxu_share: HashMap<String, u128>,
-
-    ///Store the uxu_share for each seed_id.
-    uxu_share_by_seed_id: HashMap<String, String>,
+    ///Store the uxu_share total_supply for each seed_id. 
+    /// TODO: Change HashMap for LookupMap as it is more gas efficient
+    total_supply_by_uxu_share:  HashMap<String, u128>,
+    
+    ///Store the uxu_share for each seed_id. 
+    /// TODO: Change HashMap for LookupMap as it is more gas efficient
+    uxu_share_by_seed_id:  HashMap<String, String>,
 
     ///Store the uxu_share for each seed_id.
     seed_id_amount: HashMap<String, u128>,
 
     // Contract address of the exchange used
+    //TODO: Move it inside the strategy
     exchange_contract_id: AccountId,
 
     // Contract address of the farm used
+    //TODO: Move it inside the strategy
     farm_contract_id: AccountId,
 
     // Pools used to harvest, in the ":X" format
+    //TODO: Move it inside the strategy
     token_ids: Vec<String>,
 
     // Keeps track of token_id to strategy used

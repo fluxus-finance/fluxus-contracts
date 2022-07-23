@@ -257,7 +257,7 @@ impl Contract {
     }
 
     /// Step 3
-    /// Transfer lp tokens to ref-exchange then swap the amount the contract has in the exchange
+    /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
     #[private]
     pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
         // TODO: take string as ref
