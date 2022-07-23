@@ -328,7 +328,8 @@ impl Contract {
 
         let treasury: AccountFee = AccountFee {
             account_id: treasure_contract_id,
-            fee_percentage: 10,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
             current_amount: 0u128,
         };
 

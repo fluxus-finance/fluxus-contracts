@@ -187,8 +187,6 @@ impl Contract {
 
         let exchange_id = self.exchange_acc();
 
-        let treasury_fee_percentage: u128 = self.data().treasury.fee_percentage;
-
         let data_mut = self.data_mut();
 
         let strat = data_mut
@@ -199,9 +197,9 @@ impl Contract {
         let compounder = strat.get_mut();
 
         let (remaining_amount, protocol_amount, sentry_amount, strat_creator_amount) =
-            compounder.compute_fees(compounder.last_reward_amount, treasury_fee_percentage);
+            compounder.compute_fees(compounder.last_reward_amount);
 
-        // TODO: store the amount earned by the strat creator
+        // storing the amount earned by the strat creator
         compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
 
         // store sentry amount under contract account id to be used in the last step
@@ -739,9 +737,13 @@ impl Contract {
         match result {
             Ok(balance_op) => match balance_op {
                 Some(balance) => assert!(balance.total.0 > 1),
-                _ => env::panic_str("ERR"),
+                _ => {
+                    // let msg = ("ERR: callback post Sentry no balance {:#?} ",balance_op);
+                    let msg = format!("{}{:#?}", "ERR: callback_post_sentry - not enough balance on storage", balance_op.unwrap_or(StorageBalance{total: U128(0), available: U128(0)}).total);
+                    env::panic_str(msg.as_str());
+                }, 
             },
-            Err(_) => env::panic_str("ERR"),
+            Err(_) => env::panic_str("ERR: callback post Sentry - caller not registered to Reward token contract"),
         }
 
         let strat = self

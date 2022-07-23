@@ -6,6 +6,7 @@ impl Contract {
     pub fn create_strategy(
         &mut self,
         _strategy: String,
+        strategy_fee: u128,
         strat_creator: AccountFee,
         sentry_fee: u128,
         token1_address: AccountId,
@@ -27,6 +28,7 @@ impl Contract {
         self.data_mut().token_ids.push(token_id.clone());
 
         let strat: VersionedStrategy = VersionedStrategy::AutoCompounder(AutoCompounder::new(
+            strategy_fee,
             treasury,
             strat_creator,
             sentry_fee,

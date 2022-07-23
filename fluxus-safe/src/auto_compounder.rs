@@ -117,6 +117,7 @@ impl From<&AutoCompounderCycle> for String {
 /// Auto-compounder internal methods
 impl AutoCompounder {
     pub(crate) fn new(
+        strategy_fee: u128,
         treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
@@ -130,7 +131,7 @@ impl AutoCompounder {
         seed_id: String,
         seed_min_deposit: U128,
     ) -> Self {
-        let admin_fee = AdminFees::new(treasury, strat_creator, sentry_fee);
+        let admin_fee = AdminFees::new( strat_creator, sentry_fee,strategy_fee);
 
         Self {
             admin_fees: admin_fee,
@@ -166,24 +167,26 @@ impl AutoCompounder {
     pub(crate) fn compute_fees(
         &self,
         reward_amount: u128,
-        treasury_fee_percentage: u128,
     ) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
-        let percent = Percentage::from(treasury_fee_percentage);
-        let protocol_amount = percent.apply_to(self.last_reward_amount);
+        let percent = Percentage::from(self.admin_fees.strategy_fee);
+        let all_fees_amount = percent.apply_to(reward_amount);
+        // let percent = Percentage::from(treasury_fee_percentage);
+        // let protocol_amount = percent.apply_to(self.last_reward_amount);
 
         let percent = Percentage::from(self.admin_fees.sentries_fee);
-        let sentry_amount = percent.apply_to(self.last_reward_amount);
+        let sentry_amount = percent.apply_to(all_fees_amount);
 
         let percent = Percentage::from(self.admin_fees.strat_creator.fee_percentage);
-        let strat_creator_amount = percent.apply_to(self.last_reward_amount);
+        let strat_creator_amount = percent.apply_to(all_fees_amount);
+        let treasury_amount = all_fees_amount - sentry_amount - strat_creator_amount;
 
         let remaining_amount =
-            reward_amount - protocol_amount - sentry_amount - strat_creator_amount;
+            reward_amount - treasury_amount - sentry_amount - strat_creator_amount;
 
         (
             remaining_amount,
-            protocol_amount,
+            treasury_amount,
             sentry_amount,
             strat_creator_amount,
         )
@@ -217,6 +220,7 @@ pub enum VersionedCompounder {
 impl VersionedCompounder {
     #[allow(dead_code)]
     pub fn new(
+        strategy_fee: u128,
         treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
@@ -230,7 +234,7 @@ impl VersionedCompounder {
         seed_id: String,
         seed_min_deposit: U128,
     ) -> Self {
-        let admin_fee = AdminFees::new(treasury, strat_creator, sentry_fee);
+        let admin_fee = AdminFees::new(strat_creator, sentry_fee,strategy_fee);
 
         VersionedCompounder::V101(AutoCompounder {
             admin_fees: admin_fee,

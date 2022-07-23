@@ -31,28 +31,35 @@ impl AccountFee {
     }
 }
 
-const FFT_STAKERS: u128 = 60;
+const MAX_CONTRIBUTOR_FEE: u128 = 20;
+const MAX_PROTOCOL_FEE: u128 = 20;
 
 /// Maintain information about fees.
 /// Maps receiver address to percentage
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AdminFees {
+    /// Protocol Total fees of the running strategy
+    pub strategy_fee: u128,
     /// Fees earned by the creator of the running strategy
     pub strat_creator: AccountFee,
     /// Fee percentage earned by sentries
     pub sentries_fee: u128,
-    /// Fees earned by users that interact with the harvest method
+    /// Fees earned by users that interact with the harvest method - TODO: is this really needed seems a bit of storage waste
     pub sentries: HashMap<AccountId, u128>,
 }
 
 impl AdminFees {
-    pub fn new(treasury: AccountFee, strat_creator: AccountFee, sentries_fee: u128) -> Self {
+    pub fn new(strat_creator: AccountFee, sentries_fee: u128, strategy_fee: u128) -> Self {
         assert!(
-            treasury.fee_percentage + strat_creator.fee_percentage + sentries_fee
-                <= 100 - FFT_STAKERS
+            strat_creator.fee_percentage + sentries_fee
+                <= MAX_CONTRIBUTOR_FEE
+        );
+        assert!(
+            strategy_fee <= MAX_PROTOCOL_FEE
         );
         AdminFees {
+            strategy_fee,
             strat_creator,
             sentries_fee,
             sentries: HashMap::new(),

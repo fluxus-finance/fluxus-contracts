@@ -52,12 +52,12 @@ pub struct PoolInfo {
     pub amp: u64,
 }
 
- const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
+const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 const CONTRACT_ID_FARM: &str = "farm101.fluxusfi.testnet";
 const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
 
 pub async fn create_strategy(
-    owner: &Account,
+    strat_creator: &Account,
     safe_contract: &Contract,
     token1: &Contract,
     token2: &Contract,
@@ -69,7 +69,7 @@ pub async fn create_strategy(
     worker: &Worker<impl DevNetwork>,
 ) -> anyhow::Result<()> {
     let strat: AccountFee = AccountFee {
-        account_id: owner.id().parse().unwrap(),
+        account_id: strat_creator.id().parse().unwrap(),
         fee_percentage: 10,
         current_amount: 0,
     };
@@ -78,6 +78,7 @@ pub async fn create_strategy(
         .call(worker, "create_strategy")
         .args_json(serde_json::json!({
             "_strategy": "".to_string(),
+            "strategy_fee": 10,
             "strat_creator": strat,
             "sentry_fee": 10,
             "token1_address": token1.id().to_string(),
@@ -221,11 +222,11 @@ pub async fn create_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    println!("{:#?}", res);
+    // println!("{:#?}", res);
 
     let farm_id: String = res.json()?;
     println!("farm id {farm_id}");
-    println!("{:#?}", farm_id.split("#"));
+    // println!("{:#?}", farm_id.split("#"));
 
     let res = token_reward
         .call(worker, "storage_deposit")
@@ -236,7 +237,7 @@ pub async fn create_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    println!("register farm into reward token -> {:#?}", res);
+    // println!("register farm into reward token -> {:#?}", res);
 
     let amount: String = parse_near!("100000000 N").to_string();
 
@@ -604,4 +605,45 @@ pub async fn get_pool_shares(
 
     let shares: String = res.json()?;
     Ok(shares)
+}
+
+pub async fn get_balance_of(
+    account: &Account,
+    contract: &Contract,
+    is_ft: bool,
+    worker: &Worker<impl Network>,
+    mft_id: Option<String>,
+) -> anyhow::Result<U128> {
+    let function_str = if is_ft {
+        "ft_balance_of"
+    } else {
+        "mft_balance_of"
+    };
+    let args = if is_ft {
+        serde_json::json!({"account_id": account.id()})
+    } else {
+        serde_json::json!({"token_id": mft_id.unwrap(), "account_id": account.id()})
+    };
+    let res: U128 = account
+        .call(worker, contract.id(), function_str)
+        .args_json(args)?
+        .transact()
+        .await?
+        .json()?;
+    Ok(res)
+}
+
+pub async fn get_unclaimed_rewards(
+    contract: &Contract,
+    token_id: &String,
+    worker: &Worker<Sandbox>,
+) -> anyhow::Result<u128> {
+    let unclaimed_amount: U128 = contract
+        .call(worker, "get_unclaimed_reward")
+        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?
+        .json()?;
+    Ok(unclaimed_amount.0)
 }
