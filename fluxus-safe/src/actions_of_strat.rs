@@ -6,7 +6,9 @@ impl Contract {
     pub fn create_strategy(
         &mut self,
         _strategy: String,
-        protocol_fee: u128,
+        strategy_fee: u128,
+        strat_creator: AccountFee,
+        sentry_fee: u128,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id_token1_reward: u64,
@@ -20,11 +22,16 @@ impl Contract {
         let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id);
         let farm_id: String = format!("{}#{}", seed_id, farm);
 
+        let treasury = self.data().treasury.clone();
+
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
         self.data_mut().token_ids.push(token_id.clone());
 
         let strat: VersionedStrategy = VersionedStrategy::AutoCompounder(AutoCompounder::new(
-            protocol_fee,
+            strategy_fee,
+            treasury,
+            strat_creator,
+            sentry_fee,
             token1_address,
             token2_address,
             pool_id_token1_reward,

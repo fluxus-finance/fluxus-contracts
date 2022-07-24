@@ -232,16 +232,15 @@ impl Contract {
     #[payable]
     pub fn call_swap(
         &mut self,
-        pool_id_to_swap: u64,
+        pool_id: u64,
         token_in: AccountId,
         token_out: AccountId,
         amount_in: Option<U128>,
         min_amount_out: U128,
     ) -> Promise {
-        assert!(self.check_promise(), "Previous tx failed.");
         ext_exchange::swap(
             vec![SwapAction {
-                pool_id: pool_id_to_swap,
+                pool_id,
                 token_in,
                 token_out,
                 amount_in,
@@ -329,6 +328,71 @@ impl Contract {
             1,
             Gas(180_000_000_000_000),
         )
+    }
+
+    // /// Sentry user can redeem manually earned reward
+    // pub fn redeem_reward(&self, token_id: String) -> Promise {
+    //     let sentry_acc_id = env::predecessor_account_id();
+
+    //     let strat = self
+    //         .data()
+    //         .strategies
+    //         .get(&token_id)
+    //         .expect(ERR21_TOKEN_NOT_REG);
+
+    //     let compounder = strat.get_ref();
+
+    //     assert!(compounder.admin_fees.sentries.contains_key(&sentry_acc_id));
+
+    //     let amount = *compounder.admin_fees.sentries.get(&sentry_acc_id).unwrap();
+    //     ext_exchange::mft_transfer(
+    //         compounder.reward_token.to_string(),
+    //         sentry_acc_id.clone(),
+    //         U128(amount),
+    //         Some("".to_string()),
+    //         self.data().exchange_contract_id.clone(),
+    //         1,
+    //         Gas(20_000_000_000_000),
+    //     )
+    //     .then(ext_self::callback_post_sentry_mft_transfer(
+    //         token_id,
+    //         sentry_acc_id,
+    //         amount,
+    //         env::current_account_id(),
+    //         0,
+    //         Gas(20_000_000_000_000),
+    //     ))
+    // }
+
+    /// Returns the amount of unclaimed reward given token_id has
+    pub fn get_unclaimed_reward(&self, token_id: String) -> Promise {
+        let strat = self.get_strat(&token_id);
+        let farm_id: String = strat.get_ref().farm_id.clone();
+
+        ext_farm::get_unclaimed_reward(
+            env::current_account_id(),
+            farm_id,
+            self.data().farm_contract_id.clone(),
+            1,
+            Gas(3_000_000_000_000),
+        )
+        .then(ext_self::callback_post_unclaimed_reward(
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_post_unclaimed_reward(
+        &self,
+        #[callback_result] reward_result: Result<U128, PromiseError>,
+    ) -> U128 {
+        if let Ok(unclaimed_reward) = reward_result {
+            unclaimed_reward
+        } else {
+            U128(0)
+        }
     }
 }
 

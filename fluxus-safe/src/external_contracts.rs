@@ -129,7 +129,10 @@ pub trait ExtRewardToken {
     fn ft_transfer_call(
         &mut self,
         receiver_id: AccountId,
-        amount: String,
+        amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128>;
+    fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>);
+    fn ft_balance_of(&self, account_id: AccountId) -> U128;
+    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance>;
 }
