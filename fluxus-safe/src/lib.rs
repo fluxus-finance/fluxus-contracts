@@ -15,7 +15,7 @@ use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
     assert_one_yocto, env, ext_contract, log, near_bindgen, require, AccountId, Balance,
-    BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseResult,PromiseOrValue
+    BorshStorageKey, Gas, PanicOnDefault, Promise, PromiseOrValue, PromiseResult,
 };
 
 use percentage::Percentage;
@@ -47,6 +47,9 @@ use fluxus_strat::*;
 mod actions_of_strat;
 
 mod owner;
+
+pub mod admin_fee;
+pub use admin_fee::*;
 
 mod multi_fungible_token;
 
@@ -85,8 +88,8 @@ pub struct ContractData {
     /// Set of guardians.
     guardians: UnorderedSet<AccountId>,
 
-    // Keeps tracks of how much shares the contract gained from the auto-compound
-    protocol_shares: u128,
+    /// Fees earned by the DAO
+    treasury: AccountFee,
 
     // Keeps tracks of accounts that send coins to this contract
     accounts: LookupMap<AccountId, VAccount>,
@@ -103,34 +106,36 @@ pub struct ContractData {
     // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
     users_total_near_deposited: HashMap<AccountId, u128>,
 
-
-    ///It is a map that store the uxu_share and a map of users and their balance. 
-    /// illustration: map(uxu_share[i], map(user[i], balance[i])).
-    users_balance_by_uxu_share: HashMap<String, HashMap<String, u128>>,
+    ///It is a map that store the fft_share and a map of users and their balance.
+    /// illustration: map(fft_share[i], map(user[i], balance[i])).
+    /// TODO: Change HashMap for LookupMap as it is more gas efficient
+    users_balance_by_fft_share: HashMap<String, HashMap<String, u128>>,
 
     ///Store the auto-compounders of the seeds.
     /// illustration: map( seed[i], vec(user[i]) ).//TODO
     compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
-    ///Store the uxu_share total_supply for each seed_id. 
-    total_supply_by_uxu_share:  HashMap<String, u128>,
+    ///Store the fft_share total_supply for each seed_id. 
+    /// TODO: Change HashMap for LookupMap as it is more gas efficient
+    total_supply_by_fft_share:  HashMap<String, u128>,
     
-    ///Store the uxu_share for each seed_id. 
-    uxu_share_by_seed_id:  HashMap<String, String>,
+    ///Store the fft_share for each seed_id. 
+    /// TODO: Change HashMap for LookupMap as it is more gas efficient
+    fft_share_by_seed_id:  HashMap<String, String>,
 
-    ///Store the uxu_share for each seed_id. 
-    seed_id_amount:  HashMap<String, u128>,
+    ///Store the fft_share for each seed_id.
+    seed_id_amount: HashMap<String, u128>,
 
     // Contract address of the exchange used
+    //TODO: Move it inside the strategy
     exchange_contract_id: AccountId,
 
     // Contract address of the farm used
+    //TODO: Move it inside the strategy
     farm_contract_id: AccountId,
 
-    // Contract address to receive earned shares from fee
-    treasure_contract_id: AccountId,
-
     // Pools used to harvest, in the ":X" format
+    //TODO: Move it inside the strategy
     token_ids: Vec<String>,
 
     // Keeps track of token_id to strategy used
@@ -142,7 +147,7 @@ pub trait Callbacks {
     fn call_get_pool_shares(&mut self, pool_id: u64, account_id: AccountId) -> String;
     fn call_swap(
         &self,
-        pool_id_to_swap: u64,
+        pool_id: u64,
         token_in: AccountId,
         token_out: AccountId,
         amount_in: Option<U128>,
@@ -165,10 +170,13 @@ pub trait Callbacks {
     fn callback_get_deposits(&self) -> Promise;
     fn callback_get_tokens_return(&self) -> (U128, U128);
     fn callback_get_token_return(&self, common_token: u64, amount_token: U128) -> (U128, U128);
-    fn callback_stake(&mut self, #[callback_result] shares_result: Result<U128, PromiseError>);
+    fn callback_post_add_liquidity(
+        &mut self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
     fn callback_post_get_pool_shares(
         &mut self,
-        #[callback_unwrap] minted_shares_result: U128,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         token_id: String,
     );
@@ -188,7 +196,6 @@ pub trait Callbacks {
     );
     fn get_tokens_return(
         &self,
-        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
@@ -199,24 +206,43 @@ pub trait Callbacks {
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
         token_id: String,
     ) -> Promise;
-    fn callback_post_mft_transfer(
+    fn callback_post_treasury_mft_transfer(
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+    );
+    fn callback_post_sentry_mft_transfer(
+        &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         token_id: String,
+        sentry_id: AccountId,
+        amount_earned: u128,
     );
     fn callback_post_claim_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
         token_id: String,
     ) -> Promise;
+    fn callback_post_first_swap(
+        &mut self,
+        #[callback_result] swap_result: Result<U128, PromiseError>,
+        token_id: String,
+        common_token: u64,
+        amount_in: U128,
+        token_min_out: U128,
+    ) -> PromiseOrValue<u64>;
     fn callback_post_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
         token_id: String,
+        common_token: u64,
     );
     fn callback_post_get_unclaimed_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
         token_id: String,
+    );
+    fn callback_post_unclaimed_reward(
+        &self,
+        #[callback_result] reward_result: Result<U128, PromiseError>,
     );
     fn callback_get_pool_shares(
         &self,
@@ -231,6 +257,23 @@ pub trait Callbacks {
         token_id: String,
         farm_id: String,
     ) -> Promise;
+    fn callback_post_ft_transfer(
+        &mut self,
+        #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
+    fn callback_post_creator_ft_transfer(
+        &mut self,
+        #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,
+        token_id: String,
+    );
+    fn callback_post_sentry(
+        &self,
+        #[callback_result] result: Result<U128, PromiseError>,
+        token_id: String,
+        sentry_acc_id: AccountId,
+        reward_token: AccountId,
+    );
 }
 
 construct_uint! {
@@ -289,24 +332,30 @@ impl Contract {
         assert!(!env::state_exists(), "Already initialized");
         let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
+        let treasury: AccountFee = AccountFee {
+            account_id: treasure_contract_id,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
+
         Self {
             data: VersionedContractData::V0001(ContractData {
                 owner_id,
                 guardians: UnorderedSet::new(StorageKey::Guardian),
-                protocol_shares: 0u128,
+                treasury,
                 accounts: LookupMap::new(StorageKey::Accounts),
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
                 state: RunningState::Running,
                 users_total_near_deposited: HashMap::new(),
-                users_balance_by_uxu_share: HashMap::new(),
+                users_balance_by_fft_share: HashMap::new(),
                 compounders_by_seed_id: HashMap::new(),
-                total_supply_by_uxu_share: HashMap::new(),
-                uxu_share_by_seed_id: HashMap::new(),
+                total_supply_by_fft_share: HashMap::new(),
+                fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: HashMap::new(),
                 exchange_contract_id,
                 farm_contract_id,
-                treasure_contract_id,
                 /// List of all the pools.
                 token_ids: Vec::new(),
                 strategies: HashMap::new(),
@@ -340,6 +389,6 @@ impl Contract {
     }
 
     fn treasure_acc(&self) -> AccountId {
-        self.data().treasure_contract_id.clone()
+        self.data().treasury.account_id.clone()
     }
 }

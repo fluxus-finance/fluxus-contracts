@@ -571,15 +571,15 @@ mod tests {
         // assert no storage is available until near is added
         assert_eq!(account.storage_available(), 0u128);
         account.deposit_with_storage_check(&to_account_id("uxu.near"), 10u128);
-        let uxu_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
-        assert_eq!(uxu_balance.unwrap_or(0u128), 0u128);
+        let fft_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
+        assert_eq!(fft_balance.unwrap_or(0u128), 0u128);
 
         account.near_amount = 100000000000000000000000u128;
         assert_ne!(account.storage_available(), 0u128);
 
         // deposit token with balance
         account.deposit_with_storage_check(&to_account_id("uxu.near"), 10u128);
-        let uxu_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
-        assert_eq!(uxu_balance.unwrap_or(1u128), 10u128);
+        let fft_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
+        assert_eq!(fft_balance.unwrap_or(1u128), 10u128);
     }
 }

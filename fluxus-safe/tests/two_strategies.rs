@@ -13,15 +13,13 @@ const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
 
 /// Runs the full cycle of auto-compound and fast forward
 async fn do_auto_compound_with_fast_forward(
+    sentry_acc: &Account,
     contract: &Contract,
-    farm: &Contract,
     token_id: &String,
     blocks_to_forward: u64,
     fast_forward_token: &mut u64,
     worker: &Worker<Sandbox>,
-) -> anyhow::Result<()> {
-    println!("We are in the do_auto_compound_with_fast_forward ");
-
+) -> anyhow::Result<u128> {
     if blocks_to_forward > 0 {
         let block_info = worker.view_latest_block().await?;
         println!(
@@ -40,17 +38,19 @@ async fn do_auto_compound_with_fast_forward(
         *fast_forward_token += 1;
     }
 
+    //Check amount of unclaimed rewards the Strategy has
+    let unclaimed_amount = utils::get_unclaimed_rewards(contract,token_id,worker).await?;
     for _ in 0..4 {
-        let res = contract
-            .call(worker, "harvest")
+        let res = sentry_acc
+            .call(worker, contract.id(), "harvest")
             .args_json(serde_json::json!({ "token_id": token_id }))?
             .gas(TOTAL_GAS)
             .transact()
             .await?;
-        println!("harvest {:#?}\n", res);
+        // println!("{:#?}\n", res);
     }
 
-    Ok(())
+    Ok(unclaimed_amount)
 }
 
 use fluxus_safe::{self, SharesBalance};
@@ -98,7 +98,7 @@ async fn strategies_amount(
 }
 
 #[tokio::test]
-async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
+async fn simulate_two_strategies_same_seed_id() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
     let owner = worker.root_account();
 
@@ -112,6 +112,7 @@ async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
     let token_2 = utils::create_custom_ft(&owner, &worker).await?;
     let token_reward = utils::create_custom_ft(&owner, &worker).await?;
     let token_reward2 = utils::create_custom_ft(&owner, &worker).await?;
+    let treasury = (utils::deploy_treasure(&owner, &token_1, &worker).await).unwrap();
 
     let exchange = utils::deploy_exchange(
         &owner,
@@ -123,6 +124,22 @@ async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
 
     // Transfer tokens from owner to new account
     let account_1 = worker.dev_create_account().await?;
+    let strat_creator = worker.dev_create_account().await?;
+    // register strat_creator to token rewards
+    strat_creator.call(&worker, token_reward.id(), "storage_deposit")
+    .args_json(serde_json::json!({
+        "account_id": strat_creator.id()
+    }))?
+    .deposit(parse_near!("0.08 N"))
+    .transact()
+    .await?;
+    strat_creator.call(&worker, token_reward2.id(), "storage_deposit")
+    .args_json(serde_json::json!({
+        "account_id": strat_creator.id()
+    }))?
+    .deposit(parse_near!("0.08 N"))
+    .transact()
+    .await?;
 
     utils::transfer_tokens(
         &owner,
@@ -195,9 +212,10 @@ async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
 
     let seed_id: String = format! {"{}@{}", CONTRACT_ID_REF_EXC, pool_token1_token2};
 
-    // Create farm
-    let rewards = vec![&token_reward,&token_reward2];
-    let farm = utils::deploy_farm(&owner, &seed_id, rewards, &worker).await?;
+    // Create two farms with same seed_id
+    let farm = utils::deploy_farm(&owner, &worker).await?;
+    let farm_0 = utils::create_farm(&owner, &farm, &seed_id, &token_reward, &worker).await?;
+    let farm_1 = utils::create_farm(&owner, &farm, &seed_id, &token_reward2, &worker).await?;
 
     utils::register_into_contracts(
         &worker,
@@ -209,44 +227,47 @@ async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
-
-    let contract = utils::deploy_safe_contract(
+    let contract = utils::deploy_safe_contract(&owner, &treasury, &worker).await?;
+    //Create first strategy for seed_id
+    utils::create_strategy(
+        &strat_creator,
+        &contract,
         &token_1,
         &token_2,
         &token_reward,
         pool_token1_reward,
         pool_token2_reward,
         pool_token1_token2,
-        0,
+        farm_0,
         &worker,
     )
     .await?;
 
-  
     //Checking that we have one strategies now.   
     let number_of_strats = strategies_amount(&contract, &owner, &seed_id, &worker).await?;
     
     assert_eq!(
         number_of_strats,
         1_u128,
-        "ERR: we don't have the correct number of strategies stored in the code. It is supposed to be {}", 1_u128
+        "ERR: we don't have the correct number of strategies stored in the code. It is supposed to be {} and it is {}", 1_u128,number_of_strats
     );   
      
-    contract.call(&worker, "create_strategy")
-        .args_json(serde_json::json!({
-            "_strategy": "".to_string(),
-            "protocol_fee": 10_u64,
-            "token1_address": &token_1.id().to_string(),
-            "token2_address": &token_2.id().to_string(),
-            "pool_id_token1_reward": pool_token1_reward2,
-            "pool_id_token2_reward": pool_token2_reward2,
-            "reward_token": &token_reward2.id().to_string(),
-            "farm": "1".to_string(),
-            "pool_id": pool_token1_token2,
-            "seed_min_deposit": MIN_SEED_DEPOSIT.to_string()
-        }))?
-        .transact()
+        //Create second strategy for seed_id
+        utils::create_strategy(
+            &strat_creator,
+            &contract,
+            &token_1,
+            &token_2,
+            &token_reward2,
+            pool_token1_reward2,
+            pool_token2_reward2,
+            pool_token1_token2,
+            farm_1,
+            &worker,
+        )
         .await?;
+    
+    
 
         
     //Checking that we have two strategies now.
@@ -329,14 +350,15 @@ async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
     let mut fast_forward_counter: u64 = 0;
 
     do_auto_compound_with_fast_forward(
+        &owner,
         &contract,
-        &farm,
         &token_id,
         700,
         &mut fast_forward_counter,
         &worker,
     )
     .await?;
+
 
     let owner_deposited_shares: u128 = utils::str_to_u128(&initial_owner_shares);
 
@@ -401,8 +423,8 @@ async fn simulate_two_strategies_in_the_same_time() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
 
     do_auto_compound_with_fast_forward(
+        &owner,
         &contract,
-        &farm,
         &token_id,
         900,
         &mut fast_forward_counter,
