@@ -115,13 +115,13 @@ pub struct ContractData {
     /// illustration: map( seed[i], vec(user[i]) ).//TODO
     compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
-    ///Store the uxu_share total_supply for each seed_id. 
+    ///Store the uxu_share total_supply for each seed_id.
     /// TODO: Change HashMap for LookupMap as it is more gas efficient
-    total_supply_by_uxu_share:  HashMap<String, u128>,
-    
-    ///Store the uxu_share for each seed_id. 
+    total_supply_by_uxu_share: HashMap<String, u128>,
+
+    ///Store the uxu_share for each seed_id.
     /// TODO: Change HashMap for LookupMap as it is more gas efficient
-    uxu_share_by_seed_id:  HashMap<String, String>,
+    uxu_share_by_seed_id: HashMap<String, String>,
 
     ///Store the uxu_share for each seed_id.
     seed_id_amount: HashMap<String, u128>,
@@ -135,7 +135,6 @@ pub struct ContractData {
     farm_contract_id: AccountId,
 
     // Pools used to harvest, in the ":X" format
-    //TODO: Move it inside the strategy
     token_ids: Vec<String>,
 
     // Keeps track of token_id to strategy used
@@ -173,17 +172,17 @@ pub trait Callbacks {
     fn callback_post_add_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
-        token_id: String,
+        farm_id_str: String,
     );
     fn callback_post_get_pool_shares(
         &mut self,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
-        token_id: String,
+        farm_id_str: String,
     );
     fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
     fn swap_to_auto(
         &mut self,
-        token_id: String,
+        farm_id_str: String,
         amount_in_1: U128,
         amount_in_2: U128,
         common_token: u64,
@@ -196,7 +195,7 @@ pub trait Callbacks {
     );
     fn get_tokens_return(
         &self,
-        token_id: String,
+        farm_id_str: String,
         amount_token_1: U128,
         amount_token_2: U128,
         common_token: u64,
@@ -204,7 +203,7 @@ pub trait Callbacks {
     fn callback_post_withdraw(
         &mut self,
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
-        token_id: String,
+        farm_id_str: String,
     ) -> Promise;
     fn callback_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
@@ -212,19 +211,19 @@ pub trait Callbacks {
     fn callback_post_sentry_mft_transfer(
         &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
-        token_id: String,
+        farm_id_str: String,
         sentry_id: AccountId,
         amount_earned: u128,
     );
     fn callback_post_claim_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
-        token_id: String,
+        farm_id_str: String,
     ) -> Promise;
     fn callback_post_first_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
-        token_id: String,
+        farm_id_str: String,
         common_token: u64,
         amount_in: U128,
         token_min_out: U128,
@@ -232,13 +231,13 @@ pub trait Callbacks {
     fn callback_post_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
-        token_id: String,
+        farm_id_str: String,
         common_token: u64,
     );
     fn callback_post_get_unclaimed_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
-        token_id: String,
+        farm_id_str: String,
     );
     fn callback_post_unclaimed_reward(
         &self,
@@ -254,13 +253,12 @@ pub trait Callbacks {
     fn callback_list_farms_by_seed(
         &self,
         #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
-        token_id: String,
-        farm_id: String,
+        farm_id_str: String,
     ) -> Promise;
     fn callback_post_ft_transfer(
         &mut self,
         #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
-        token_id: String,
+        farm_id_str: String,
     );
     fn callback_post_creator_ft_transfer(
         &mut self,
@@ -270,7 +268,7 @@ pub trait Callbacks {
     fn callback_post_sentry(
         &self,
         #[callback_result] result: Result<U128, PromiseError>,
-        token_id: String,
+        farm_id_str: String,
         sentry_acc_id: AccountId,
         reward_token: AccountId,
     );
@@ -289,15 +287,50 @@ impl Contract {
             _ => env::panic_str("E51: contract paused"),
         };
     }
-    fn assert_strategy_running(&self, token_id: String) {
+
+    fn assert_strategy_running(&self, farm_id_str: &str) {
         self.assert_contract_running();
 
-        let strat = self.get_strat(&token_id);
+        let (token_id, farm_id) = Contract::get_ids_from_farm(farm_id_str);
 
-        match strat.get().state {
-            AutoCompounderState::Running => (),
-            _ => env::panic_str("E51: strategy ended"),
-        };
+        let strat = self.get_strat(&farm_id);
+        let compounder = strat.get_ref();
+
+        for farm in compounder.farms.iter() {
+            if farm.id == farm_id {
+                match farm.state {
+                    AutoCompounderState::Running => (),
+                    _ => env::panic_str("E51: strategy ended"),
+                };
+            }
+        }
+    }
+
+    // TODO: rename this method
+    /// Ensures that at least one strategy is running for given token_id
+    fn assert_token_id(&self, token_id: String) {
+        let strat = self.get_strat(&token_id);
+        let compounder = strat.get_ref();
+
+        let mut has_running_strategy = false;
+
+        for farm in compounder.farms.iter() {
+            if farm.state == AutoCompounderState::Running {
+                has_running_strategy = true;
+                break;
+            }
+        }
+
+        if !has_running_strategy {
+            panic!("There is no running strategy for this pool")
+        }
+    }
+
+    /// Splits farm_id_str into token_id and farm_id
+    /// Returns token_id, farm_id (exchange@pool_id, farm_id)
+    pub fn get_ids_from_farm(farm_id_str: &str) -> (&str, &str) {
+        let token_id: Vec<&str> = farm_id_str.split('#').collect();
+        (token_id[0], token_id[1])
     }
 
     /// wrap token_id into correct format in MFT standard

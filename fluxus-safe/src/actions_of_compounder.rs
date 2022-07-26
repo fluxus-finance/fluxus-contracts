@@ -33,14 +33,13 @@ impl Contract {
         account_id: AccountId,
         shares: u128,
     ) -> String {
-      
         assert!(self.check_promise(), "ERR_STAKE_FAILED");
-        
+
         let mut id = token_id;
         id.remove(0).to_string();
-        
+
         //Total fft_share
-        let total_fft = self.total_supply_by_pool_id(id.clone()); 
+        let total_fft = self.total_supply_by_pool_id(id.clone());
         log!("total fft is = {}", total_fft);
         let uxu_share_id = self.convert_pool_id_in_uxu_share(id.clone());
 
@@ -49,23 +48,31 @@ impl Contract {
 
         //Total seed_id
         let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
-   
-        self.data_mut().seed_id_amount.insert(seed_id.clone(), total_seed+shares);
-        
-         
-    
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(seed_id.clone(), total_seed + shares);
+
         let fft_share_amount;
-        if total_fft == 0{ 
+        if total_fft == 0 {
             fft_share_amount = shares;
-        }
-        else{
-            fft_share_amount = (U256::from(shares)*U256::from(total_fft)/U256::from(total_seed)).as_u128();
+        } else {
+            fft_share_amount =
+                (U256::from(shares) * U256::from(total_fft) / U256::from(total_seed)).as_u128();
         }
 
-        log!("{} {} will be minted for {}",fft_share_amount, uxu_share_id,account_id.to_string() );
+        log!(
+            "{} {} will be minted for {}",
+            fft_share_amount,
+            uxu_share_id,
+            account_id.to_string()
+        );
         self.mft_mint(uxu_share_id, fft_share_amount, account_id.to_string());
 
-        format!("The {} added {} to {}", account_id, fft_share_amount, seed_id)
+        format!(
+            "The {} added {} to {}",
+            account_id, fft_share_amount, seed_id
+        )
     }
 
     /// Withdraw user lps and send it to the contract.
@@ -78,17 +85,23 @@ impl Contract {
         let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
 
         let fft_share_id = self.convert_pool_id_in_uxu_share(id);
-        let mut user_fft_shares = self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
+        let mut user_fft_shares =
+            self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
 
         //Total fft_share
         let total_fft = self.total_supply_amount(fft_share_id);
 
         //Total seed_id
-        let total_seed = *self.data_mut().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        let total_seed = *self
+            .data_mut()
+            .seed_id_amount
+            .get(&seed_id)
+            .unwrap_or(&0_u128);
 
         //Converting user total fft_shares in seed_id:
-        let user_shares = (U256::from(user_fft_shares)*U256::from(total_seed)/U256::from(total_fft)).as_u128();
-
+        let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
+            / U256::from(total_fft))
+        .as_u128();
 
         let strat = self
             .data()
@@ -99,11 +112,12 @@ impl Contract {
         let compounder = strat.clone().get();
 
         let amount: U128;
-        if let Some(amount_withdrawal) = amount_withdrawal{
+        if let Some(amount_withdrawal) = amount_withdrawal {
             amount = amount_withdrawal;
-            user_fft_shares = (U256::from(amount_withdrawal.0)*U256::from(total_fft)/U256::from(total_seed)).as_u128();
-        }
-        else{
+            user_fft_shares = (U256::from(amount_withdrawal.0) * U256::from(total_fft)
+                / U256::from(total_seed))
+            .as_u128();
+        } else {
             amount = U128(user_shares);
         }
         assert!(
@@ -204,24 +218,28 @@ impl Contract {
         token_id: String,
         account_id: AccountId,
         amount: Balance,
-        fft_shares: Balance
+        fft_shares: Balance,
     ) {
         // TODO: remove generic promise check
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
-
 
         let mut id = token_id;
         let data = self.data_mut();
         id.remove(0).to_string();
         let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
         let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
-        self.data_mut().seed_id_amount.insert(seed_id.clone(),total_seed - amount);
-        let fft_share_id = self.data().uxu_share_by_seed_id.get(&seed_id).unwrap().clone();
+        self.data_mut()
+            .seed_id_amount
+            .insert(seed_id.clone(), total_seed - amount);
+        let fft_share_id = self
+            .data()
+            .uxu_share_by_seed_id
+            .get(&seed_id)
+            .unwrap()
+            .clone();
         self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
-
     }
-
 }
 
 /// Auto-compounder ref-exchange wrapper
@@ -367,20 +385,21 @@ impl Contract {
     /// Returns the amount of unclaimed reward given token_id has
     pub fn get_unclaimed_reward(&self, token_id: String) -> Promise {
         let strat = self.get_strat(&token_id);
-        let farm_id: String = strat.get_ref().farm_id.clone();
+        unimplemented!()
+        // let farm_id: String = strat.get_ref().farm_id.clone();
 
-        ext_farm::get_unclaimed_reward(
-            env::current_account_id(),
-            farm_id,
-            self.data().farm_contract_id.clone(),
-            1,
-            Gas(3_000_000_000_000),
-        )
-        .then(ext_self::callback_post_unclaimed_reward(
-            env::current_account_id(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
+        // ext_farm::get_unclaimed_reward(
+        //     env::current_account_id(),
+        //     farm_id,
+        //     self.data().farm_contract_id.clone(),
+        //     1,
+        //     Gas(3_000_000_000_000),
+        // )
+        // .then(ext_self::callback_post_unclaimed_reward(
+        //     env::current_account_id(),
+        //     0,
+        //     Gas(10_000_000_000_000),
+        // ))
     }
 
     #[private]

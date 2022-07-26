@@ -79,50 +79,50 @@ impl Contract {
             .map(|x| x.to_string())
     }
 
-    /// Returns all token ids filtering by running strategies
-    pub fn get_allowed_tokens(&self) -> Vec<String> {
-        let mut running_strategies: Vec<String> = Vec::new();
+    // /// Returns all token ids filtering by running strategies
+    // pub fn get_allowed_tokens(&self) -> Vec<String> {
+    //     let mut running_strategies: Vec<String> = Vec::new();
 
-        for token in self.data().token_ids.clone() {
-            let strat = self.get_strat(&token);
-            if strat.get_ref().state == AutoCompounderState::Running {
-                running_strategies.push(token);
-            }
-        }
+    //     for token in self.data().token_ids.clone() {
+    //         let strat = self.get_strat(&token);
+    //         if strat.get_ref().state == AutoCompounderState::Running {
+    //             running_strategies.push(token);
+    //         }
+    //     }
 
-        running_strategies
-    }
+    //     running_strategies
+    // }
 
-    /// Return all Strategies filtering by running
-    pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
-        let mut info: Vec<AutoCompounderInfo> = Vec::new();
+    // /// Return all Strategies filtering by running
+    // pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
+    //     let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
-        for (token_id, strat) in self.data().strategies.clone() {
-            let compounder = strat.get();
+    //     for (token_id, strat) in self.data().strategies.clone() {
+    //         let compounder = strat.get();
 
-            info.push(AutoCompounderInfo {
-                state: compounder.state,
-                token_id,
-                token1_address: compounder.token1_address,
-                token2_address: compounder.token2_address,
-                pool_id_token1_reward: compounder.pool_id_token1_reward,
-                pool_id_token2_reward: compounder.pool_id_token2_reward,
-                reward_token: compounder.reward_token,
-                farm_id: compounder.farm_id,
-                pool_id: compounder.pool_id,
-                seed_min_deposit: compounder.seed_min_deposit,
-                seed_id: compounder.seed_id,
-            })
-        }
+    //         info.push(AutoCompounderInfo {
+    //             state: compounder.state,
+    //             token_id,
+    //             token1_address: compounder.token1_address,
+    //             token2_address: compounder.token2_address,
+    //             pool_id_token1_reward: compounder.pool_id_token1_reward,
+    //             pool_id_token2_reward: compounder.pool_id_token2_reward,
+    //             reward_token: compounder.reward_token,
+    //             farm_id: compounder.farm_id,
+    //             pool_id: compounder.pool_id,
+    //             seed_min_deposit: compounder.seed_min_deposit,
+    //             seed_id: compounder.seed_id,
+    //         })
+    //     }
 
-        info
-    }
+    //     info
+    // }
 
-    pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
-        let strat = self.get_strat(&token_id);
-        let compounder = strat.get();
-        compounder.state
-    }
+    // pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
+    //     let strat = self.get_strat(&token_id);
+    //     let compounder = strat.get();
+    //     compounder.state
+    // }
 
     /// Returns exchange and farm contracts
     pub fn get_contract_info(self) -> SafeInfo {

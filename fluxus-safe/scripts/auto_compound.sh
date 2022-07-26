@@ -6,4 +6,7 @@ source .env
 
 
 #### Functions managed by auto-compound
-near call $CONTRACT_NAME harvest '{"token_id": "'$token_id'"}' --accountId $CONTRACT_NAME --gas $total_gas
+near call $CONTRACT_NAME harvest '{"token_id": "'$token_id'"}' --accountId $username --gas $total_gas
+near call $CONTRACT_NAME harvest '{"token_id": "'$token_id'"}' --accountId $username --gas $total_gas
+# near call $CONTRACT_NAME harvest '{"token_id": "'$token_id'"}' --accountId $username --gas $total_gas
+# near call $CONTRACT_NAME harvest '{"token_id": "'$token_id'"}' --accountId $username --gas $total_gas
