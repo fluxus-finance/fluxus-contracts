@@ -43,15 +43,15 @@ impl Contract {
             if let Some(id) = uxu_share_id {
                 log!("Registering {} to {}", id, seed_id);
                 //Registering id for the specific seed
-                data_mut.uxu_share_by_seed_id.insert(seed_id, id.clone());
+                data_mut.fft_share_by_seed_id.insert(seed_id, id.clone());
 
                 //Registering id in the users balance map
                 let mut temp = HashMap::new();
                 temp.insert("".to_string(), 0_u128);
-                data_mut.users_balance_by_uxu_share.insert(id.clone(), temp);
+                data_mut.users_balance_by_fft_share.insert(id.clone(), temp);
 
                 //Registering total_supply
-                data_mut.total_supply_by_uxu_share.insert(id, 0_u128);
+                data_mut.total_supply_by_fft_share.insert(id, 0_u128);
             }
 
             data_mut.strategies.insert(token_id.clone(), strat);

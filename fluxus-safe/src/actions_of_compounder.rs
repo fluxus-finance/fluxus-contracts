@@ -64,10 +64,10 @@ impl Contract {
         log!(
             "{} {} will be minted for {}",
             fft_share_amount,
-            uxu_share_id,
+            fft_share_id,
             account_id.to_string()
         );
-        self.mft_mint(uxu_share_id, fft_share_amount, account_id.to_string());
+        self.mft_mint(fft_share_id, fft_share_amount, account_id.to_string());
 
         format!(
             "The {} added {} to {}",
@@ -84,7 +84,7 @@ impl Contract {
 
         let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
 
-        let fft_share_id = self.convert_pool_id_in_uxu_share(id);
+        let fft_share_id = self.convert_pool_id_in_fft_share(id);
         let mut user_fft_shares =
             self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
 
