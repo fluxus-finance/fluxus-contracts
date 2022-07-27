@@ -45,5 +45,8 @@ echo $CONTRACT_NAME
 # # #### Get total amount staked on contract
 # near view $CONTRACT_NAME get_contract_amount '{}'
 
-near view $farm_contract_id get_unclaimed_reward '{ "account_id" : "dev-1658854662494-59284302906723", "farm_id": "ref-finance-101.testnet@17#1" }' # ref
-near view $farm_contract_id get_unclaimed_reward '{ "account_id" : "dev-1658854662494-59284302906723", "farm_id": "ref-finance-101.testnet@17#8" }' # dbio
+# near view $CONTRACT_NAME number_of_strategies '{}'
+
+near view $CONTRACT_NAME user_share_seed_id '{ "seed_id": "'$seed_id'", "user": "'$username'" }'
+
+# near view $CONTRACT_NAME seed_total_amount '{ "token_id": "'$token_id'" }'

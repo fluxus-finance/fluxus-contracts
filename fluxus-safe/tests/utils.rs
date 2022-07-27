@@ -78,22 +78,31 @@ pub async fn create_strategy(
         .call(worker, "create_strategy")
         .args_json(serde_json::json!({
             "_strategy": "".to_string(),
-            "strategy_fee": 10,
+            "strategy_fee": 5,
             "strat_creator": strat,
             "sentry_fee": 10,
             "token1_address": token1.id().to_string(),
             "token2_address": token2.id().to_string(),
-            "pool_id_token1_reward": pool_id_token1_reward,
-            "pool_id_token2_reward": pool_id_token2_reward,
-            "reward_token": reward_token.id().to_string(),
-            "farm": farm_id.to_string(),
             "pool_id": pool_id,
             "seed_min_deposit": MIN_SEED_DEPOSIT.to_string()
         }))?
         .transact()
         .await?;
-
+    assert!(res.is_success());
     // println!("create strategy -> {:#?}", res);
+
+    let res = safe_contract
+        .call(worker, "add_farm_to_strategy")
+        .args_json(serde_json::json!({
+            "pool_id": pool_id,
+            "pool_id_token1_reward": pool_id_token1_reward,
+            "pool_id_token2_reward": pool_id_token2_reward,
+            "reward_token": reward_token.id().to_string(),
+            "farm_id": farm_id.to_string(),
+        }))?
+        .transact()
+        .await?;
+    assert!(res.is_success());
 
     Ok(())
 }
@@ -204,7 +213,7 @@ pub async fn create_farm(
     seed_id: &String,
     token_reward: &Contract,
     worker: &Worker<Sandbox>,
-) -> anyhow::Result<u64> {
+) -> anyhow::Result<(String, u64)> {
     let reward_per_session: String = parse_near!("1000 N").to_string();
     let res = owner
         .call(worker, farm.id(), "create_simple_farm")
@@ -225,7 +234,7 @@ pub async fn create_farm(
     // println!("{:#?}", res);
 
     let farm_id: String = res.json()?;
-    println!("farm id {farm_id}");
+    println!("farm id: {farm_id}");
     // println!("{:#?}", farm_id.split("#"));
 
     let res = token_reward
@@ -256,7 +265,7 @@ pub async fn create_farm(
 
     let id = farm_id.chars().last().unwrap().to_digit(10).unwrap() as u64;
 
-    Ok(id)
+    Ok((farm_id, id))
 }
 
 pub async fn deploy_farm(owner: &Account, worker: &Worker<Sandbox>) -> anyhow::Result<Contract> {

@@ -154,6 +154,28 @@ impl Contract {
         }
         U128(amount)
     }
+
+    ///Return the u128 number of strategies that we have for a specific seed_id.
+    // pub fn number_of_strategies_by_seed(&self, seed_id: String) -> u128 {
+    //     let num = self.data().compounders_by_seed_id.get(&seed_id);
+    //     let mut result = 0_u128;
+    //     if let Some(number) = num {
+    //         result = (*number).len() as u128;
+    //     }
+    //     result
+    // }
+
+    /// Return the total number of strategies created, running or others
+    pub fn number_of_strategies(&self) -> u128 {
+        let mut count: u128 = 0;
+
+        for (_, strat) in self.data().strategies.iter() {
+            let size = strat.get_ref().farms.len();
+            count += size as u128;
+        }
+
+        count
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

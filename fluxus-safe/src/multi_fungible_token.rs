@@ -27,18 +27,8 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 
 #[near_bindgen]
 impl Contract {
-    ///Return the u128 number of strategies that we have for a specific seed_id.
-    pub fn number_of_strategies(&mut self, seed_id: String) -> u128 {
-        let num = self.data().compounders_by_seed_id.get(&seed_id);
-        let mut result = 0_u128;
-        if let Some(number) = num {
-            result = (*number).len() as u128;
-        }
-        result
-    }
-
     //Return the FFT token to a seed_id TODO: enhance name of fft tokens they should be named fft_seed_{seed_id}
-    pub fn fft_token_seed_id(&self, seed_id: String) -> String{
+    pub fn fft_token_seed_id(&self, seed_id: String) -> String {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
             fft_resp.to_owned()
@@ -70,6 +60,12 @@ impl Contract {
         let user_fft_shares = self.users_fft_share_amount(fft_name.clone(), user);
         let total_fft = self.total_supply_amount(fft_name);
         let total_seed = *self.data().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        log!(
+            "user_fft {} total fft {} total seed {}",
+            user_fft_shares,
+            total_fft,
+            total_seed
+        );
         if total_fft == 0_u128 || total_seed == 0 || user_fft_shares == 0 {
             0
         } else {
