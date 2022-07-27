@@ -9,19 +9,21 @@ impl Contract {
     /// Step 1
     /// Function to claim the reward from the farm contract
     #[private]
-    pub fn claim_reward(&mut self, farm_id: String) -> Promise {
-        self.assert_strategy_running(farm_id.clone());
+    pub fn claim_reward(&mut self, token_id: String) -> Promise {
+        self.assert_strategy_running(token_id.clone());
 
-        let strat = self.get_strat_by_farm(&farm_id);
+        let strat = self.get_strat(&token_id);
+        let seed_id: String = strat.get_ref().seed_id.clone();
         let farm_id: String = strat.get_ref().farm_id.clone();
 
-        ext_farm::get_farm(
-            farm_id.clone(),
+        ext_farm::list_farms_by_seed(
+            seed_id,
             self.data().farm_contract_id.clone(),
             0,
-            Gas(40_000_000_000_000), //Why this is sending gas is a view function
+            Gas(40_000_000_000_000),
         )
         .then(ext_self::callback_list_farms_by_seed(
+            token_id,
             farm_id,
             env::current_account_id(),
             0,
@@ -31,35 +33,38 @@ impl Contract {
 
     pub fn callback_list_farms_by_seed(
         &mut self,
-        #[callback_result] farm_result: Result<Option<FarmInfo>, PromiseError>,
+        #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
+        token_id: String,
         farm_id: String,
     ) -> PromiseOrValue<String> {
-        assert!(farm_result.is_ok(), "ERR_LIST_FARMS_FAILED");
+        assert!(farms_result.is_ok(), "ERR_LIST_FARMS_FAILED");
 
-        let farm = farm_result.unwrap().unwrap();
-        assert!(farm.farm_id == farm_id, "ERR_FARM_MISMATCH");
-        if farm.farm_status != *"Running"{
-            let strat = self
+        let farms = farms_result.unwrap();
+
+        for farm in farms.iter() {
+            if farm.farm_id == farm_id && farm.farm_status != *"Running" {
+                let strat = self
                     .data_mut()
-                    .strats_by_farm
-                    .get_mut(&farm_id)
-                    .expect(ERR2_FARM_NOT_REG);
+                    .strategies
+                    .get_mut(&token_id)
+                    .expect(ERR21_TOKEN_NOT_REG);
                 let compounder = strat.get_mut();
 
                 compounder.state = AutoCompounderState::Ended;
-                return PromiseOrValue::Value(format!("The farm {:#?} ended", farm_id.clone()));
+                return PromiseOrValue::Value(format!("The farm {:#?} ended", farm_id));
+            }
         }
 
         PromiseOrValue::Promise(
             ext_farm::get_unclaimed_reward(
                 env::current_account_id(),
-                farm_id.clone(),
+                farm_id,
                 self.data().farm_contract_id.clone(),
                 1,
                 Gas(3_000_000_000_000),
             )
             .then(ext_self::callback_post_get_unclaimed_reward(
-                farm_id,
+                token_id,
                 env::current_account_id(),
                 0,
                 Gas(70_000_000_000_000),
@@ -71,7 +76,7 @@ impl Contract {
     pub fn callback_post_get_unclaimed_reward(
         &mut self,
         #[callback_result] reward_amount_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) -> Promise {
         assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
 
@@ -80,9 +85,9 @@ impl Contract {
 
         let strat = self
             .data_mut()
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR2_FARM_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
 
         let compounder = strat.get_mut();
 
@@ -96,7 +101,7 @@ impl Contract {
             Gas(40_000_000_000_000),
         )
         .then(ext_self::callback_post_claim_reward(
-            farm_id,
+            token_id,
             env::current_account_id(),
             0,
             Gas(10_000_000_000_000),
@@ -107,14 +112,16 @@ impl Contract {
     pub fn callback_post_claim_reward(
         &mut self,
         #[callback_result] claim_reward_result: Result<(), PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) {
         assert!(claim_reward_result.is_ok(), "ERR_WITHDRAW_FAILED");
+
         let strat = self
             .data_mut()
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR2_FARM_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
         let compounder = strat.get_mut();
         compounder.next_cycle();
     }
@@ -122,10 +129,10 @@ impl Contract {
     /// Step 2
     /// Function to claim the reward from the farm contract
     #[private]
-    pub fn withdraw_of_reward(&mut self, farm_id: String) -> Promise {
-        self.assert_strategy_running(farm_id.clone());
+    pub fn withdraw_of_reward(&mut self, token_id: String) -> Promise {
+        self.assert_strategy_running(token_id.clone());
 
-        let strat = self.get_strat_by_farm(&farm_id);
+        let strat = self.get_strat(&token_id);
         let reward_token: AccountId = strat.clone().get().reward_token;
 
         let compounder = strat.get_ref();
@@ -146,7 +153,7 @@ impl Contract {
                 Gas(180_000_000_000_000),
             )
             .then(ext_self::callback_post_withdraw(
-                farm_id,
+                token_id,
                 env::current_account_id(),
                 0,
                 Gas(80_000_000_000_000),
@@ -162,7 +169,7 @@ impl Contract {
                 Gas(40_000_000_000_000),
             )
             .then(ext_self::callback_post_ft_transfer(
-                farm_id,
+                token_id,
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
@@ -174,7 +181,7 @@ impl Contract {
     pub fn callback_post_withdraw(
         &mut self,
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) -> PromiseOrValue<U128> {
         assert!(withdraw_result.is_ok(), "ERR_WITHDRAW_FROM_FARM_FAILED");
 
@@ -183,9 +190,9 @@ impl Contract {
         let data_mut = self.data_mut();
 
         let strat = data_mut
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR2_FARM_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
 
         let compounder = strat.get_mut();
 
@@ -220,7 +227,7 @@ impl Contract {
                 Gas(40_000_000_000_000),
             )
             .then(ext_self::callback_post_ft_transfer(
-                farm_id,
+                token_id,
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
@@ -232,7 +239,7 @@ impl Contract {
     pub fn callback_post_ft_transfer(
         &mut self,
         #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) {
         if exchange_transfer_result.is_err() {
             log!("ERR_TRANSFER_TO_EXCHANGE");
@@ -241,9 +248,9 @@ impl Contract {
 
         let data_mut = self.data_mut();
         let strat = data_mut
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR2_FARM_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
 
         let compounder = strat.get_mut();
         compounder.next_cycle();
@@ -252,18 +259,18 @@ impl Contract {
     /// Step 3
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
     #[private]
-    pub fn autocompounds_swap(&mut self, farm_id: String) -> Promise {
+    pub fn autocompounds_swap(&mut self, token_id: String) -> Promise {
         // TODO: take string as ref
-        self.assert_strategy_running(farm_id.clone());
+        self.assert_strategy_running(token_id.clone());
 
         let treasury_acc: AccountId = self.treasure_acc();
         let treasury_curr_amount: u128 = self.data_mut().treasury.current_amount;
 
         let strat = self
             .data()
-            .strats_by_farm
-            .get(&farm_id)
-            .expect(ERR2_FARM_NOT_REG);
+            .strategies
+            .get(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_ref();
 
         let token1 = compounder.token1_address.clone();
@@ -287,13 +294,13 @@ impl Contract {
 
             return self
                 .get_tokens_return(
-                    farm_id.clone(),
+                    token_id.clone(),
                     U128(compounder.available_balance[0]),
                     U128(reward_amount),
                     common_token,
                 )
                 .then(ext_self::swap_to_auto(
-                    farm_id,
+                    token_id,
                     U128(compounder.available_balance[0]),
                     U128(reward_amount),
                     common_token,
@@ -333,16 +340,16 @@ impl Contract {
                 Gas(20_000_000_000_000),
             )
             .then(ext_self::callback_post_creator_ft_transfer(
-                farm_id.clone(),
+                token_id.clone(),
                 env::current_account_id(),
                 0,
                 Gas(10_000_000_000_000),
             ));
         }
 
-        self.get_tokens_return(farm_id.clone(), amount_in, amount_in, common_token)
+        self.get_tokens_return(token_id.clone(), amount_in, amount_in, common_token)
             .then(ext_self::swap_to_auto(
-                farm_id,
+                token_id,
                 amount_in,
                 amount_in,
                 common_token,
@@ -378,14 +385,14 @@ impl Contract {
     pub fn callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<(), PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) {
         if strat_creator_transfer_result.is_err() {
             log!("ERR_TRANSFER_TO_CREATOR");
             return;
         }
 
-        let strat = self.get_strat_by_farm_mut(&farm_id);
+        let strat = self.get_strat_mut(&token_id);
         let compounder = strat.get_mut();
 
         compounder.admin_fees.strat_creator.current_amount = 0;
@@ -395,12 +402,12 @@ impl Contract {
     #[private]
     pub fn get_tokens_return(
         &self,
-        farm_id: String,
+        token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
         common_token: u64,
     ) -> Promise {
-        let strat = self.get_strat_by_farm(&farm_id);
+        let strat = self.get_strat(&token_id);
         let compounder = strat.get_ref();
 
         if common_token == 1 {
@@ -503,17 +510,18 @@ impl Contract {
     pub fn swap_to_auto(
         &mut self,
         #[callback_unwrap] tokens: (U128, U128),
-        farm_id: String,
+        token_id: String,
         amount_in_1: U128,
         amount_in_2: U128,
         common_token: u64,
     ) -> Promise {
+        let (_, contract_id) = self.get_predecessor_and_current_account();
 
         let strat = self
             .data_mut()
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR1_TOKEN_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
         let pool_id_to_swap1 = compounder.pool_id_token1_reward;
@@ -550,7 +558,7 @@ impl Contract {
                 token2_min_out,
             )
             .then(ext_self::callback_post_swap(
-                farm_id,
+                token_id,
                 common_token,
                 env::current_account_id(),
                 0,
@@ -567,7 +575,7 @@ impl Contract {
                 token1_min_out,
             )
             .then(ext_self::callback_post_swap(
-                farm_id,
+                token_id,
                 common_token,
                 env::current_account_id(),
                 0,
@@ -582,7 +590,7 @@ impl Contract {
                 token1_min_out,
             )
             .then(ext_self::callback_post_first_swap(
-                farm_id,
+                token_id.clone(),
                 common_token,
                 amount_in_2,
                 token2_min_out,
@@ -597,16 +605,16 @@ impl Contract {
     pub fn callback_post_first_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
         common_token: u64,
         amount_in: U128,
         token_min_out: U128,
     ) -> PromiseOrValue<u64> {
         let strat = self
             .data_mut()
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR1_TOKEN_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
@@ -639,7 +647,7 @@ impl Contract {
                 Gas(30_000_000_000_000),
             )
             .then(ext_self::callback_post_swap(
-                farm_id,
+                token_id,
                 common_token,
                 env::current_account_id(),
                 0,
@@ -652,14 +660,14 @@ impl Contract {
     pub fn callback_post_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
         common_token: u64,
     ) {
         let data_mut = self.data_mut();
         let strat = data_mut
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR1_TOKEN_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
@@ -690,16 +698,16 @@ impl Contract {
     /// Step 4
     /// Get amount of tokens available then stake it
     #[private]
-    pub fn autocompounds_liquidity_and_stake(&mut self, farm_id: String) -> Promise {
-        self.assert_strategy_running(farm_id.clone());
+    pub fn autocompounds_liquidity_and_stake(&mut self, token_id: String) -> Promise {
+        self.assert_strategy_running(token_id.clone());
 
         // send reward to contract caller
-        self.send_reward_to_sentry(farm_id, env::predecessor_account_id())
+        self.send_reward_to_sentry(token_id, env::predecessor_account_id())
     }
 
     #[private]
-    pub fn send_reward_to_sentry(&self, farm_id: String, sentry_acc_id: AccountId) -> Promise {
-        let strat = self.get_strat_by_farm(&farm_id);
+    pub fn send_reward_to_sentry(&self, token_id: String, sentry_acc_id: AccountId) -> Promise {
+        let strat = self.get_strat(&token_id);
         let compounder = strat.get_ref();
 
         ext_reward_token::storage_balance_of(
@@ -709,7 +717,7 @@ impl Contract {
             Gas(10_000_000_000_000),
         )
         .then(ext_self::callback_post_sentry(
-            farm_id,
+            token_id,
             sentry_acc_id,
             compounder.reward_token.clone(),
             env::current_account_id(),
@@ -721,7 +729,7 @@ impl Contract {
     pub fn callback_post_sentry(
         &mut self,
         #[callback_result] result: Result<Option<StorageBalance>, PromiseError>,
-        farm_id: String,
+        token_id: String,
         sentry_acc_id: AccountId,
         reward_token: AccountId,
     ) -> Promise {
@@ -740,9 +748,9 @@ impl Contract {
 
         let strat = self
             .data_mut()
-            .strats_by_farm
-            .get_mut(&farm_id)
-            .expect(ERR2_FARM_NOT_REG);
+            .strategies
+            .get_mut(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
         // reset default sentry address and get last earned amount
@@ -763,7 +771,7 @@ impl Contract {
             Gas(20_000_000_000_000),
         )
         .then(ext_self::callback_post_sentry_mft_transfer(
-            farm_id,
+            token_id,
             sentry_acc_id,
             amount,
             env::current_account_id(),
@@ -777,7 +785,7 @@ impl Contract {
     pub fn callback_post_sentry_mft_transfer(
         &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
-        farm_id: String,
+        token_id: String,
         sentry_id: AccountId,
         amount_earned: u128,
     ) -> PromiseOrValue<u64> {
@@ -787,9 +795,9 @@ impl Contract {
 
             let strat = self
                 .data_mut()
-                .strats_by_farm
-                .get_mut(&farm_id)
-                .expect(ERR2_FARM_NOT_REG);
+                .strategies
+                .get_mut(&token_id)
+                .expect(ERR21_TOKEN_NOT_REG);
 
             let compounder = strat.get_mut();
 
@@ -800,7 +808,7 @@ impl Contract {
                 .insert(sentry_id, amount_earned);
         }
 
-        let strat = self.get_strat_by_farm(&farm_id);
+        let strat = self.get_strat(&token_id);
         let compounder = strat.get_ref();
         // let farm_id: String = compounder.farm_id.clone();
 
@@ -819,7 +827,7 @@ impl Contract {
                 Gas(30_000_000_000_000),
             )
             .then(ext_self::callback_post_add_liquidity(
-                farm_id.clone(),
+                token_id.clone(),
                 env::current_account_id(),
                 0,
                 Gas(10_000_000_000_000),
@@ -834,7 +842,7 @@ impl Contract {
             ))
             // Update user balance and stake
             .then(ext_self::callback_post_get_pool_shares(
-                farm_id,
+                token_id,
                 env::current_account_id(),
                 0,
                 Gas(120_000_000_000_000),
@@ -846,23 +854,27 @@ impl Contract {
     pub fn callback_post_add_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) -> U128 {
         assert!(shares_result.is_ok(), "ERR");
 
-        let strat = self.get_strat_by_farm_mut(&farm_id);
+        let strat = self.get_strat_mut(&token_id);
         let compounder = strat.get_mut();
 
         // ensure that in the next run we won't have a balance unless previous steps succeeds
         compounder.available_balance[0] = 0u128;
         compounder.available_balance[1] = 0u128;
-        let seed_id = compounder.seed_id.clone();
 
         // update owned shares for given seed
         let shares_received = shares_result.unwrap().0;
-        let total_seed = *self.data().seed_id_amount.get(&seed_id).unwrap();
-        // let total_seed = self.seed_total_amount(token_id.clone());
+
+        let total_seed = self.seed_total_amount(token_id.clone());
+
         let data = self.data_mut();
+
+        let mut id = token_id.clone();
+        id.remove(0).to_string();
+        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
 
         data.seed_id_amount
             .insert(seed_id, total_seed + shares_received);
@@ -876,20 +888,19 @@ impl Contract {
     pub fn callback_post_get_pool_shares(
         &mut self,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) {
         assert!(total_shares_result.is_ok(), "ERR");
         // let shares_amount = minted_shares_result.0;
 
-        let strat = self.get_strat_by_farm_mut(&farm_id);
+        let strat = self.get_strat_mut(&token_id);
 
         let compounder = strat.get_mut();
-        let pool_id = compounder.pool_id;
-        // let token_id = self.wrap_mft_token_id(&pool_id.to_string());
-        let token_id = format!(":{}", pool_id);
+
         compounder.next_cycle();
 
         let accumulated_shares = total_shares_result.unwrap().0;
+
         // Prevents failing on stake if below minimum deposit
         if accumulated_shares < compounder.seed_min_deposit.into() {
             log!(

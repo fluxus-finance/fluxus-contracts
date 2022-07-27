@@ -113,7 +113,7 @@ pub struct ContractData {
 
     ///Store the auto-compounders of the seeds.
     /// illustration: map( seed[i], vec(user[i]) ).//TODO
-    farms_by_seed_id: HashMap<String, HashSet<String>>,
+    compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
     ///Store the fft_share total_supply for each seed_id. 
     /// TODO: Change HashMap for LookupMap as it is more gas efficient
@@ -140,10 +140,6 @@ pub struct ContractData {
 
     // Keeps track of token_id to strategy used
     strategies: HashMap<String, VersionedStrategy>,
-
-
-    // Keeps track of farm_id to strategy used
-    strats_by_farm: HashMap<String, VersionedStrategy>,
 }
 // Functions that we need to call like a callback.
 #[ext_contract(ext_self)]
@@ -177,17 +173,17 @@ pub trait Callbacks {
     fn callback_post_add_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     );
     fn callback_post_get_pool_shares(
         &mut self,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     );
     fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
     fn swap_to_auto(
         &mut self,
-        farm_id: String,
+        token_id: String,
         amount_in_1: U128,
         amount_in_2: U128,
         common_token: u64,
@@ -200,7 +196,7 @@ pub trait Callbacks {
     );
     fn get_tokens_return(
         &self,
-        farm_id: String,
+        token_id: String,
         amount_token_1: U128,
         amount_token_2: U128,
         common_token: u64,
@@ -208,7 +204,7 @@ pub trait Callbacks {
     fn callback_post_withdraw(
         &mut self,
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) -> Promise;
     fn callback_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
@@ -216,19 +212,19 @@ pub trait Callbacks {
     fn callback_post_sentry_mft_transfer(
         &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
-        farm_id: String,
+        token_id: String,
         sentry_id: AccountId,
         amount_earned: u128,
     );
     fn callback_post_claim_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
-        farm_id: String,
+        token_id: String,
     ) -> Promise;
     fn callback_post_first_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
         common_token: u64,
         amount_in: U128,
         token_min_out: U128,
@@ -236,13 +232,13 @@ pub trait Callbacks {
     fn callback_post_swap(
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
         common_token: u64,
     );
     fn callback_post_get_unclaimed_reward(
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
-        farm_id: String,
+        token_id: String,
     );
     fn callback_post_unclaimed_reward(
         &self,
@@ -257,23 +253,24 @@ pub trait Callbacks {
     ) -> Promise;
     fn callback_list_farms_by_seed(
         &self,
-        #[callback_result] farms_result: Result<Option<FarmInfo>, PromiseError>,
+        #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
+        token_id: String,
         farm_id: String,
     ) -> Promise;
     fn callback_post_ft_transfer(
         &mut self,
         #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     );
     fn callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
     );
     fn callback_post_sentry(
         &self,
         #[callback_result] result: Result<U128, PromiseError>,
-        farm_id: String,
+        token_id: String,
         sentry_acc_id: AccountId,
         reward_token: AccountId,
     );
@@ -289,37 +286,20 @@ impl Contract {
     fn assert_contract_running(&self) {
         match self.data().state {
             RunningState::Running => (),
-            _ => env::panic_str(ERR5_CONTRACT_PAUSED),
+            _ => env::panic_str("E51: contract paused"),
         };
     }
-    fn assert_strategy_running(&self, farm_id: String) {
+    fn assert_strategy_running(&self, token_id: String) {
         self.assert_contract_running();
 
-        let strat = self.get_strat_by_farm(&farm_id);
+        let strat = self.get_strat(&token_id);
 
         match strat.get().state {
             AutoCompounderState::Running => (),
-            _ => env::panic_str(ERR4_STRATEGY_ENDED),
+            _ => env::panic_str("E51: strategy ended"),
         };
     }
-    fn assert_some_strategy_running_by_seed_Id(&self, seed_id: String) {
-        self.assert_contract_running();
-        let farms = self.data().farms_by_seed_id.get(&seed_id).unwrap();
-        let mut count = 0;
-        for farm in farms.iter()
-        {
-            let strat = self.get_strat_by_farm(&farm);
 
-            match strat.get().state {
-            AutoCompounderState::Running => (count+= 1),
-            _ => (),
-        };
-
-        }
-        if count <= 0{
-            env::panic_str(ERR4_STRATEGY_ENDED);
-        }
-    }
     /// wrap token_id into correct format in MFT standard
     pub(crate) fn wrap_mft_token_id(&self, token_id: &String) -> String {
         format!(":{}", token_id)
@@ -370,7 +350,7 @@ impl Contract {
                 state: RunningState::Running,
                 users_total_near_deposited: HashMap::new(),
                 users_balance_by_fft_share: HashMap::new(),
-                farms_by_seed_id: HashMap::new(),
+                compounders_by_seed_id: HashMap::new(),
                 total_supply_by_fft_share: HashMap::new(),
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: HashMap::new(),
@@ -379,8 +359,6 @@ impl Contract {
                 /// List of all the pools.
                 token_ids: Vec::new(),
                 strategies: HashMap::new(),
-                strats_by_farm: HashMap::new(),
-
             }),
         }
     }

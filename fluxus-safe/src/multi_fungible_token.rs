@@ -29,7 +29,7 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 impl Contract {
     ///Return the u128 number of strategies that we have for a specific seed_id.
     pub fn number_of_strategies(&mut self, seed_id: String) -> u128 {
-        let num = self.data().farms_by_seed_id.get(&seed_id);
+        let num = self.data().compounders_by_seed_id.get(&seed_id);
         let mut result = 0_u128;
         if let Some(number) = num {
             result = (*number).len() as u128;
@@ -228,7 +228,7 @@ impl Contract {
         amount: u128,
         memo: Option<String>,
     ) {
-        assert_ne!(sender_id, receiver_id, "{}", ERR3_SELF_TRANSFER);
+        assert_ne!(sender_id, receiver_id, "{}", ERR33_TRANSFER_TO_SELF);
         self.share_transfer(
             token_id.clone(),
             sender_id.clone(),

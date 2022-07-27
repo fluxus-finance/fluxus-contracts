@@ -61,15 +61,14 @@ impl Contract {
             //Registering total_supply
             self.data_mut().total_supply_by_fft_share.insert(id, 0_u128);
             let mut new_set: HashSet<String> = HashSet::new();
-            new_set.insert(farm_id.clone());
-            self.data_mut().farms_by_seed_id.insert(seed_id,new_set.clone());
+            new_set.insert(farm_id);
+            self.data_mut().compounders_by_seed_id.insert(seed_id,new_set.clone());
         }
         else {
-            self.data_mut().farms_by_seed_id.get_mut(&seed_id).unwrap().insert(farm_id.clone());
+            self.data_mut().compounders_by_seed_id.get_mut(&seed_id).unwrap().insert(farm_id);
         }
 
-        self.data_mut().strategies.insert(token_id.clone(), strat.clone());
-        self.data_mut().strats_by_farm.insert(farm_id,strat);
+        self.data_mut().strategies.insert(token_id.clone(), strat); //TODO: strategies needs refactorating to support multiples AutoCompounder per token
 
         format!("VersionedStrategy for {} created successfully", token_id)
     }
@@ -92,13 +91,13 @@ impl Contract {
 
         fft_share_id
     }
-    pub fn harvest(&mut self, farm_id: String) -> Promise {
-        let strat = self.get_strat_by_farm(&farm_id).get();
+    pub fn harvest(&mut self, token_id: String) -> Promise {
+        let strat = self.get_strat(&token_id).get();
         match strat.cycle_stage {
-            AutoCompounderCycle::ClaimReward => self.claim_reward(farm_id),
-            AutoCompounderCycle::Withdrawal => self.withdraw_of_reward(farm_id),
-            AutoCompounderCycle::Swap => self.autocompounds_swap(farm_id),
-            AutoCompounderCycle::Stake => self.autocompounds_liquidity_and_stake(farm_id),
+            AutoCompounderCycle::ClaimReward => self.claim_reward(token_id),
+            AutoCompounderCycle::Withdrawal => self.withdraw_of_reward(token_id),
+            AutoCompounderCycle::Swap => self.autocompounds_swap(token_id),
+            AutoCompounderCycle::Stake => self.autocompounds_liquidity_and_stake(token_id),
         }
     }
 }

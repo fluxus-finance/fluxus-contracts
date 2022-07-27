@@ -90,7 +90,7 @@ impl Contract {
             .data()
             .strategies
             .get(token_id)
-            .expect(ERR1_TOKEN_NOT_REG);
+            .expect(ERR21_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
             strat.upgrade()
@@ -104,36 +104,7 @@ impl Contract {
             .data_mut()
             .strategies
             .get_mut(token_id)
-            .expect(ERR1_TOKEN_NOT_REG);
-
-        if strat.need_upgrade() {
-            strat.upgrade();
-            strat
-        } else {
-            strat
-        }
-    }
-
-    pub fn get_strat_by_farm(&self, farm_id: &String) -> VersionedStrategy {
-        let strat = self
-            .data()
-            .strats_by_farm
-            .get(farm_id)
-            .expect(ERR2_FARM_NOT_REG);
-
-        if strat.need_upgrade() {
-            strat.upgrade()
-        } else {
-            strat.clone()
-        }
-    }
-
-    pub fn get_strat_by_farm_mut(&mut self, farm_id: &String) -> &mut VersionedStrategy {
-        let strat = self
-            .data_mut()
-            .strats_by_farm
-            .get_mut(farm_id)
-            .expect(ERR2_FARM_NOT_REG);
+            .expect(ERR21_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
             strat.upgrade();

@@ -89,15 +89,9 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        
-        let mut pool_id = token_id.chars();
-        pool_id.next();
-        let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id.as_str());
-
-        self.assert_some_strategy_running_by_seed_Id(seed_id);
+        self.assert_strategy_running(token_id.clone());
 
         //Check: Is the token_id the vault's pool_id? If is not, send it back
-        //TODO: this need to be changed to a common variable, provisory usage of get_strat as all farms for the same seed_id will have the same min amount deposit
         let strat = self.get_strat(&token_id);
 
         let compounder = strat.get();
