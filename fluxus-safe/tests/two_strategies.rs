@@ -5,11 +5,15 @@ use workspaces::{
     network::{DevAccountDeployer, Sandbox},
     Account, AccountId, Contract, Network, Worker,
 };
-
+use percentage::Percentage;
 const TOTAL_GAS: u64 = 300_000_000_000_000;
 pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000;
 
 const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
+const TOTAL_PROTOCOL_FEE: u128 = 10;
+const SENTRY_FEES_PERCENT: u128 = 10;
+const STRAT_FEES_PERCENT: u128 = 10;
+const TREASURY_FEES_PERCENT: u128 = 80;
 
 /// Runs the full cycle of auto-compound and fast forward
 async fn do_auto_compound_with_fast_forward(
@@ -348,8 +352,9 @@ async fn simulate_two_strategies_same_seed_id() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
 
     let mut fast_forward_counter: u64 = 0;
-
-    do_auto_compound_with_fast_forward(
+    let balance_before_strat_creator_1 = i128::try_from(utils::get_balance_of(&strat_creator,&token_reward,true,&worker,None).await?.0).unwrap();
+    let balance_before_strat_creator_2 = i128::try_from(utils::get_balance_of(&strat_creator,&token_reward2,true,&worker,None).await?.0).unwrap();
+    let amount_claimed_1 = do_auto_compound_with_fast_forward(
         &owner,
         &contract,
         &token_id,
@@ -359,9 +364,26 @@ async fn simulate_two_strategies_same_seed_id() -> anyhow::Result<()> {
     )
     .await?;
 
-
+    // Validate claimed amount and percentuals after first compound cycle
+    let unclaimed_amount = utils::get_unclaimed_rewards(&contract,&token_id,&worker).await?;
+    assert!(unclaimed_amount == 0, "ERR: Unclaimend amount should be 0 after compounding round. unclaimed amount {}", unclaimed_amount);
+    let all_fees_amount = Percentage::from(TOTAL_PROTOCOL_FEE).apply_to(amount_claimed_1);
+    let strat_creator_due_fees_1 = i128::try_from(Percentage::from(STRAT_FEES_PERCENT).apply_to(all_fees_amount)).unwrap();
     let owner_deposited_shares: u128 = utils::str_to_u128(&initial_owner_shares);
-
+    let balance_after_strat_creator_1 = i128::try_from(utils::get_balance_of(&strat_creator,&token_reward,true,&worker,None).await?.0).unwrap();
+    let balance_after_strat_creator_2 = i128::try_from(utils::get_balance_of(&strat_creator,&token_reward2,true,&worker,None).await?.0).unwrap();
+    assert!(
+        (balance_after_strat_creator_1 - (strat_creator_due_fees_1+ balance_before_strat_creator_1)).abs() < 9,
+        "ERR: Strat Creator did not receive his due fees - token reward 1. there is: {} should be: {}",
+        balance_after_strat_creator_1,
+        (strat_creator_due_fees_1+ balance_before_strat_creator_1)
+    );
+    assert!(
+        (balance_after_strat_creator_2 - (balance_before_strat_creator_2)) > 1,
+        "ERR: Strat Creator did not receive his due fees - token reward 2. there is: {} should be: {}",
+        balance_after_strat_creator_2,
+        (balance_before_strat_creator_2)
+    );
     // Get owner shares from auto-compound contract
     let round1_owner_shares: u128 = get_user_shares(&contract, &owner, &seed_id, &worker).await?;
     // Assert the current value is higher than the initial value deposited

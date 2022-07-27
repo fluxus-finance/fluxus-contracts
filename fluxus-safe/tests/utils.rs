@@ -645,5 +645,13 @@ pub async fn get_unclaimed_rewards(
         .transact()
         .await?
         .json()?;
+
+    let res = contract
+    .call(worker, "get_unclaimed_reward")
+    .args_json(serde_json::json!({ "token_id": token_id }))?
+    .gas(TOTAL_GAS)
+    .transact()
+    .await?;
+    println!("After unclaimed rewards {:#?}", res);
     Ok(unclaimed_amount.0)
 }

@@ -55,7 +55,7 @@ impl Contract {
             .data_mut()
             .strategies
             .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR1_TOKEN_NOT_REG);
         let compounder = strat.get_mut();
 
         if compounder.state != state {
@@ -102,7 +102,7 @@ impl Contract {
             .data_mut()
             .strategies
             .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR1_TOKEN_NOT_REG);
 
         let compounder = strat.get_mut();
         compounder.slippage = 100 - new_slippage;

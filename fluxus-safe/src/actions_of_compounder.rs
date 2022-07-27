@@ -338,7 +338,7 @@ impl Contract {
     //         .data()
     //         .strategies
     //         .get(&token_id)
-    //         .expect(ERR21_TOKEN_NOT_REG);
+    //         .expect(ERR1_TOKEN_NOT_REG);
 
     //     let compounder = strat.get_ref();
 
@@ -368,6 +368,7 @@ impl Contract {
     pub fn get_unclaimed_reward(&self, token_id: String) -> Promise {
         let strat = self.get_strat(&token_id);
         let farm_id: String = strat.get_ref().farm_id.clone();
+        log!("The farm id {}",farm_id);
 
         ext_farm::get_unclaimed_reward(
             env::current_account_id(),

@@ -20,6 +20,7 @@ async fn do_auto_compound_with_fast_forward(
     sentry_acc: &Account,
     contract: &Contract,
     token_id: &String,
+    farm_id: &String,
     blocks_to_forward: u64,
     fast_forward_token: &mut u64,
     worker: &Worker<Sandbox>,
@@ -44,14 +45,16 @@ async fn do_auto_compound_with_fast_forward(
 
     //Check amount of unclaimed rewards the Strategy has
     let unclaimed_amount = utils::get_unclaimed_rewards(contract,token_id,worker).await?;
+
+    println!("Starting compound cycle {}", farm_id);
     for _ in 0..4 {
         let res = sentry_acc
             .call(worker, contract.id(), "harvest")
-            .args_json(serde_json::json!({ "token_id": token_id }))?
+            .args_json(serde_json::json!({ "farm_id": farm_id }))?
             .gas(TOTAL_GAS)
             .transact()
             .await?;
-        // println!("{:#?}\n", res);
+        println!("{:#?}\n", res);
     }
 
     Ok(unclaimed_amount)
@@ -191,7 +194,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // Create farm
     let farm = utils::deploy_farm(&owner, &worker).await?;
     let farm_0 = utils::create_farm(&owner, &farm, &seed_id, &token_reward, &worker).await?;
-
+    let farm_id: String = format!("{}#{}", seed_id, farm_0);
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
@@ -290,6 +293,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &owner,
         &contract,
         &token_id,
+        &farm_id,
         700,
         &mut fast_forward_counter,
         &worker,
@@ -364,6 +368,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &owner,
         &contract,
         &token_id,
+        &farm_id,
         900,
         &mut fast_forward_counter,
         &worker,
@@ -515,7 +520,7 @@ async fn simulate_reward_distribution() -> anyhow::Result<()> {
     // Create farm
     let farm = utils::deploy_farm(&owner, &worker).await?;
     let farm_0 = utils::create_farm(&owner, &farm, &seed_id, &token_reward, &worker).await?;
-
+    let farm_id: String = format!("{}#{}", seed_id, farm_0);
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
@@ -638,6 +643,7 @@ async fn simulate_reward_distribution() -> anyhow::Result<()> {
         &sentry_acc,
         &contract,
         &token_id,
+        &farm_id,
         700,
         &mut fast_forward_counter,
         &worker,

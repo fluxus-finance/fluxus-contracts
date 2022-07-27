@@ -67,6 +67,7 @@ pub trait Farming {
     fn get_unclaimed_reward(&mut self, account_id: AccountId, farm_id: String) -> U128;
     fn list_user_seeds(&self, account_id: AccountId) -> HashMap<SeedId, U128>;
     fn list_farms_by_seed(&self, seed_id: SeedId) -> Vec<FarmInfo>;
+    fn get_farm(&self, farm_id: FarmId) -> Option<FarmInfo>;
 }
 
 // Ref exchange functions that we need to call inside the auto_compounder.
