@@ -41,7 +41,7 @@ impl Contract {
         //Total fft_share
         let total_fft = self.total_supply_by_pool_id(id.clone());
         log!("total fft is = {}", total_fft);
-        let uxu_share_id = self.convert_pool_id_in_uxu_share(id.clone());
+        let fft_share_id = self.convert_pool_id_in_fft_share(id.clone());
 
         let data = self.data_mut();
         let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
@@ -234,7 +234,7 @@ impl Contract {
             .insert(seed_id.clone(), total_seed - amount);
         let fft_share_id = self
             .data()
-            .uxu_share_by_seed_id
+            .fft_share_by_seed_id
             .get(&seed_id)
             .unwrap()
             .clone();

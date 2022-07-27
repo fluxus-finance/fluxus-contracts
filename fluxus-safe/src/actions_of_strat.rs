@@ -22,7 +22,7 @@ impl Contract {
             format!("VersionedStrategy for {} already exist", token_id)
         } else {
             let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id);
-            let uxu_share_id = self.new_uxu_share(seed_id.clone());
+            let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
             let treasury = data_mut.treasury.clone();
@@ -101,23 +101,23 @@ impl Contract {
         )
     }
 
-    fn new_uxu_share(&mut self, seed_id: String) -> Option<String> {
-        let already_has = self.data_mut().uxu_share_by_seed_id.get(&seed_id).is_some();
-        let uxu_share_id;
+    fn new_fft_share(&mut self, seed_id: String) -> Option<String> {
+        let already_has = self.data_mut().fft_share_by_seed_id.get(&seed_id).is_some();
+        let fft_share_id;
         if already_has {
-            uxu_share_id = None
+            fft_share_id = None
         } else {
             let num: u128 =
-                u128::try_from(self.data_mut().uxu_share_by_seed_id.keys().len()).unwrap() + 1_u128;
-            uxu_share_id = Some(format!("uxu_share_{num}"));
+                u128::try_from(self.data_mut().fft_share_by_seed_id.keys().len()).unwrap() + 1_u128;
+            fft_share_id = Some(format!("fft_share_{num}"));
             log!(
-                "new uxu_share created: {} for seed_id {}",
-                uxu_share_id.clone().unwrap(),
+                "new fft_share created: {} for seed_id {}",
+                fft_share_id.clone().unwrap(),
                 seed_id
             );
         }
 
-        uxu_share_id
+        fft_share_id
     }
     pub fn harvest(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());

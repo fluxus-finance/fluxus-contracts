@@ -97,7 +97,7 @@ async fn deploy_aux_contracts(
     )
     .await).unwrap();
     let treasury = (utils::deploy_treasure(owner, &token_1, worker).await).unwrap();
-    return (token_1,token_2,token_reward,exchange,treasury)
+    (token_1,token_2,token_reward,exchange,treasury)
 } 
 
 #[tokio::test]
