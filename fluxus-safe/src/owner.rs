@@ -54,7 +54,7 @@ impl Contract {
     ) -> String {
         self.is_owner();
 
-        let (token_id, farm_id) = Contract::get_ids_from_farm(&farm_id_str);
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
@@ -101,8 +101,8 @@ impl Contract {
         assert!(self.is_owner_or_guardians(), "ERR_");
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        let (token_id, farm_id) = Contract::get_ids_from_farm(&farm_id_str);
         let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
         farm_info_mut.slippage = 100 - new_slippage;

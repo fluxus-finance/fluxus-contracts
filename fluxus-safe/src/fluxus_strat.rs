@@ -85,11 +85,12 @@ impl VersionedStrategy {
 }
 
 impl Contract {
-    pub fn get_strat(&self, token_id: &str) -> VersionedStrategy {
+    pub fn get_strat(&self, token_id: String) -> VersionedStrategy {
+        log!("token id {}", token_id);
         let strat = self
             .data()
             .strategies
-            .get(token_id)
+            .get(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
@@ -100,12 +101,12 @@ impl Contract {
     }
 
     pub fn get_compounder(&self, farm_id_str: &str) -> &AutoCompounder {
-        let (token_id, farm_id) = Contract::get_ids_from_farm(farm_id_str);
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let strat = self
             .data()
             .strategies
-            .get(token_id)
+            .get(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
 
         strat.get_ref()

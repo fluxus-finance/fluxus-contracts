@@ -291,9 +291,9 @@ impl Contract {
     fn assert_strategy_running(&self, farm_id_str: &str) {
         self.assert_contract_running();
 
-        let (token_id, farm_id) = Contract::get_ids_from_farm(farm_id_str);
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        let strat = self.get_strat(&farm_id);
+        let strat = self.get_strat(token_id);
         let compounder = strat.get_ref();
 
         for farm in compounder.farms.iter() {
@@ -309,7 +309,7 @@ impl Contract {
     // TODO: rename this method
     /// Ensures that at least one strategy is running for given token_id
     fn assert_token_id(&self, token_id: String) {
-        let strat = self.get_strat(&token_id);
+        let strat = self.get_strat(token_id);
         let compounder = strat.get_ref();
 
         let mut has_running_strategy = false;
@@ -324,13 +324,6 @@ impl Contract {
         if !has_running_strategy {
             panic!("There is no running strategy for this pool")
         }
-    }
-
-    /// Splits farm_id_str into token_id and farm_id
-    /// Returns token_id, farm_id (exchange@pool_id, farm_id)
-    pub fn get_ids_from_farm(farm_id_str: &str) -> (&str, &str) {
-        let token_id: Vec<&str> = farm_id_str.split('#').collect();
-        (token_id[0], token_id[1])
     }
 
     /// wrap token_id into correct format in MFT standard
@@ -395,6 +388,24 @@ impl Contract {
             }),
         }
     }
+}
+
+/// Splits farm_id_str into token_id and farm_id
+/// Returns seed_id, token_id, farm_id (exchange@pool_id, farm_id)
+pub fn get_ids_from_farm(farm_id_str: String) -> (String, String, String) {
+    let ids: Vec<&str> = farm_id_str.split('#').collect();
+    let token_id: Vec<&str> = ids[0].split('@').collect();
+
+    let token_id_wrapped = format!(":{}", token_id[1]);
+
+    log!(
+        "seed {} pool {} farm {}",
+        ids[0].to_owned(),
+        token_id_wrapped,
+        ids[1].to_owned()
+    );
+
+    (ids[0].to_owned(), token_id_wrapped, ids[1].to_owned())
 }
 
 impl Contract {

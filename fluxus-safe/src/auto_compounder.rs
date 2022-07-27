@@ -211,7 +211,7 @@ impl AutoCompounder {
         panic!("Farm does not exist")
     }
 
-    pub fn get_mut_farm_info(&mut self, farm_id: &str) -> &mut StratFarmInfo {
+    pub fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
                 return farm;

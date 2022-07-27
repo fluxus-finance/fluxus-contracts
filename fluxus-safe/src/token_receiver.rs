@@ -92,7 +92,7 @@ impl MFTTokenReceiver for Contract {
         self.assert_token_id(token_id.clone());
 
         //Check: Is the token_id the vault's pool_id? If is not, send it back
-        let strat = self.get_strat(&token_id);
+        let strat = self.get_strat(token_id.clone());
 
         let compounder = strat.get();
 

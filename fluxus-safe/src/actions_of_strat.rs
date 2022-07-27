@@ -11,7 +11,6 @@ impl Contract {
         sentry_fee: u128,
         token1_address: AccountId,
         token2_address: AccountId,
-
         pool_id: u64,
         seed_min_deposit: U128,
     ) -> String {
@@ -81,9 +80,24 @@ impl Contract {
             }
         }
 
+        let farm_info: StratFarmInfo = StratFarmInfo {
+            state: AutoCompounderState::Running,
+            cycle_stage: AutoCompounderCycle::ClaimReward,
+            slippage: 99u128,
+            last_reward_amount: 0u128,
+            last_fee_amount: 0u128,
+            pool_id_token1_reward,
+            pool_id_token2_reward,
+            reward_token,
+            available_balance: vec![0u128, 0u128],
+            id: farm_id.clone(),
+        };
+
+        compounder.farms.push(farm_info);
+
         format!(
             "Farm with index {} for {} created successfully",
-            reward_token, token_id
+            farm_id, token_id
         )
     }
 
@@ -105,14 +119,17 @@ impl Contract {
 
         uxu_share_id
     }
-    pub fn harvest(&mut self, token_id: String) -> Promise {
-        let strat = self.get_strat(&token_id).get();
-        unimplemented!()
-        // match strat.cycle_stage {
-        //     AutoCompounderCycle::ClaimReward => self.claim_reward(token_id),
-        //     AutoCompounderCycle::Withdrawal => self.withdraw_of_reward(token_id),
-        //     AutoCompounderCycle::Swap => self.autocompounds_swap(token_id),
-        //     AutoCompounderCycle::Stake => self.autocompounds_liquidity_and_stake(token_id),
-        // }
+    pub fn harvest(&mut self, farm_id_str: String) -> Promise {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        log!("{} {}", token_id, farm_id);
+        let strat = self.get_strat(token_id);
+        let compounder = strat.get_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+        match farm_info.cycle_stage {
+            AutoCompounderCycle::ClaimReward => self.claim_reward(farm_id_str),
+            AutoCompounderCycle::Withdrawal => self.withdraw_of_reward(farm_id_str),
+            AutoCompounderCycle::Swap => self.autocompounds_swap(farm_id_str),
+            AutoCompounderCycle::Stake => self.autocompounds_liquidity_and_stake(farm_id_str),
+        }
     }
 }

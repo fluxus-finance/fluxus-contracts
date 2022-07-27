@@ -383,24 +383,24 @@ impl Contract {
     // }
 
     /// Returns the amount of unclaimed reward given token_id has
-    pub fn get_unclaimed_reward(&self, token_id: String) -> Promise {
-        let strat = self.get_strat(&token_id);
-        unimplemented!()
-        // let farm_id: String = strat.get_ref().farm_id.clone();
+    // pub fn get_unclaimed_reward(&self, token_id: String) -> Promise {
+    //     let strat = self.get_strat(token_id);
+    //     unimplemented!()
+    //     // let farm_id: String = strat.get_ref().farm_id.clone();
 
-        // ext_farm::get_unclaimed_reward(
-        //     env::current_account_id(),
-        //     farm_id,
-        //     self.data().farm_contract_id.clone(),
-        //     1,
-        //     Gas(3_000_000_000_000),
-        // )
-        // .then(ext_self::callback_post_unclaimed_reward(
-        //     env::current_account_id(),
-        //     0,
-        //     Gas(10_000_000_000_000),
-        // ))
-    }
+    //     // ext_farm::get_unclaimed_reward(
+    //     //     env::current_account_id(),
+    //     //     farm_id,
+    //     //     self.data().farm_contract_id.clone(),
+    //     //     1,
+    //     //     Gas(3_000_000_000_000),
+    //     // )
+    //     // .then(ext_self::callback_post_unclaimed_reward(
+    //     //     env::current_account_id(),
+    //     //     0,
+    //     //     Gas(10_000_000_000_000),
+    //     // ))
+    // }
 
     #[private]
     pub fn callback_post_unclaimed_reward(

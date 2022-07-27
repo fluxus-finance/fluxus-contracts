@@ -5,7 +5,7 @@ impl Contract {
     /// Returns the number of shares some accountId has in the contract
     /// Panics if token_id does not exist
     pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> SharesBalance {
-        let strat = self.get_strat(&token_id);
+        let strat = self.get_strat(token_id);
 
         let compounder = strat.clone().get();
 
@@ -65,7 +65,7 @@ impl Contract {
 
     /// Returns the minimum value accepted for given token_id
     pub fn get_seed_min_deposit(self, token_id: String) -> U128 {
-        let strat = self.get_strat(&token_id);
+        let strat = self.get_strat(token_id);
         let compounder = strat.clone().get();
         compounder.seed_min_deposit
     }
@@ -80,43 +80,47 @@ impl Contract {
     }
 
     // /// Returns all token ids filtering by running strategies
-    // pub fn get_allowed_tokens(&self) -> Vec<String> {
-    //     let mut running_strategies: Vec<String> = Vec::new();
+    pub fn get_allowed_tokens(&self) -> Vec<String> {
+        let mut running_strategies: Vec<String> = Vec::new();
 
-    //     for token in self.data().token_ids.clone() {
-    //         let strat = self.get_strat(&token);
-    //         if strat.get_ref().state == AutoCompounderState::Running {
-    //             running_strategies.push(token);
-    //         }
-    //     }
+        for token in self.data().token_ids.clone() {
+            let strat = self.get_strat(token);
+            let compounder = strat.get_ref();
+            for farm in compounder.farms.iter() {
+                if farm.state == AutoCompounderState::Running {
+                    running_strategies.push(farm.id.clone());
+                }
+            }
+        }
 
-    //     running_strategies
-    // }
+        running_strategies
+    }
 
-    // /// Return all Strategies filtering by running
-    // pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
-    //     let mut info: Vec<AutoCompounderInfo> = Vec::new();
+    /// Return all Strategies filtering by running
+    pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
+        let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
-    //     for (token_id, strat) in self.data().strategies.clone() {
-    //         let compounder = strat.get();
+        for (token_id, strat) in self.data().strategies.clone() {
+            let compounder = strat.get();
+            for farm_info in compounder.farms.iter() {
+                info.push(AutoCompounderInfo {
+                    state: farm_info.state.clone(),
+                    token_id: token_id.clone(),
+                    token1_address: compounder.token1_address.clone(),
+                    token2_address: compounder.token2_address.clone(),
+                    pool_id_token1_reward: farm_info.pool_id_token1_reward,
+                    pool_id_token2_reward: farm_info.pool_id_token2_reward,
+                    reward_token: farm_info.reward_token.clone(),
+                    farm_id: farm_info.id.clone(),
+                    pool_id: compounder.pool_id,
+                    seed_min_deposit: compounder.seed_min_deposit,
+                    seed_id: compounder.seed_id.clone(),
+                })
+            }
+        }
 
-    //         info.push(AutoCompounderInfo {
-    //             state: compounder.state,
-    //             token_id,
-    //             token1_address: compounder.token1_address,
-    //             token2_address: compounder.token2_address,
-    //             pool_id_token1_reward: compounder.pool_id_token1_reward,
-    //             pool_id_token2_reward: compounder.pool_id_token2_reward,
-    //             reward_token: compounder.reward_token,
-    //             farm_id: compounder.farm_id,
-    //             pool_id: compounder.pool_id,
-    //             seed_min_deposit: compounder.seed_min_deposit,
-    //             seed_id: compounder.seed_id,
-    //         })
-    //     }
-
-    //     info
-    // }
+        info
+    }
 
     // pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
     //     let strat = self.get_strat(&token_id);
