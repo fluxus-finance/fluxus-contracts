@@ -47,6 +47,8 @@ echo $CONTRACT_NAME
 
 # near view $CONTRACT_NAME number_of_strategies '{}'
 
-near view $CONTRACT_NAME user_share_seed_id '{ "seed_id": "'$seed_id'", "user": "'$username'" }'
+# near view $CONTRACT_NAME user_share_seed_id '{ "seed_id": "'$seed_id'", "user": "'$username'" }'
 
 # near view $CONTRACT_NAME seed_total_amount '{ "token_id": "'$token_id'" }'
+
+near view $CONTRACT_NAME check_fee_by_strategy '{ "token_id": "'$token_id'" }'

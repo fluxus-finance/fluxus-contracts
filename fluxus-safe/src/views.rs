@@ -177,6 +177,11 @@ impl Contract {
 
         count
     }
+
+    pub fn check_fee_by_strategy(&self, token_id: String) -> String {
+        let compounder = self.get_strat(token_id).get_ref().clone();
+        format!("{}%", compounder.admin_fees.strategy_fee)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

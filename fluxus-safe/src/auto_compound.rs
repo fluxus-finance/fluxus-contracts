@@ -12,7 +12,7 @@ impl Contract {
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn claim_reward(&mut self, farm_id_str: String) -> Promise {
-        self.assert_strategy_running(&farm_id_str);
+        self.assert_strategy_not_cleared(&farm_id_str);
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -46,6 +46,7 @@ impl Contract {
 
         let farms = farms_result.unwrap();
 
+        // Try to unclaim before change to Ended
         for farm in farms.iter() {
             if farm.farm_id == farm_id && farm.farm_status != *"Running" {
                 let compounder = self.get_strat_mut(&token_id.to_string()).get_mut();
@@ -53,7 +54,6 @@ impl Contract {
                 for strat_farm in compounder.farms.iter_mut() {
                     if strat_farm.id == farm_id {
                         strat_farm.state = AutoCompounderState::Ended;
-                        return PromiseOrValue::Value(format!("The farm {:#?} ended", farm_id));
                     }
                 }
             }
@@ -81,35 +81,45 @@ impl Contract {
         &mut self,
         #[callback_result] reward_amount_result: Result<U128, PromiseError>,
         farm_id_str: String,
-    ) -> Promise {
+    ) -> PromiseOrValue<u128> {
         assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
 
         let reward_amount = reward_amount_result.unwrap();
-        assert!(reward_amount.0 > 0u128, "ERR_ZERO_REWARDS_EARNED");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        let strat = self.get_strat_mut(&token_id.to_string());
+        let strat = self.get_strat_mut(&token_id);
 
         let compounder = strat.get_mut();
 
         let farm_info = compounder.get_mut_farm_info(farm_id);
 
+        if reward_amount.0 == 0u128 {
+            // if farm is ended, there is no more actions to do
+            if farm_info.state == AutoCompounderState::Ended {
+                farm_info.state = AutoCompounderState::Cleared;
+                return PromiseOrValue::Value(0u128);
+            } else {
+                log!("ERR: zero rewards earned");
+            }
+        }
         // store the amount of reward earned
         farm_info.last_reward_amount = reward_amount.0;
 
-        ext_farm::claim_reward_by_farm(
-            farm_id_str.clone(),
-            self.data().farm_contract_id.clone(),
-            0,
-            Gas(40_000_000_000_000),
+        PromiseOrValue::Promise(
+            ext_farm::claim_reward_by_farm(
+                farm_id_str.clone(),
+                self.data().farm_contract_id.clone(),
+                0,
+                Gas(40_000_000_000_000),
+            )
+            .then(ext_self::callback_post_claim_reward(
+                farm_id_str,
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            )),
         )
-        .then(ext_self::callback_post_claim_reward(
-            farm_id_str,
-            env::current_account_id(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
     }
 
     #[private]
@@ -133,7 +143,7 @@ impl Contract {
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn withdraw_of_reward(&mut self, farm_id_str: String) -> Promise {
-        self.assert_strategy_running(&farm_id_str);
+        self.assert_strategy_not_cleared(&farm_id_str);
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -280,7 +290,7 @@ impl Contract {
     #[private]
     pub fn autocompounds_swap(&mut self, farm_id_str: String) -> Promise {
         // TODO: take string as ref
-        self.assert_strategy_running(&farm_id_str);
+        self.assert_strategy_not_cleared(&farm_id_str);
 
         let treasury_acc: AccountId = self.treasure_acc();
         let treasury_curr_amount: u128 = self.data_mut().treasury.current_amount;
@@ -709,7 +719,7 @@ impl Contract {
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn autocompounds_liquidity_and_stake(&mut self, farm_id_str: String) -> Promise {
-        self.assert_strategy_running(&farm_id_str);
+        self.assert_strategy_not_cleared(&farm_id_str);
 
         // send reward to contract caller
         self.send_reward_to_sentry(farm_id_str, env::predecessor_account_id())
@@ -823,9 +833,19 @@ impl Contract {
                 .insert(sentry_id, amount_earned);
         }
 
-        let strat = self.get_strat(token_id);
+        let strat = self.get_strat(token_id.clone());
         let compounder = strat.get_ref();
         let farm_info = compounder.get_farm_info(&farm_id);
+
+        // if farm is ended, there is no more actions to do
+        if farm_info.state == AutoCompounderState::Ended {
+            let compounder = self.get_strat_mut(&token_id).get_mut();
+            let farm_info = compounder.get_mut_farm_info(farm_id);
+            farm_info.state = AutoCompounderState::Cleared;
+
+            log!("There farm {} ended. Strategy is now Cleared.", farm_id_str);
+            return PromiseOrValue::Value(0u64);
+        }
 
         let pool_id: u64 = compounder.pool_id;
 

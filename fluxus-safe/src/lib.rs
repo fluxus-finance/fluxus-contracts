@@ -238,7 +238,7 @@ pub trait Callbacks {
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
         farm_id_str: String,
-    );
+    ) -> PromiseOrValue<u128>;
     fn callback_post_unclaimed_reward(
         &self,
         #[callback_result] reward_result: Result<U128, PromiseError>,
@@ -288,7 +288,8 @@ impl Contract {
         };
     }
 
-    fn assert_strategy_running(&self, farm_id_str: &str) {
+    /// Assert that the farm_id_str is valid, meaning that the farm is Running
+    fn assert_strategy_not_cleared(&self, farm_id_str: &str) {
         self.assert_contract_running();
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -300,6 +301,7 @@ impl Contract {
             if farm.id == farm_id {
                 match farm.state {
                     AutoCompounderState::Running => (),
+                    AutoCompounderState::Ended => (),
                     _ => env::panic_str("E51: strategy ended"),
                 };
             }
