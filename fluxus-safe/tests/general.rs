@@ -729,39 +729,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             }
         }
 
-        // // auto-compound from seed1, farm1
-        // do_auto_compound_with_fast_forward(
-        //     &sentry,
-        //     &safe_contract,
-        //     &farm_str1,
-        //     blocks_to_forward,
-        //     &mut fast_forward_counter,
-        //     &worker,
-        // )
-        // .await?;
-
-        // // checks farmers earnings
-        // for mut farmer in farmers_map.iter_mut() {
-        //     let farmer_id = farmer.0;
-        //     let current_shares = farmer.1;
-
-        //     let mut latest_shares: u128 =
-        //         get_user_shares(&safe_contract, farmer_id, &seed_id1, &worker).await?;
-
-        //     assert!(
-        //             latest_shares > *current_shares,
-        //             "Auto-compound failed. In loop {} from account {} expected {} to be greater than {}",
-        //             i,
-        //             farmer_id,
-        //             latest_shares,
-        //             current_shares
-        //         );
-
-        //     // update shares
-        //     // farmers_map.insert(farmer_id.clone(), latest_shares);
-        //     farmer.1 = &mut latest_shares;
-        // }
-
         println!("Auto-compound test round {} succeed", i);
     }
 
