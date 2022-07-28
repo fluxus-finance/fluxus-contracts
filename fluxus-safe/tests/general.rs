@@ -231,6 +231,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let strat_creator = worker.dev_create_account().await?;
     let sentry = worker.dev_create_account().await?;
 
+    println!(
+        "Ids: owner {} farmer1 {} strat_creator {} sentry {}",
+        owner.id(),
+        farmer1.id(),
+        strat_creator.id(),
+        sentry.id()
+    );
+
     // Transfer from owner to multiple accounts
     utils::transfer_tokens(
         &owner,
@@ -636,6 +644,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         // store farmer and initial shares
         farmers_map.insert(new_farmer.id().clone(), staked_shares);
 
+        println!(
+            "Created new farmer {} with {} shares",
+            new_farmer.id(),
+            staked_shares
+        );
+
         for (farm_str, _) in farms.iter() {
             // auto-compound from seed1, farm0
             do_auto_compound_with_fast_forward(
@@ -658,8 +672,9 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
                 assert!(
                     latest_shares > *current_shares,
-                    "Auto-compound failed. In loop {} from account {} expected {} to be greater than {}",
+                    "Auto-compound failed. In loop {} with farm {} from account {} expected {} to be greater than {}",
                     i,
+                    farm_str,
                     farmer_id,
                     latest_shares,
                     current_shares
