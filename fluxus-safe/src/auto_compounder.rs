@@ -11,20 +11,9 @@ pub struct SharesBalance {
     pub total: u128,
 }
 
-// #[derive(BorshSerialize, BorshDeserialize)]
-#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct AutoCompounder {
-    /// Fees struct to be distribute at each round of compound
-    pub admin_fees: AdminFees,
-
-    /// Struct that maps addresses to its currents shares added plus the received
-    /// from the auto-compound strategy
-    pub user_shares: HashMap<AccountId, SharesBalance>,
-
-    /// Keeps tracks of how much shares the contract gained from the auto-compound
-    pub protocol_shares: u128,
-
+pub struct StratFarmInfo {
     /// State is used to update the contract to a Paused/Running state
     pub state: AutoCompounderState,
 
@@ -42,12 +31,6 @@ pub struct AutoCompounder {
     /// This will be used to store owned amount if ft_transfer to treasure fails
     pub last_fee_amount: u128,
 
-    /// Address of the first token used by pool
-    pub token1_address: AccountId,
-
-    /// Address of the token used by the pool
-    pub token2_address: AccountId,
-
     /// Pool used to swap the reward received by the token used to add liquidity
     pub pool_id_token1_reward: u64,
 
@@ -62,7 +45,39 @@ pub struct AutoCompounder {
     pub available_balance: Vec<Balance>,
 
     /// Farm used to auto-compound
-    pub farm_id: String,
+    pub id: String,
+}
+
+impl StratFarmInfo {
+    pub(crate) fn next_cycle(&mut self) {
+        match self.cycle_stage {
+            AutoCompounderCycle::ClaimReward => self.cycle_stage = AutoCompounderCycle::Withdrawal,
+            AutoCompounderCycle::Withdrawal => self.cycle_stage = AutoCompounderCycle::Swap,
+            AutoCompounderCycle::Swap => self.cycle_stage = AutoCompounderCycle::Stake,
+            AutoCompounderCycle::Stake => self.cycle_stage = AutoCompounderCycle::ClaimReward,
+        }
+    }
+}
+
+// #[derive(BorshSerialize, BorshDeserialize)]
+#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct AutoCompounder {
+    /// Fees struct to be distribute at each round of compound
+    pub admin_fees: AdminFees,
+
+    /// Struct that maps addresses to its currents shares added plus the received
+    /// from the auto-compound strategy
+    pub user_shares: HashMap<AccountId, SharesBalance>,
+
+    /// Keeps tracks of how much shares the contract gained from the auto-compound
+    pub protocol_shares: u128,
+
+    /// Address of the first token used by pool
+    pub token1_address: AccountId,
+
+    /// Address of the token used by the pool
+    pub token2_address: AccountId,
 
     /// Pool used to add liquidity and farming
     pub pool_id: u64,
@@ -72,6 +87,9 @@ pub struct AutoCompounder {
 
     /// Format expected by the farm to claim and withdraw rewards
     pub seed_id: String,
+
+    /// Store all farms that were used to compound by some token_id
+    pub farms: Vec<StratFarmInfo>,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
@@ -123,51 +141,26 @@ impl AutoCompounder {
         sentry_fee: u128,
         token1_address: AccountId,
         token2_address: AccountId,
-        pool_id_token1_reward: u64,
-        pool_id_token2_reward: u64,
-        reward_token: AccountId,
-        farm_id: String,
         pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
     ) -> Self {
-        let admin_fee = AdminFees::new( strat_creator, sentry_fee,strategy_fee);
+        let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
 
         Self {
             admin_fees: admin_fee,
             user_shares: HashMap::new(),
             protocol_shares: 0u128,
-            state: AutoCompounderState::Running,
-            cycle_stage: AutoCompounderCycle::ClaimReward,
-            slippage: 99u128,
-            last_reward_amount: 0u128,
-            last_fee_amount: 0u128,
             token1_address,
             token2_address,
-            pool_id_token1_reward,
-            pool_id_token2_reward,
-            reward_token,
-            available_balance: vec![0u128, 0u128],
-            farm_id,
             pool_id,
             seed_min_deposit,
             seed_id,
+            farms: Vec::new(),
         }
     }
 
-    pub(crate) fn next_cycle(&mut self) {
-        match self.cycle_stage {
-            AutoCompounderCycle::ClaimReward => self.cycle_stage = AutoCompounderCycle::Withdrawal,
-            AutoCompounderCycle::Withdrawal => self.cycle_stage = AutoCompounderCycle::Swap,
-            AutoCompounderCycle::Swap => self.cycle_stage = AutoCompounderCycle::Stake,
-            AutoCompounderCycle::Stake => self.cycle_stage = AutoCompounderCycle::ClaimReward,
-        }
-    }
-
-    pub(crate) fn compute_fees(
-        &self,
-        reward_amount: u128,
-    ) -> (u128, u128, u128, u128) {
+    pub(crate) fn compute_fees(&mut self, reward_amount: u128) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
         let percent = Percentage::from(self.admin_fees.strategy_fee);
         let all_fees_amount = percent.apply_to(reward_amount);
@@ -193,18 +186,39 @@ impl AutoCompounder {
     }
 
     pub fn increase_slippage(&mut self) {
-        if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
-            // increment slippage
-            self.slippage -= 4;
+        unimplemented!()
+        // if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
+        //     // increment slippage
+        //     self.slippage -= 4;
 
-            log!(
-                "Slippage updated to {}. It will applied in the next call",
-                self.slippage
-            );
-        } else {
-            self.state = AutoCompounderState::Ended;
-            log!("Slippage too high. State was updated to Ended");
+        //     log!(
+        //         "Slippage updated to {}. It will applied in the next call",
+        //         self.slippage
+        //     );
+        // } else {
+        //     self.state = AutoCompounderState::Ended;
+        //     log!("Slippage too high. State was updated to Ended");
+        // }
+    }
+
+    pub fn get_farm_info(&self, farm_id: &str) -> StratFarmInfo {
+        for farm in self.farms.iter() {
+            if farm.id == farm_id {
+                return farm.clone();
+            }
         }
+
+        panic!("Farm does not exist")
+    }
+
+    pub fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StratFarmInfo {
+        for farm in self.farms.iter_mut() {
+            if farm.id == farm_id {
+                return farm;
+            }
+        }
+
+        panic!("Farm does not exist")
     }
 }
 
@@ -226,35 +240,22 @@ impl VersionedCompounder {
         sentry_fee: u128,
         token1_address: AccountId,
         token2_address: AccountId,
-        pool_id_token1_reward: u64,
-        pool_id_token2_reward: u64,
-        reward_token: AccountId,
-        farm_id: String,
         pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
     ) -> Self {
-        let admin_fee = AdminFees::new(strat_creator, sentry_fee,strategy_fee);
+        let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
 
         VersionedCompounder::V101(AutoCompounder {
             admin_fees: admin_fee,
             protocol_shares: 0u128,
             user_shares: HashMap::new(),
-            state: AutoCompounderState::Running,
-            cycle_stage: AutoCompounderCycle::ClaimReward,
-            slippage: 99u128,
-            last_reward_amount: 0u128,
-            last_fee_amount: 0u128,
             token1_address,
             token2_address,
-            pool_id_token1_reward,
-            pool_id_token2_reward,
-            reward_token,
-            available_balance: vec![0u128, 0u128],
-            farm_id,
             pool_id,
             seed_min_deposit,
             seed_id,
+            farms: Vec::new(),
         })
     }
 }

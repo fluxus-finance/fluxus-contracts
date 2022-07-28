@@ -52,14 +52,14 @@ impl VersionedStrategy {
         }
     }
 
-    // Return the farm or liquidity pool or token( other kinds of strategy) this strategy accepts
-    #[allow(unreachable_patterns)]
-    pub fn get_token_id(&self) -> String {
-        match self {
-            VersionedStrategy::AutoCompounder(strat) => strat.farm_id.clone(),
-            _ => unimplemented!(),
-        }
-    }
+    // // Return the farm or liquidity pool or token( other kinds of strategy) this strategy accepts
+    // #[allow(unreachable_patterns)]
+    // pub fn get_token_id(&self) -> String {
+    //     match self {
+    //         VersionedStrategy::AutoCompounder(strat) => strat.farm_id.clone(),
+    //         _ => unimplemented!(),
+    //     }
+    // }
 
     #[allow(unreachable_patterns)]
     pub fn get(self) -> AutoCompounder {
@@ -85,11 +85,12 @@ impl VersionedStrategy {
 }
 
 impl Contract {
-    pub fn get_strat(&self, token_id: &String) -> VersionedStrategy {
+    pub fn get_strat(&self, token_id: String) -> VersionedStrategy {
+        log!("token id {}", token_id);
         let strat = self
             .data()
             .strategies
-            .get(token_id)
+            .get(&token_id)
             .expect(ERR21_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
@@ -97,6 +98,24 @@ impl Contract {
         } else {
             strat.clone()
         }
+    }
+
+    pub fn get_compounder(&self, farm_id_str: &str) -> &AutoCompounder {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
+        let strat = self
+            .data()
+            .strategies
+            .get(&token_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        strat.get_ref()
+
+        // if strat.need_upgrade() {
+        //     strat.upgrade()
+        // } else {
+        //     strat.clone()
+        // }
     }
 
     pub fn get_strat_mut(&mut self, token_id: &String) -> &mut VersionedStrategy {

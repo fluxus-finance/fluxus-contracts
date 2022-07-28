@@ -44,25 +44,25 @@ impl Contract {
         info
     }
 
+    /// Args:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   state: Running, Ended, ...
     pub fn update_compounder_state(
         &mut self,
-        token_id: String,
+        farm_id_str: String,
         state: AutoCompounderState,
     ) -> String {
         self.is_owner();
 
-        let strat = self
-            .data_mut()
-            .strategies
-            .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
-        let compounder = strat.get_mut();
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
+        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
-        if compounder.state != state {
-            compounder.state = state;
+        if farm_info_mut.state != state {
+            farm_info_mut.state = state;
         }
 
-        format!("The current state is {:#?}", compounder.state)
+        format!("The current state is {:#?}", farm_info_mut.state)
     }
 
     /// Extend guardians. Only can be called by owner.
@@ -94,22 +94,22 @@ impl Contract {
     }
 
     /// Update slippage for given token_id
-    pub fn update_strat_slippage(&mut self, token_id: String, new_slippage: u128) -> String {
+    /// Args:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   new_slippage: value between 80-100
+    pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {
         assert!(self.is_owner_or_guardians(), "ERR_");
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
-        let strat = self
-            .data_mut()
-            .strategies
-            .get_mut(&token_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        let compounder = strat.get_mut();
-        compounder.slippage = 100 - new_slippage;
+        let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
+        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        farm_info_mut.slippage = 100 - new_slippage;
 
         format!(
             "The current slippage for {} is {}",
-            token_id, compounder.slippage
+            token_id, farm_info_mut.slippage
         )
     }
 }

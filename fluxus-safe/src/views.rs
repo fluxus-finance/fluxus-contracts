@@ -5,7 +5,7 @@ impl Contract {
     /// Returns the number of shares some accountId has in the contract
     /// Panics if token_id does not exist
     pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> SharesBalance {
-        let strat = self.get_strat(&token_id);
+        let strat = self.get_strat(token_id);
 
         let compounder = strat.clone().get();
 
@@ -65,7 +65,7 @@ impl Contract {
 
     /// Returns the minimum value accepted for given token_id
     pub fn get_seed_min_deposit(self, token_id: String) -> U128 {
-        let strat = self.get_strat(&token_id);
+        let strat = self.get_strat(token_id);
         let compounder = strat.clone().get();
         compounder.seed_min_deposit
     }
@@ -79,50 +79,65 @@ impl Contract {
             .map(|x| x.to_string())
     }
 
-    /// Returns all token ids filtering by running strategies
+    /// Returns all token ids
     pub fn get_allowed_tokens(&self) -> Vec<String> {
+        let mut seeds: Vec<String> = Vec::new();
+
+        for (token_id, _) in self.data().strategies.iter() {
+            seeds.push(token_id.clone());
+        }
+
+        seeds
+    }
+
+    pub fn get_running_farm_ids(&self) -> Vec<String> {
         let mut running_strategies: Vec<String> = Vec::new();
 
         for token in self.data().token_ids.clone() {
-            let strat = self.get_strat(&token);
-            if strat.get_ref().state == AutoCompounderState::Running {
-                running_strategies.push(token);
+            let strat = self.get_strat(token);
+            let compounder = strat.get_ref();
+            for farm in compounder.farms.iter() {
+                if farm.state == AutoCompounderState::Running {
+                    let farm_id = format!("{}#{}", compounder.seed_id, farm.id);
+                    running_strategies.push(farm_id);
+                }
             }
         }
 
         running_strategies
     }
 
-    /// Return all Strategies filtering by running
-    pub fn get_strats(self) -> Vec<AutoCompounderInfo> {
+    /// Return all Strategies
+    pub fn get_strategies(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
         for (token_id, strat) in self.data().strategies.clone() {
             let compounder = strat.get();
-
-            info.push(AutoCompounderInfo {
-                state: compounder.state,
+            let mut seed_info = AutoCompounderInfo {
                 token_id,
-                token1_address: compounder.token1_address,
-                token2_address: compounder.token2_address,
-                pool_id_token1_reward: compounder.pool_id_token1_reward,
-                pool_id_token2_reward: compounder.pool_id_token2_reward,
-                reward_token: compounder.reward_token,
-                farm_id: compounder.farm_id,
-                pool_id: compounder.pool_id,
-                seed_min_deposit: compounder.seed_min_deposit,
-                seed_id: compounder.seed_id,
-            })
+                is_active: false,
+                reward_tokens: vec![],
+            };
+            for farm_info in compounder.farms.iter() {
+                if farm_info.state == AutoCompounderState::Running {
+                    seed_info.is_active = true;
+                }
+                seed_info
+                    .reward_tokens
+                    .push(farm_info.reward_token.to_string());
+            }
+
+            info.push(seed_info)
         }
 
         info
     }
 
-    pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
-        let strat = self.get_strat(&token_id);
-        let compounder = strat.get();
-        compounder.state
-    }
+    // pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
+    //     let strat = self.get_strat(&token_id);
+    //     let compounder = strat.get();
+    //     compounder.state
+    // }
 
     /// Returns exchange and farm contracts
     pub fn get_contract_info(self) -> SafeInfo {
@@ -150,22 +165,53 @@ impl Contract {
         }
         U128(amount)
     }
+
+    ///Return the u128 number of strategies that we have for a specific seed_id.
+    // pub fn number_of_strategies_by_seed(&self, seed_id: String) -> u128 {
+    //     let num = self.data().compounders_by_seed_id.get(&seed_id);
+    //     let mut result = 0_u128;
+    //     if let Some(number) = num {
+    //         result = (*number).len() as u128;
+    //     }
+    //     result
+    // }
+
+    /// Return the total number of strategies created, running or others
+    pub fn number_of_strategies(&self) -> u128 {
+        let mut count: u128 = 0;
+
+        for (_, strat) in self.data().strategies.iter() {
+            let size = strat.get_ref().farms.len();
+            count += size as u128;
+        }
+
+        count
+    }
+
+    pub fn check_fee_by_strategy(&self, token_id: String) -> String {
+        let compounder = self.get_strat(token_id).get_ref().clone();
+        format!("{}%", compounder.admin_fees.strategy_fee)
+    }
+
+    pub fn is_strategy_active(&self, token_id: String) -> bool {
+        let compounder = self.get_strat(token_id).get_ref().clone();
+
+        for farm in compounder.farms.iter() {
+            if farm.state == AutoCompounderState::Running {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AutoCompounderInfo {
-    pub state: AutoCompounderState,
     pub token_id: String,
-    pub token1_address: AccountId,
-    pub token2_address: AccountId,
-    pub pool_id_token1_reward: u64,
-    pub pool_id_token2_reward: u64,
-    pub reward_token: AccountId,
-    pub farm_id: String,
-    pub pool_id: u64,
-    pub seed_min_deposit: U128,
-    pub seed_id: String,
+    pub is_active: bool,
+    pub reward_tokens: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
