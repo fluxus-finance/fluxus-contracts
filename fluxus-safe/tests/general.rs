@@ -1,3 +1,5 @@
+use std::{collections::HashMap, hash::Hash};
+
 use fluxus_safe::{self, get_ids_from_farm};
 mod utils;
 
@@ -47,6 +49,7 @@ async fn do_auto_compound_with_fast_forward(
     // TODO: what is it good for?
     //Check amount of unclaimed rewards the Strategy has
     // let unclaimed_amount = utils::get_unclaimed_rewards(contract, &token_id, worker).await?;
+
     for i in 0..4 {
         let res = sentry_acc
             .call(worker, contract.id(), "harvest")
@@ -63,17 +66,17 @@ async fn do_auto_compound_with_fast_forward(
 /// Return the number of shares that the account has in the auto-compound contract
 async fn get_user_shares(
     contract: &Contract,
-    account: &Account,
+    account: &AccountId,
     seed_id: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
-    println!("Checking account id {:#?}", account.id().to_string());
+    println!("Checking account id {:#?}", account.to_string());
     println!("Checking seed_id {:#?}", seed_id);
     let res = contract
         .call(worker, "user_share_seed_id")
         .args_json(serde_json::json!({
             "seed_id": seed_id,
-            "user": account.id().to_string(),
+            "user": account.to_string(),
         }))?
         .gas(TOTAL_GAS)
         .transact()
@@ -81,6 +84,97 @@ async fn get_user_shares(
     println!("just retrieved the info {:#?}", res);
     let account_shares: u128 = res.json()?;
     Ok(account_shares)
+}
+
+/// Create new account, register into exchange and deposit into exchange
+async fn create_ready_account(
+    owner: &Account,
+    exchange: &Contract,
+    token_1: &Contract,
+    token_2: &Contract,
+    worker: &Worker<Sandbox>,
+) -> anyhow::Result<Account> {
+    let new_account = worker.dev_create_account().await?;
+    // Transfer from owner to multiple accounts
+    utils::transfer_tokens(
+        owner,
+        vec![&new_account],
+        maplit::hashmap! {
+            token_1.id() => parse_near!("1,000 N"),
+            token_2.id() => parse_near!("1,000 N"),
+        },
+        worker,
+    )
+    .await?;
+    // register accounts into exchange and transfer tokens
+    utils::register_into_contracts(worker, &new_account, vec![exchange.id()]).await?;
+    utils::deposit_tokens(
+        worker,
+        &new_account,
+        exchange,
+        maplit::hashmap! {
+            token_1.id() => parse_near!("30 N"),
+            token_2.id() => parse_near!("30 N"),
+        },
+    )
+    .await?;
+
+    Ok(new_account)
+}
+
+/// Adds liquidity to the pool and stake received shares into safe
+async fn stake_into_safe(
+    safe_contract: &Contract,
+    exchange: &Contract,
+    account: &Account,
+    pool_id: u64,
+    seed_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<u128> {
+    // add liquidity to pool
+    let _res = account
+        .call(worker, exchange.id(), "add_liquidity")
+        .args_json(serde_json::json!({
+            "pool_id": pool_id.clone(),
+            "amounts": vec![parse_near!("20 N").to_string(), parse_near!("20 N").to_string()],
+        }))?
+        .deposit(parse_near!("1 N"))
+        .transact()
+        .await?;
+
+    // Get account 1 shares
+    let initial_shares: String = utils::get_pool_shares(account, exchange, pool_id, worker).await?;
+
+    let token_id: String = format!(":{}", pool_id);
+
+    /* Stake */
+    let _res = account
+        .call(worker, exchange.id(), "mft_transfer_call")
+        .args_json(serde_json::json!({
+            "token_id": token_id.clone(),
+            "receiver_id": safe_contract.id().to_string(),
+            "amount": initial_shares,
+            "msg": ""
+        }))?
+        .gas(TOTAL_GAS)
+        .deposit(parse_near!("1 yN"))
+        .transact()
+        .await?;
+    // println!("mft_transfer_call {:#?}\n", res);//
+
+    let deposited_shares = get_user_shares(safe_contract, account.id(), seed_id, worker).await?;
+
+    // assert that contract received the correct number of shares, due to precision issues derived of recurring tithe we must not accept aboslute errors bigger than 9
+    // TODO: validates with fuzzing and way more testing to ensure absolute error is not bigger than 9
+    let account1_shares_as_int = i128::try_from(deposited_shares).unwrap();
+    assert!(
+        (account1_shares_as_int - utils::str_to_i128(&initial_shares)).abs() < 9,
+        "ERR: the amount of shares doesn't match there is : {} should be {}",
+        deposited_shares,
+        initial_shares
+    );
+
+    Ok(deposited_shares)
 }
 
 async fn deploy_aux_contracts(
@@ -133,13 +227,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         deploy_aux_contracts(&owner, &exchange_id, &worker).await;
 
     // Create multiple accounts
-    let account_1 = worker.dev_create_account().await?;
-    let account_2 = worker.dev_create_account().await?;
+    let farmer1 = worker.dev_create_account().await?;
+    let strat_creator = worker.dev_create_account().await?;
+    let sentry = worker.dev_create_account().await?;
 
     // Transfer from owner to multiple accounts
     utils::transfer_tokens(
         &owner,
-        vec![&account_1, &account_2, treasury.as_account()],
+        vec![&farmer1, &strat_creator, treasury.as_account()],
         maplit::hashmap! {
             token_1.id() => parse_near!("10,000 N"),
             token_2.id() => parse_near!("10,000 N"),
@@ -161,14 +256,27 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
+    // Register contracts into exchange
+    utils::register_into_contracts(
+        &worker,
+        &sentry,
+        vec![
+            token_1.id(),
+            token_2.id(),
+            token_reward_1.id(),
+            token_reward_2.id(),
+        ],
+    )
+    .await?;
+
     // register accounts into exchange and transfer tokens
-    utils::register_into_contracts(&worker, &account_1, vec![exchange.id()]).await?;
-    utils::register_into_contracts(&worker, &account_2, vec![exchange.id()]).await?;
+    utils::register_into_contracts(&worker, &farmer1, vec![exchange.id()]).await?;
+    utils::register_into_contracts(&worker, &strat_creator, vec![exchange.id()]).await?;
     utils::register_into_contracts(&worker, treasury.as_account(), vec![exchange.id()]).await?;
 
     utils::deposit_tokens(
         &worker,
-        &account_1,
+        &farmer1,
         &exchange,
         maplit::hashmap! {
             token_1.id() => parse_near!("30 N"),
@@ -207,17 +315,17 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // Create farms
     let farm = utils::deploy_farm(&owner, &worker).await?;
-    let (farm_id0, farm_0) =
+    let (farm_str0, farm_id0) =
         utils::create_farm(&owner, &farm, &seed_id1, &token_reward_1, &worker).await?;
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
 
-    let safe_contract = utils::deploy_safe_contract(&account_2, &treasury, &worker).await?;
+    let safe_contract = utils::deploy_safe_contract(&strat_creator, &treasury, &worker).await?;
 
     utils::create_strategy(
-        &account_2,
+        &strat_creator,
         &safe_contract,
         &token_1,
         &token_2,
@@ -232,7 +340,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         pool_token1_reward1,
         pool_token2_reward1,
         pool_token1_token2,
-        farm_0,
+        farm_id0,
         &worker,
     )
     .await?;
@@ -299,7 +407,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // println!("mft_transfer_call {:#?}\n", res);
 
     let owner_shares_on_contract =
-        get_user_shares(&safe_contract, &owner, &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, &owner.id(), &seed_id1, &worker).await?;
     // assert that contract received the correct number of shares
     assert_eq!(
         owner_shares_on_contract,
@@ -318,7 +426,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     do_auto_compound_with_fast_forward(
         &owner,
         &safe_contract,
-        &farm_id0,
+        &farm_str0,
         700,
         &mut fast_forward_counter,
         &worker,
@@ -329,7 +437,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // Get owner shares from auto-compound contract
     let round1_owner_shares: u128 =
-        get_user_shares(&safe_contract, &owner, &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, &owner.id(), &seed_id1, &worker).await?;
     // Assert the current value is higher than the initial value deposited
     assert!(
         round1_owner_shares > owner_deposited_shares,
@@ -345,7 +453,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
 
     // add liquidity for account 1
-    let res = account_1
+    let res = farmer1
         .call(&worker, exchange.id(), "add_liquidity")
         .args_json(serde_json::json!({
             "pool_id": pool_token1_token2.clone(),
@@ -359,12 +467,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // Get account 1 shares
     let account1_initial_shares: String =
-        utils::get_pool_shares(&account_1, &exchange, pool_token1_token2, &worker).await?;
+        utils::get_pool_shares(&farmer1, &exchange, pool_token1_token2, &worker).await?;
 
     let pool_id: String = format!(":{}", pool_token1_token2);
 
     /* Stake */
-    let res = account_1
+    let res = farmer1
         .call(&worker, exchange.id(), "mft_transfer_call")
         .args_json(serde_json::json!({
             "token_id": pool_id.clone(),
@@ -379,7 +487,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // println!("mft_transfer_call {:#?}\n", res);//
 
     let account1_shares_on_contract =
-        get_user_shares(&safe_contract, &account_1, &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, &farmer1.id(), &seed_id1, &worker).await?;
 
     // assert that contract received the correct number of shares, due to precision issues derived of recurring tithe we must not accept aboslute errors bigger than 9
     // TODO: validates with fuzzing and way more testing to ensure absolute error is not bigger than 9
@@ -395,9 +503,9 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
 
     do_auto_compound_with_fast_forward(
-        &owner,
+        &sentry,
         &safe_contract,
-        &farm_id0,
+        &farm_str0,
         900,
         &mut fast_forward_counter,
         &worker,
@@ -405,12 +513,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     .await?;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 9: Assert owner and account_1 earned shares from auto-compounder strategy
+    // Stage 9: Assert owner and farmer1 earned shares from auto-compounder strategy
     ///////////////////////////////////////////////////////////////////////////
 
     // owner shares
     let round2_owner_shares: u128 =
-        get_user_shares(&safe_contract, &owner, &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, &owner.id(), &seed_id1, &worker).await?;
 
     assert!(
         round2_owner_shares > round1_owner_shares,
@@ -421,7 +529,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // get account 1 shares from auto-compounder contract
     let round2_account1_shares: u128 =
-        get_user_shares(&safe_contract, &account_1, &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, &farmer1.id(), &seed_id1, &worker).await?;
 
     // parse String to u128
     let account1_initial_shares: u128 = utils::str_to_u128(&account1_initial_shares);
@@ -434,35 +542,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     ///////////////////////////////////////////////////////////////////////////
-    // Stage 10: Add another strat to Safe
-    ///////////////////////////////////////////////////////////////////////////
-
-    // create another farm with different reward token from the same seed
-    let (farm_id1, farm_1) =
-        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_2, &worker).await?;
-
-    utils::add_strategy(
-        &safe_contract,
-        &token_reward_2,
-        pool_token1_reward2,
-        pool_token2_reward2,
-        pool_token1_token2,
-        farm_1,
-        &worker,
-    )
-    .await?;
-
-    do_auto_compound_with_fast_forward(
-        &owner,
-        &safe_contract,
-        &farm_id1,
-        900,
-        &mut fast_forward_counter,
-        &worker,
-    )
-    .await?;
-
-    ///////////////////////////////////////////////////////////////////////////
     // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
 
@@ -473,7 +552,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .transact()
         .await?;
 
-    let _res = account_1
+    let _res = farmer1
         .call(&worker, safe_contract.id(), "unstake")
         .args_json(serde_json::json!({ "token_id": token_id }))?
         .gas(TOTAL_GAS)
@@ -493,7 +572,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // Get account 1 shares from exchange
     let account1_shares_on_exchange: String =
-        utils::get_pool_shares(&account_1, &exchange, pool_token1_token2, &worker).await?;
+        utils::get_pool_shares(&farmer1, &exchange, pool_token1_token2, &worker).await?;
 
     let account1_shares_on_exchange: u128 = utils::str_to_u128(&account1_shares_on_exchange);
 
@@ -507,6 +586,130 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         account1_shares_on_contract,
         account1_initial_shares
     );
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Stage 11: Create another strategy and
+    // after each round of auto-compound, create another account and stake into safe
+    ///////////////////////////////////////////////////////////////////////////
+
+    // create another farm with different reward token from the same seed
+    let (farm_str1, farm_id1) =
+        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_2, &worker).await?;
+
+    // create farms map to iterate over
+    let mut farms: HashMap<String, u64> = HashMap::new();
+    farms.insert(farm_str0, farm_id0);
+    farms.insert(farm_str1, farm_id1);
+
+    // Adds new strategy to safe
+    utils::add_strategy(
+        &safe_contract,
+        &token_reward_2,
+        pool_token1_reward2,
+        pool_token2_reward2,
+        pool_token1_token2,
+        farm_id1,
+        &worker,
+    )
+    .await?;
+
+    let mut farmers_map: HashMap<AccountId, u128> = HashMap::new();
+
+    let blocks_to_forward = 100;
+
+    println!("Starting auto-compound test with multiple strategies");
+    for i in 0..2u64 {
+        // creates new farmer
+        let new_farmer =
+            create_ready_account(&owner, &exchange, &token_1, &token_2, &worker).await?;
+        // stake into safe
+        let staked_shares = stake_into_safe(
+            &safe_contract,
+            &exchange,
+            &new_farmer,
+            pool_token1_token2,
+            &seed_id1,
+            &worker,
+        )
+        .await?;
+
+        // store farmer and initial shares
+        farmers_map.insert(new_farmer.id().clone(), staked_shares);
+
+        for (farm_str, _) in farms.iter() {
+            // auto-compound from seed1, farm0
+            do_auto_compound_with_fast_forward(
+                &sentry,
+                &safe_contract,
+                farm_str,
+                blocks_to_forward,
+                &mut fast_forward_counter,
+                &worker,
+            )
+            .await?;
+
+            // checks farmers earnings
+            for mut farmer in farmers_map.iter_mut() {
+                let farmer_id = farmer.0;
+                let current_shares = farmer.1;
+
+                let mut latest_shares: u128 =
+                    get_user_shares(&safe_contract, farmer_id, &seed_id1, &worker).await?;
+
+                assert!(
+                    latest_shares > *current_shares,
+                    "Auto-compound failed. In loop {} from account {} expected {} to be greater than {}",
+                    i,
+                    farmer_id,
+                    latest_shares,
+                    current_shares
+                );
+
+                println!(
+                    "{} had {} and now has {}",
+                    farmer_id, current_shares, latest_shares
+                );
+
+                // update shares
+                farmer.1 = &mut latest_shares;
+            }
+        }
+
+        // // auto-compound from seed1, farm1
+        // do_auto_compound_with_fast_forward(
+        //     &sentry,
+        //     &safe_contract,
+        //     &farm_str1,
+        //     blocks_to_forward,
+        //     &mut fast_forward_counter,
+        //     &worker,
+        // )
+        // .await?;
+
+        // // checks farmers earnings
+        // for mut farmer in farmers_map.iter_mut() {
+        //     let farmer_id = farmer.0;
+        //     let current_shares = farmer.1;
+
+        //     let mut latest_shares: u128 =
+        //         get_user_shares(&safe_contract, farmer_id, &seed_id1, &worker).await?;
+
+        //     assert!(
+        //             latest_shares > *current_shares,
+        //             "Auto-compound failed. In loop {} from account {} expected {} to be greater than {}",
+        //             i,
+        //             farmer_id,
+        //             latest_shares,
+        //             current_shares
+        //         );
+
+        //     // update shares
+        //     // farmers_map.insert(farmer_id.clone(), latest_shares);
+        //     farmer.1 = &mut latest_shares;
+        // }
+
+        println!("Auto-compound test round {} succeed", i);
+    }
 
     Ok(())
 }
@@ -525,13 +728,13 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 //         deploy_aux_contracts(&owner, &exchange_id, &worker).await;
 
 //     // Create needed accounts
-//     let account_1 = worker.dev_create_account().await?;
+//     let farmer1 = worker.dev_create_account().await?;
 //     let strat_creator_acc = worker.dev_create_account().await?;
 //     let sentry_acc = worker.dev_create_account().await?;
 
 //     utils::transfer_tokens(
 //         &owner,
-//         &account_1,
+//         &farmer1,
 //         maplit::hashmap! {
 //             token_1.id() => parse_near!("10,000 N"),
 //             token_2.id() => parse_near!("10,000 N"),
@@ -549,12 +752,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 //     .await?;
 
 //     // register accounts into exchange
-//     utils::register_into_contracts(&worker, &account_1, vec![exchange.id()]).await?;
+//     utils::register_into_contracts(&worker, &farmer1, vec![exchange.id()]).await?;
 //     utils::register_into_contracts(&worker, treasury.as_account(), vec![exchange.id()]).await?;
 
 //     utils::deposit_tokens(
 //         &worker,
-//         &account_1,
+//         &farmer1,
 //         &exchange,
 //         maplit::hashmap! {
 //             token_1.id() => parse_near!("30 N"),
@@ -581,7 +784,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
 //     // Create farm
 //     let farm = utils::deploy_farm(&owner, &worker).await?;
-//     let farm_0 = utils::create_farm(&owner, &farm, &seed_id, &token_reward, &worker).await?;
+//     let farm_id0 = utils::create_farm(&owner, &farm, &seed_id, &token_reward, &worker).await?;
 
 //     ///////////////////////////////////////////////////////////////////////////
 //     // Stage 3: Deploy Safe contract
@@ -598,7 +801,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 //         pool_token1_reward,
 //         pool_token2_reward,
 //         pool_token1_token2,
-//         farm_0,
+//         farm_id0,
 //         &worker,
 //     )
 //     .await?;
