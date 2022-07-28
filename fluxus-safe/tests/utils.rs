@@ -241,7 +241,7 @@ pub async fn create_farm(
     // println!("{:#?}", res);
 
     let farm_id: String = res.json()?;
-    println!("farm id: {farm_id}");
+    // println!("farm id: {farm_id}");
     // println!("{:#?}", farm_id.split("#"));
 
     let res = token_reward
@@ -607,7 +607,7 @@ pub async fn transfer_tokens(
                 .deposit(parse_near!("1 N"))
                 .transact()
                 .await?;
-            println!("storage_deposit {:#?}\n", res);
+            // println!("storage_deposit {:#?}\n", res);
 
             let res = from
                 .call(worker, token, "ft_transfer")
@@ -620,7 +620,7 @@ pub async fn transfer_tokens(
                 .deposit(parse_near!("1 yN"))
                 .transact()
                 .await?;
-            println!("ft_transfer {:#?}\n", res);
+            // println!("ft_transfer {:#?}\n", res);
         }
     }
 

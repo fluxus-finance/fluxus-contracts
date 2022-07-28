@@ -88,7 +88,8 @@ impl Contract {
             let compounder = strat.get_ref();
             for farm in compounder.farms.iter() {
                 if farm.state == AutoCompounderState::Running {
-                    running_strategies.push(farm.id.clone());
+                    let farm_id = format!("{}#{}", compounder.seed_id, farm.id);
+                    running_strategies.push(farm_id);
                 }
             }
         }
