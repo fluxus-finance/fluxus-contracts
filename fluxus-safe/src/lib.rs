@@ -179,7 +179,13 @@ pub trait Callbacks {
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     );
-    fn callback_stake_result(&mut self, token_id: String, account_id: AccountId, shares: u128);
+    fn callback_stake_result(
+        &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        token_id: String,
+        account_id: AccountId,
+        shares: u128,
+    );
     fn swap_to_auto(
         &mut self,
         farm_id_str: String,
@@ -399,13 +405,6 @@ pub fn get_ids_from_farm(farm_id_str: String) -> (String, String, String) {
     let token_id: Vec<&str> = ids[0].split('@').collect();
 
     let token_id_wrapped = format!(":{}", token_id[1]);
-
-    log!(
-        "seed {} pool {} farm {}",
-        ids[0].to_owned(),
-        token_id_wrapped,
-        ids[1].to_owned()
-    );
 
     (ids[0].to_owned(), token_id_wrapped, ids[1].to_owned())
 }

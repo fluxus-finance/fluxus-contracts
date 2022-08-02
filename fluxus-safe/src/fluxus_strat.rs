@@ -86,7 +86,6 @@ impl VersionedStrategy {
 
 impl Contract {
     pub fn get_strat(&self, token_id: String) -> VersionedStrategy {
-        log!("token id {}", token_id);
         let strat = self
             .data()
             .strategies

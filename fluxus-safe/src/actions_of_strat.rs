@@ -121,7 +121,6 @@ impl Contract {
     }
     pub fn harvest(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-        log!("{} {}", token_id, farm_id);
         let strat = self.get_strat(token_id);
         let compounder = strat.get_ref();
         let farm_info = compounder.get_farm_info(&farm_id);

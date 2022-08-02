@@ -13,10 +13,9 @@ impl Contract {
     #[private]
     pub fn claim_reward(&mut self, farm_id_str: String) -> Promise {
         self.assert_strategy_not_cleared(&farm_id_str);
+        log!("claim_reward");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-
-        log!("token {} farm {}", token_id, farm_id);
 
         ext_farm::list_farms_by_seed(
             seed_id,
@@ -100,7 +99,7 @@ impl Contract {
                 farm_info.state = AutoCompounderState::Cleared;
                 return PromiseOrValue::Value(0u128);
             } else {
-                log!("ERR: zero rewards earned");
+                panic!("ERR: zero rewards earned")
             }
         }
         // store the amount of reward earned
@@ -144,6 +143,7 @@ impl Contract {
     #[private]
     pub fn withdraw_of_reward(&mut self, farm_id_str: String) -> Promise {
         self.assert_strategy_not_cleared(&farm_id_str);
+        log!("withdraw_of_reward");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -291,6 +291,7 @@ impl Contract {
     pub fn autocompounds_swap(&mut self, farm_id_str: String) -> Promise {
         // TODO: take string as ref
         self.assert_strategy_not_cleared(&farm_id_str);
+        log!("autocompounds_swap");
 
         let treasury_acc: AccountId = self.treasure_acc();
         let treasury_curr_amount: u128 = self.data_mut().treasury.current_amount;
@@ -720,6 +721,7 @@ impl Contract {
     #[private]
     pub fn autocompounds_liquidity_and_stake(&mut self, farm_id_str: String) -> Promise {
         self.assert_strategy_not_cleared(&farm_id_str);
+        log!("autocompounds_liquidity_and_stake");
 
         // send reward to contract caller
         self.send_reward_to_sentry(farm_id_str, env::predecessor_account_id())

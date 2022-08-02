@@ -29,11 +29,16 @@ impl Contract {
     #[private]
     pub fn callback_stake_result(
         &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
         token_id: String,
         account_id: AccountId,
         shares: u128,
     ) -> String {
-        assert!(self.check_promise(), "ERR_STAKE_FAILED");
+        if let Ok(amount) = transfer_result {
+            assert_eq!(amount.0, 0, "ERR_STAKE_FAILED");
+        } else {
+            panic!("ERR_STAKE_FAILED");
+        }
 
         let mut id = token_id;
         id.remove(0).to_string();
