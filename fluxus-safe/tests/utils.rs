@@ -222,7 +222,6 @@ pub async fn create_farm(
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<(String, u64)> {
     let reward_per_session: String = parse_near!("1000 N").to_string();
-    println!("LALALALA");
     let res = owner
         .call(worker, farm.id(),"create_seed")
         .args_json(serde_json::json!({
@@ -234,7 +233,6 @@ pub async fn create_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-        println!("LOLOLOLO");
     let res = owner
         .call(worker, farm.id(), "create_farm")
         .args_json(serde_json::json!({
@@ -250,7 +248,6 @@ pub async fn create_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-        println!("LULULULU");
     // println!("{:#?}", res);
 
     let farm_id: String = res.json()?;
