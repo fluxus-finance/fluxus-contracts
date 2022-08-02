@@ -133,6 +133,17 @@ impl Contract {
         info
     }
 
+    pub fn get_strategies_info(&self) -> Vec<StratFarmInfo> {
+        let mut info: Vec<StratFarmInfo> = Vec::new();
+        for (_, strat) in self.data().strategies.iter() {
+            for farm in strat.get_ref().farms.iter() {
+                info.push(farm.clone());
+            }
+        }
+
+        info
+    }
+
     // pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
     //     let strat = self.get_strat(&token_id);
     //     let compounder = strat.get();
@@ -203,6 +214,36 @@ impl Contract {
         }
 
         false
+    }
+
+    pub fn current_strat_step(&self, farm_id_str: String) -> String {
+        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let compounder = self.get_strat(token_id).get_ref().clone();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        match farm_info.cycle_stage {
+            AutoCompounderCycle::ClaimReward => "claim_reward".to_string(),
+            AutoCompounderCycle::Withdrawal => "withdraw".to_string(),
+            AutoCompounderCycle::Swap => "swap".to_string(),
+            AutoCompounderCycle::Stake => "stake".to_string(),
+        }
+    }
+
+    pub fn get_farm_ids_by_seed(&self, token_id: String) -> Vec<String> {
+        let mut strats: Vec<String> = vec![];
+
+        let compounder = self.get_strat(token_id.clone()).get_ref().clone();
+
+        for farm in compounder.farms.iter() {
+            strats.push(format!("{}#{}", token_id, farm.id));
+        }
+
+        strats
+    }
+
+    pub fn get_harvest_timestamp(&self, token_id: String) -> String {
+        let compounder = self.get_strat(token_id).get_ref().clone();
+        compounder.harvest_timestamp.to_string()
     }
 }
 

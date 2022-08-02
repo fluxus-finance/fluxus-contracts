@@ -10,7 +10,7 @@ impl Contract {
             self.data().farm_contract_id.clone(),
             token_id.clone(),
             U128(shares),
-            "".to_string(),
+            "\"Free\"".to_string(),
             self.data().exchange_contract_id.clone(),
             1,
             Gas(80_000_000_000_000),

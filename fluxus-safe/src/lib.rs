@@ -208,7 +208,7 @@ pub trait Callbacks {
     ) -> Promise;
     fn callback_post_withdraw(
         &mut self,
-        #[callback_result] withdraw_result: Result<U128, PromiseError>,
+        #[callback_result] withdraw_result: Result<bool, PromiseError>,
         farm_id_str: String,
     ) -> Promise;
     fn callback_post_treasury_mft_transfer(
@@ -225,6 +225,8 @@ pub trait Callbacks {
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
         farm_id_str: String,
+        reward_amount: U128,
+        rewards_map: HashMap<String, U128>,
     ) -> Promise;
     fn callback_post_first_swap(
         &mut self,
@@ -258,7 +260,7 @@ pub trait Callbacks {
     ) -> Promise;
     fn callback_list_farms_by_seed(
         &self,
-        #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
+        #[callback_result] farms_result: Result<Vec<FarmInfoBoost>, PromiseError>,
         farm_id_str: String,
     ) -> Promise;
     fn callback_post_ft_transfer(

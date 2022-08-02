@@ -17,7 +17,7 @@ impl Contract {
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        ext_farm::list_farms_by_seed(
+        ext_farm::list_seed_farms(
             seed_id,
             self.data().farm_contract_id.clone(),
             0,
@@ -36,7 +36,7 @@ impl Contract {
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn callback_list_farms_by_seed(
         &mut self,
-        #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
+        #[callback_result] farms_result: Result<Vec<FarmInfoBoost>, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<String> {
         assert!(farms_result.is_ok(), "ERR_LIST_FARMS_FAILED");
@@ -47,7 +47,7 @@ impl Contract {
 
         // Try to unclaim before change to Ended
         for farm in farms.iter() {
-            if farm.farm_id == farm_id && farm.farm_status != *"Running" {
+            if farm.farm_id == farm_id && farm.status != *"Running" {
                 let compounder = self.get_strat_mut(&token_id.to_string()).get_mut();
 
                 for strat_farm in compounder.farms.iter_mut() {
@@ -59,9 +59,9 @@ impl Contract {
         }
 
         PromiseOrValue::Promise(
-            ext_farm::get_unclaimed_reward(
+            ext_farm::get_unclaimed_rewards(
                 env::current_account_id(),
-                farm_id_str.clone(),
+                seed_id,
                 self.data().farm_contract_id.clone(),
                 1,
                 Gas(3_000_000_000_000),
@@ -78,12 +78,12 @@ impl Contract {
     #[private]
     pub fn callback_post_get_unclaimed_reward(
         &mut self,
-        #[callback_result] reward_amount_result: Result<U128, PromiseError>,
+        #[callback_result] reward_amount_result: Result<HashMap<String, U128>, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
         assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
 
-        let reward_amount = reward_amount_result.unwrap();
+        let mut rewards_map = reward_amount_result.unwrap();
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -92,6 +92,11 @@ impl Contract {
         let compounder = strat.get_mut();
 
         let farm_info = compounder.get_mut_farm_info(farm_id);
+
+        // this should never panics from .unwrap(), given that the reward_token was previously known
+        let reward_amount: U128 = rewards_map
+            .remove(&farm_info.reward_token.to_string())
+            .unwrap();
 
         if reward_amount.0 == 0u128 {
             // if farm is ended, there is no more actions to do
@@ -102,18 +107,18 @@ impl Contract {
                 panic!("ERR: zero rewards earned")
             }
         }
-        // store the amount of reward earned
-        farm_info.last_reward_amount = reward_amount.0;
 
         PromiseOrValue::Promise(
-            ext_farm::claim_reward_by_farm(
-                farm_id_str.clone(),
+            ext_farm::claim_reward_by_seed(
+                seed_id,
                 self.data().farm_contract_id.clone(),
                 0,
                 Gas(40_000_000_000_000),
             )
             .then(ext_self::callback_post_claim_reward(
                 farm_id_str,
+                reward_amount,
+                rewards_map,
                 env::current_account_id(),
                 0,
                 Gas(10_000_000_000_000),
@@ -126,13 +131,21 @@ impl Contract {
         &mut self,
         #[callback_result] claim_reward_result: Result<(), PromiseError>,
         farm_id_str: String,
+        reward_amount: U128,
+        rewards_map: HashMap<String, U128>,
     ) {
         assert!(claim_reward_result.is_ok(), "ERR_WITHDRAW_FAILED");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
+        // update strategies with the same seed
         let compounder = self.get_strat_mut(&token_id.to_string()).get_mut();
+        compounder.update_strats_by_seed(rewards_map);
+
+        // store the amount of reward earned
         let farm_info = compounder.get_mut_farm_info(farm_id);
+        farm_info.last_reward_amount = reward_amount.0;
+
         farm_info.next_cycle();
     }
 
@@ -163,7 +176,7 @@ impl Contract {
                 U128(amount_to_withdraw),
                 "false".to_string(),
                 self.data().farm_contract_id.clone(),
-                1,
+                0,
                 Gas(180_000_000_000_000),
             )
             .then(ext_self::callback_post_withdraw(
@@ -194,7 +207,7 @@ impl Contract {
     #[private]
     pub fn callback_post_withdraw(
         &mut self,
-        #[callback_result] withdraw_result: Result<U128, PromiseError>,
+        #[callback_result] withdraw_result: Result<bool, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<U128> {
         assert!(withdraw_result.is_ok(), "ERR_WITHDRAW_FROM_FARM_FAILED");
@@ -931,6 +944,9 @@ impl Contract {
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
+
+        compounder_mut.harvest_timestamp = env::block_timestamp_ms();
+
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         farm_info_mut.next_cycle();
@@ -950,7 +966,7 @@ impl Contract {
             self.data().farm_contract_id.clone(),
             token_id.to_string(),
             U128(accumulated_shares),
-            "".to_string(),
+            "\"Free\"".to_string(),
         );
     }
 }

@@ -5,16 +5,23 @@ source .env
 source neardev/dev-account.env
 echo $CONTRACT_NAME
 
-######## Farm contract
+
+######## Old farm contract
 
 #### Get all farms from given seed
 # near view $farm_contract_id list_farms_by_seed '{ "seed_id": "'$exchange_contract_id'@'$pool_id'" }'
 
-#### Get farm state, Running, Ended, etc.
+### Get farm state, Running, Ended, etc.
 # near view $farm_contract_id get_farm '{ "farm_id": "'$exchange_contract_id'@'$pool_id'#'$farm_id'" }'
 
-#### Get min deposit for seed
-# near view $farm_contract_id get_seed_info '{ "seed_id": "'$exchange_contract_id'@'$pool_id'" }'
+### Get min deposit for seed
+# near view $farm_contract_id list_seeds_info '{ "seed_id": "'$exchange_contract_id'@'$pool_id'" }'
+
+######## Boost farm contract
+near view $farm_contract_id list_seed_farms '{ "seed_id": "'$exchange_contract_id'@'$pool_id'" }'
+near view $farm_contract_id list_farmer_seeds '{ "farmer_id": "'$CONTRACT_NAME'" }'
+near view $farm_contract_id list_farmer_rewards '{ "farmer_id": "'$CONTRACT_NAME'" }'
+near view $farm_contract_id get_unclaimed_rewards '{ "farmer_id": "'$CONTRACT_NAME'", "seed_id": "'$seed_id'" }'
 
 #### Get unclaimed reward
 # near view $farm_contract_id get_unclaimed_reward '{ "account_id": "'$CONTRACT_NAME'", "farm_id": "'$exchange_contract_id'@'$pool_id'#'$farm_id'" }'
@@ -56,3 +63,11 @@ echo $CONTRACT_NAME
 # near view $CONTRACT_NAME is_strategy_active '{ "token_id": "'$token_id'" }'
 
 # near view $CONTRACT_NAME get_strategies '{}'
+
+# near view $CONTRACT_NAME current_strat_step '{ "farm_id_str": "'$farm_id_str'" }'
+
+# near view $CONTRACT_NAME get_farm_ids_by_seed '{ "token_id": "'$token_id'" }'
+
+near view $CONTRACT_NAME get_harvest_timestamp  '{ "token_id": "'$token_id'" }'
+
+near view $CONTRACT_NAME get_strategies_info  '{}'

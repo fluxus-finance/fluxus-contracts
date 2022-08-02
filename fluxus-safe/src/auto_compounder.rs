@@ -90,6 +90,9 @@ pub struct AutoCompounder {
 
     /// Store all farms that were used to compound by some token_id
     pub farms: Vec<StratFarmInfo>,
+
+    /// Latest harvest timestamp
+    pub harvest_timestamp: u64,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
@@ -157,6 +160,7 @@ impl AutoCompounder {
             seed_min_deposit,
             seed_id,
             farms: Vec::new(),
+            harvest_timestamp: 0u64,
         }
     }
 
@@ -220,6 +224,21 @@ impl AutoCompounder {
 
         panic!("Farm does not exist")
     }
+
+    /// Iterate through farms inside a compounder
+    /// if `rewards_map` contains the same token than the strat, an reward > 0,
+    /// then updates the strat to the next cycle, to avoid claiming the seed multiple times
+    /// TODO: what if there are multiple farms with the same token_reward?
+    pub fn update_strats_by_seed(&mut self, rewards_map: HashMap<String, U128>) {
+        for farm in self.farms.iter_mut() {
+            if let Some(reward_earned) = rewards_map.get(&farm.reward_token.to_string()) {
+                if reward_earned.0 > 0 {
+                    farm.last_reward_amount = reward_earned.0;
+                    farm.next_cycle();
+                }
+            }
+        }
+    }
 }
 
 /// Versioned Farmer, used for lazy upgrade.
@@ -256,6 +275,7 @@ impl VersionedCompounder {
             seed_min_deposit,
             seed_id,
             farms: Vec::new(),
+            harvest_timestamp: 0u64,
         })
     }
 }
