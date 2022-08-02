@@ -347,6 +347,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let (farm_str0, farm_id0) =
         utils::create_farm(&owner, &farm, &seed_id1, &token_reward_1, &worker).await?;
 
+    println!("Created simple farm!");
+
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////

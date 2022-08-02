@@ -53,7 +53,7 @@ pub struct PoolInfo {
 }
 
 const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
-const CONTRACT_ID_FARM: &str = "farm101.fluxusfi.testnet";
+const CONTRACT_ID_FARM: &str = "boostfarm.ref-finance.testnet";
 const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
 
 pub async fn add_strategy(
@@ -222,22 +222,35 @@ pub async fn create_farm(
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<(String, u64)> {
     let reward_per_session: String = parse_near!("1000 N").to_string();
+    println!("LALALALA");
     let res = owner
-        .call(worker, farm.id(), "create_simple_farm")
+        .call(worker, farm.id(),"create_seed")
         .args_json(serde_json::json!({
-            "terms": {
-                "seed_id": seed_id,
-                "reward_token": token_reward.id(),
-                "start_at": 0,
-                "reward_per_session": reward_per_session,
-                "session_interval": 10
-            },
-            "min_deposit": Some(U128(MIN_SEED_DEPOSIT))
+            "seed_id": seed_id,
+            "seed_decimal": 24,
+            "min_locking_duration_sec": 0
         }))?
-        .deposit(parse_near!("0.1 N"))
+        .deposit(parse_near!("1 yN"))
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
+        println!("LOLOLOLO");
+    let res = owner
+        .call(worker, farm.id(), "create_farm")
+        .args_json(serde_json::json!({
+            "seed_id": seed_id,
+            "terms": {
+                "reward_token": token_reward.id(),
+                "start_at": 0,
+                "daily_reward": "48000000000000000000"
+            },
+            "min_deposit": Some(U128(MIN_SEED_DEPOSIT))
+        }))?
+        .deposit(parse_near!("1 yN"))
+        .gas(parse_gas!("200 Tgas") as u64)
+        .transact()
+        .await?;
+        println!("LULULULU");
     // println!("{:#?}", res);
 
     let farm_id: String = res.json()?;
