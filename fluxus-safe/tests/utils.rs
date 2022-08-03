@@ -254,8 +254,6 @@ pub async fn create_farm(
     println!("create_farm: {:#?}", res);
 
     let farm_id: String = res.json()?;
-    // println!("farm id: {farm_id}");
-    // println!("{:#?}", farm_id.split("#"));
 
     let res = token_reward
         .call(worker, "storage_deposit")

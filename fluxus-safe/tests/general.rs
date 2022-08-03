@@ -17,42 +17,40 @@ const TOTAL_PROTOCOL_FEE: u128 = 10;
 const SENTRY_FEES_PERCENT: u128 = 10;
 const STRAT_FEES_PERCENT: u128 = 10;
 const TREASURY_FEES_PERCENT: u128 = 80;
+const POOL_ID_PLACEHOLDER: u64 = 9999;
 
 use utils::MIN_SEED_DEPOSIT;
 
-/// Runs the full cycle of auto-compound and fast forward
-async fn do_auto_compound_with_fast_forward(
+async fn fast_forward(
+    blocks_to_forward: u64,
+    fast_forward_counter: &mut u64,
+    worker: &Worker<Sandbox>,
+) -> anyhow::Result<u128> {
+    let block_info = worker.view_latest_block().await?;
+    println!(
+        "BlockInfo {fast_forward_counter} pre-fast_forward {:?}",
+        block_info
+    );
+
+    worker.fast_forward(blocks_to_forward).await?;
+
+    let block_info = worker.view_latest_block().await?;
+    println!(
+        "BlockInfo {fast_forward_counter} post-fast_forward {:?}",
+        block_info
+    );
+
+    *fast_forward_counter += 1;
+
+    Ok(0)
+}
+
+async fn do_harvest(
     sentry_acc: &Account,
     contract: &Contract,
     farm_id_str: &String,
-    blocks_to_forward: u64,
-    fast_forward_token: &mut u64,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<u128> {
-    if blocks_to_forward > 0 {
-        let block_info = worker.view_latest_block().await?;
-        println!(
-            "BlockInfo {fast_forward_token} pre-fast_forward {:?}",
-            block_info
-        );
-
-        worker.fast_forward(blocks_to_forward).await?;
-
-        let block_info = worker.view_latest_block().await?;
-        println!(
-            "BlockInfo {fast_forward_token} post-fast_forward {:?}",
-            block_info
-        );
-
-        *fast_forward_token += 1;
-    }
-
-    // let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-
-    // TODO: what is it good for?
-    //Check amount of unclaimed rewards the Strategy has
-    // let unclaimed_amount = utils::get_unclaimed_rewards(contract, &token_id, worker).await?;
-
     for i in 0..4 {
         let _res = sentry_acc
             .call(worker, contract.id(), "harvest")
@@ -62,6 +60,24 @@ async fn do_auto_compound_with_fast_forward(
             .await?;
         println!("harvest step {}: {:#?}\n", i + 1, _res);
     }
+
+    Ok(0)
+}
+
+/// Runs the full cycle of auto-compound and fast forward
+async fn do_auto_compound_with_fast_forward(
+    sentry_acc: &Account,
+    contract: &Contract,
+    farm_id_str: &String,
+    blocks_to_forward: u64,
+    fast_forward_counter: &mut u64,
+    worker: &Worker<Sandbox>,
+) -> anyhow::Result<u128> {
+    if blocks_to_forward > 0 {
+        fast_forward(blocks_to_forward, fast_forward_counter, worker).await?;
+    }
+
+    do_harvest(sentry_acc, contract, farm_id_str, worker).await?;
 
     Ok(0)
 }
@@ -658,10 +674,22 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let (farm_str1, farm_id1) =
         utils::create_farm(&owner, &farm, &seed_id1, &token_reward_2, false, &worker).await?;
 
+    // common tokens 1
+    // create farm with (token1, token2) pair and token1 as reward
+    let (farm_str2, farm_id2) =
+        utils::create_farm(&owner, &farm, &seed_id1, &token_1, false, &worker).await?;
+
+    // common tokens 2
+    // create farm with (token1, token2) pair and token2 as reward
+    let (farm_str3, farm_id3) =
+        utils::create_farm(&owner, &farm, &seed_id1, &token_2, false, &worker).await?;
+
     // create farms map to iterate over
     let mut farms: HashMap<String, u64> = HashMap::new();
     farms.insert(farm_str0, farm_id0);
     farms.insert(farm_str1, farm_id1);
+    farms.insert(farm_str2, farm_id2);
+    farms.insert(farm_str3, farm_id3);
 
     // Adds new strategy to safe
     utils::add_strategy(
@@ -675,12 +703,38 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
+    // (token1, token2) -> token1
+    utils::add_strategy(
+        &safe_contract,
+        &token_1,
+        POOL_ID_PLACEHOLDER,
+        pool_token1_token2,
+        pool_token1_token2,
+        farm_id2,
+        &worker,
+    )
+    .await?;
+
+    // (token1, token2) -> token2
+    utils::add_strategy(
+        &safe_contract,
+        &token_2,
+        pool_token1_token2,
+        POOL_ID_PLACEHOLDER,
+        pool_token1_token2,
+        farm_id3,
+        &worker,
+    )
+    .await?;
+
     let mut farmers_map: HashMap<AccountId, u128> = HashMap::new();
 
     let blocks_to_forward = 300;
 
-    println!("Starting auto-compound test with multiple strategies");
+    println!("Starting harvest test with multiple strategies");
     for i in 0..2u64 {
+        println!("Starting harvest test round {}", i);
+
         // creates new farmer
         let new_farmer =
             create_ready_account(&owner, &exchange, &token_1, &token_2, &worker).await?;
@@ -704,19 +758,15 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             staked_shares
         );
 
+        fast_forward(blocks_to_forward, &mut fast_forward_counter, &worker).await?;
+
         // auto-compound from seed1, farmX
         for (farm_str, _) in farms.iter() {
             // utils::log_farm_info(&farm, &seed_id1, &worker).await;
 
-            do_auto_compound_with_fast_forward(
-                &sentry,
-                &safe_contract,
-                farm_str,
-                blocks_to_forward,
-                &mut fast_forward_counter,
-                &worker,
-            )
-            .await?;
+            println!("farm_str {}", farm_str);
+
+            do_harvest(&sentry, &safe_contract, farm_str, &worker).await?;
 
             // checks farmers earnings
             for mut farmer in farmers_map.iter_mut() {
@@ -728,7 +778,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
                 assert!(
                     latest_shares > *current_shares,
-                    "Auto-compound failed. In loop {} with farm {} from account {} expected {} to be greater than {}",
+                    "Harvest failed. In loop {} with farm {} from account {} expected {} to be greater than {}",
                     i,
                     farm_str,
                     farmer_id,
@@ -746,7 +796,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             }
         }
 
-        println!("Auto-compound test round {} succeed", i);
+        println!("Harvest test round {} succeed", i);
     }
 
     Ok(())
