@@ -93,10 +93,18 @@ impl Contract {
 
         let farm_info = compounder.get_mut_farm_info(farm_id);
 
+        for (token, amount) in rewards_map.iter() {
+            log!("token: {} amount: {}", token, amount.0);
+        }
+
         // this should never panics from .unwrap(), given that the reward_token was previously known
-        let reward_amount: U128 = rewards_map
-            .remove(&farm_info.reward_token.to_string())
-            .unwrap();
+        let reward_amount: U128 = if rewards_map.contains_key(&farm_info.reward_token.to_string()) {
+            rewards_map
+                .remove(&farm_info.reward_token.to_string())
+                .unwrap()
+        } else {
+            U128(0)
+        };
 
         if reward_amount.0 == 0u128 {
             // if farm is ended, there is no more actions to do
@@ -954,7 +962,13 @@ impl Contract {
         let accumulated_shares = total_shares_result.unwrap().0;
 
         // Prevents failing on stake if below minimum deposit
-        if accumulated_shares < compounder_mut.seed_min_deposit.into() {
+        let min_deposit = compounder_mut.seed_min_deposit;
+        log!(
+            "min_deposit {} and shares {}",
+            min_deposit.0,
+            accumulated_shares
+        );
+        if accumulated_shares < min_deposit.0 {
             log!(
                 "The current number of shares {} is below minimum deposit",
                 accumulated_shares

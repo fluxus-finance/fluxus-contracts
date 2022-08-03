@@ -8,7 +8,7 @@ use workspaces::prelude::*;
 use workspaces::{Account, AccountId, Contract, DevNetwork, Network, Worker};
 
 pub const TOTAL_GAS: u64 = 300_000_000_000_000;
-pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000;
+pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000; // 2_339_613_734_407_424
 
 type FarmId = String;
 type SeedId = String;
@@ -223,7 +223,7 @@ pub async fn create_farm(
 ) -> anyhow::Result<(String, u64)> {
     let reward_per_session: String = parse_near!("1000 N").to_string();
     let res = owner
-        .call(worker, farm.id(),"create_seed")
+        .call(worker, farm.id(), "create_seed")
         .args_json(serde_json::json!({
             "seed_id": seed_id,
             "seed_decimal": 24,
@@ -248,7 +248,7 @@ pub async fn create_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    // println!("{:#?}", res);
+    println!("create_farm: {:#?}", res);
 
     let farm_id: String = res.json()?;
     // println!("farm id: {farm_id}");
@@ -263,22 +263,25 @@ pub async fn create_farm(
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    // println!("register farm into reward token -> {:#?}", res);
+    println!("register farm into reward token -> {:#?}", res);
 
     let amount: String = parse_near!("100000000 N").to_string();
+
+    let msg = format!("{{\"Reward\":{{\"farm_id\":\"{}\"}} }}", farm_id);
+    println!("msg {}", msg);
 
     let res = owner
         .call(worker, token_reward.id(), "ft_transfer_call")
         .args_json(serde_json::json!({
             "receiver_id": farm.id(),
             "amount": amount,
-            "msg": farm_id
+            "msg": msg
         }))?
         .deposit(parse_near!("1 yN"))
         .gas(parse_gas!("200 Tgas") as u64)
         .transact()
         .await?;
-    // println!("ft_transfer_call -> {:#?}", res);
+    println!("ft_transfer_call -> {:#?}", res);
 
     let id = farm_id.chars().last().unwrap().to_digit(10).unwrap() as u64;
 

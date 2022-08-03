@@ -57,7 +57,7 @@ async fn do_auto_compound_with_fast_forward(
             .gas(TOTAL_GAS)
             .transact()
             .await?;
-        // println!("harvest step {}: {:#?}\n", i + 1, _res);
+        println!("harvest step {}: {:#?}\n", i + 1, _res);
     }
 
     Ok(0)
@@ -531,6 +531,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         account1_shares_on_contract,
         account1_initial_shares
     );
+
+    println!("Stage 7 succeeded!");
     ///////////////////////////////////////////////////////////////////////////
     // Stage 8: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
@@ -544,6 +546,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &worker,
     )
     .await?;
+
+    println!("Stage 8 succeeded!");
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 9: Assert owner and farmer1 earned shares from auto-compounder strategy
@@ -574,6 +578,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         round2_account1_shares
     );
 
+    println!("Stage 9 succeeded!");
     ///////////////////////////////////////////////////////////////////////////
     // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
