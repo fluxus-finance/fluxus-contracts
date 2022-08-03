@@ -83,6 +83,13 @@ pub trait Farming {
     fn claim_reward_by_seed(&mut self, seed_id: String);
     fn claim_reward_by_farm(&mut self, farm_id: String);
     fn withdraw_seed(&mut self, seed_id: String, amount: U128, msg: String);
+    /// Boost contract
+    fn unlock_and_withdraw_seed(
+        &mut self,
+        seed_id: String,
+        unlock_amount: U128,
+        withdraw_amount: U128,
+    ) -> bool;
     fn withdraw_reward(&mut self, token_id: String, amount: U128, unregister: String) -> Promise;
     fn get_reward(&mut self, account_id: AccountId, token_id: AccountId) -> U128;
     fn get_unclaimed_reward(&mut self, account_id: AccountId, farm_id: String) -> U128;

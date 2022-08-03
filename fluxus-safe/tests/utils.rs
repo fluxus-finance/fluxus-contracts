@@ -12,7 +12,6 @@ pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000; // 2_339_613_734_407_424
 
 type FarmId = String;
 type SeedId = String;
-use near_sdk::serde::{Deserialize, Serialize};
 
 use fluxus_safe::AccountFee;
 
@@ -588,19 +587,39 @@ pub async fn get_pool_info(
     Ok(())
 }
 
-pub async fn log_farm_seeds(
-    auto_compounder: &Contract,
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SeedInfo {
+    seed_id: String,
+    seed_decimal: u64,
+    next_index: u64,
+    total_seed_amount: U128,
+    total_seed_power: U128,
+    min_deposit: U128,
+    slash_rate: u64,
+    min_locking_duration_sec: u64,
+}
+
+pub async fn get_farms_min_deposit(
     farm: &Contract,
     worker: &Worker<impl Network>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<HashMap<String, U128>> {
     let seeds = farm
-        .call(worker, "list_user_seeds")
-        .args_json(serde_json::json!({ "account_id": auto_compounder.id().to_string() }))?
+        .call(worker, "list_seeds_info")
+        .args_json(serde_json::json!({ "from_index": 0, "limit": 300 }))?
         .transact()
         .await?;
 
-    println!("list_user_seeds {:#?}", seeds);
-    Ok(())
+    let farms_info: Vec<SeedInfo> = seeds.json()?;
+
+    let mut map: HashMap<String, U128> = HashMap::new();
+
+    for info in farms_info {
+        map.insert(info.seed_id, info.min_deposit);
+    }
+
+    Ok(map)
 }
 
 pub async fn transfer_tokens(

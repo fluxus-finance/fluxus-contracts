@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use fluxus_safe::{self, get_ids_from_farm};
 mod utils;
@@ -17,6 +17,9 @@ const TOTAL_PROTOCOL_FEE: u128 = 10;
 const SENTRY_FEES_PERCENT: u128 = 10;
 const STRAT_FEES_PERCENT: u128 = 10;
 const TREASURY_FEES_PERCENT: u128 = 80;
+
+use utils::MIN_SEED_DEPOSIT;
+
 /// Runs the full cycle of auto-compound and fast forward
 async fn do_auto_compound_with_fast_forward(
     sentry_acc: &Account,
@@ -481,6 +484,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     println!("First round of auto-compound succeeded!");
 
+    let farms_info = utils::get_farms_min_deposit(&farm, &worker).await?;
+
+    for (farm, min_deposit) in farms_info {
+        if farm == farm_str0 {
+            assert_eq!(MIN_SEED_DEPOSIT, min_deposit.0);
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Stage 7: Stake with another account
     ///////////////////////////////////////////////////////////////////////////
@@ -547,6 +558,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
+    let farms_info = utils::get_farms_min_deposit(&farm, &worker).await?;
+
+    for (farm, min_deposit) in farms_info {
+        if farm == farm_str0 {
+            assert_eq!(MIN_SEED_DEPOSIT, min_deposit.0);
+        }
+    }
+
     println!("Stage 8 succeeded!");
 
     ///////////////////////////////////////////////////////////////////////////
@@ -579,6 +598,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     println!("Stage 9 succeeded!");
+
     ///////////////////////////////////////////////////////////////////////////
     // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////

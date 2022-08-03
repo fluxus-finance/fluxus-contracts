@@ -196,14 +196,15 @@ impl Contract {
             let amount = withdraw_amount - shares_on_exchange;
 
             // withdraw missing amount from farm
-            ext_farm::withdraw_seed(
+            ext_farm::unlock_and_withdraw_seed(
                 compounder.seed_id,
+                U128(0),
                 U128(amount),
-                "".to_string(),
                 self.data().farm_contract_id.clone(),
                 1,
                 Gas(180_000_000_000_000),
             )
+            // TODO: add callback and then call mft_transfer
             // transfer the total amount required
             .then(ext_exchange::mft_transfer(
                 token_id.clone(),
