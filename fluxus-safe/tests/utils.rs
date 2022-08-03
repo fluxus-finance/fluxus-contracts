@@ -14,6 +14,7 @@ type FarmId = String;
 type SeedId = String;
 
 use fluxus_safe::AccountFee;
+use fluxus_safe::FarmInfoBoost;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -218,20 +219,23 @@ pub async fn create_farm(
     farm: &Contract,
     seed_id: &String,
     token_reward: &Contract,
+    create_seed: bool,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<(String, u64)> {
     let reward_per_session: String = parse_near!("1000 N").to_string();
-    let res = owner
-        .call(worker, farm.id(), "create_seed")
-        .args_json(serde_json::json!({
-            "seed_id": seed_id,
-            "seed_decimal": 24,
-            "min_locking_duration_sec": 0
-        }))?
-        .deposit(parse_near!("1 yN"))
-        .gas(parse_gas!("200 Tgas") as u64)
-        .transact()
-        .await?;
+    if create_seed {
+        let res = owner
+            .call(worker, farm.id(), "create_seed")
+            .args_json(serde_json::json!({
+                "seed_id": seed_id,
+                "seed_decimal": 24,
+                "min_locking_duration_sec": 0
+            }))?
+            .deposit(parse_near!("1 yN"))
+            .gas(parse_gas!("200 Tgas") as u64)
+            .transact()
+            .await?;
+    }
     let res = owner
         .call(worker, farm.id(), "create_farm")
         .args_json(serde_json::json!({
@@ -326,15 +330,13 @@ pub async fn log_farm_info(
     seed_id: &String,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<()> {
-    let farm_id = format!("{}#{}", seed_id, 0);
     let res = farm
-        .call(worker, "get_farm")
-        .args_json(serde_json::json!({ "farm_id": farm_id }))?
+        .call(worker, "list_seed_farms")
+        .args_json(serde_json::json!({ "seed_id": seed_id }))?
         .transact()
         .await?;
-    // TODO: require tx success
 
-    let info: FarmInfo = res.json().unwrap();
+    let info: Vec<FarmInfoBoost> = res.json().unwrap();
     println!("result {:#?}", info);
 
     Ok(())

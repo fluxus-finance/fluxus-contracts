@@ -27,7 +27,7 @@ mod storage_impl;
 mod token_receiver;
 
 mod external_contracts;
-use external_contracts::*;
+pub use external_contracts::*;
 
 mod utils;
 

@@ -348,7 +348,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let farm = utils::deploy_farm(&owner, &worker).await?;
     println!("farm contract: {}", farm.id());
     let (farm_str0, farm_id0) =
-        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_1, &worker).await?;
+        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_1, true, &worker).await?;
 
     println!("Created simple farm!");
 
@@ -459,6 +459,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     let mut fast_forward_counter: u64 = 0;
 
+    // utils::log_farm_info(&farm, &seed_id1, &worker).await;
+
     do_auto_compound_with_fast_forward(
         &owner,
         &safe_contract,
@@ -483,14 +485,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     println!("First round of auto-compound succeeded!");
-
-    let farms_info = utils::get_farms_min_deposit(&farm, &worker).await?;
-
-    for (farm, min_deposit) in farms_info {
-        if farm == farm_str0 {
-            assert_eq!(MIN_SEED_DEPOSIT, min_deposit.0);
-        }
-    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 7: Stake with another account
@@ -548,6 +542,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // Stage 8: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
+    // utils::log_farm_info(&farm, &seed_id1, &worker).await;
+
     do_auto_compound_with_fast_forward(
         &sentry,
         &safe_contract,
@@ -557,14 +553,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &worker,
     )
     .await?;
-
-    let farms_info = utils::get_farms_min_deposit(&farm, &worker).await?;
-
-    for (farm, min_deposit) in farms_info {
-        if farm == farm_str0 {
-            assert_eq!(MIN_SEED_DEPOSIT, min_deposit.0);
-        }
-    }
 
     println!("Stage 8 succeeded!");
 
@@ -668,7 +656,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // create another farm with different reward token from the same seed
     let (farm_str1, farm_id1) =
-        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_2, &worker).await?;
+        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_2, false, &worker).await?;
 
     // create farms map to iterate over
     let mut farms: HashMap<String, u64> = HashMap::new();
@@ -718,6 +706,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
         // auto-compound from seed1, farmX
         for (farm_str, _) in farms.iter() {
+            // utils::log_farm_info(&farm, &seed_id1, &worker).await;
+
             do_auto_compound_with_fast_forward(
                 &sentry,
                 &safe_contract,

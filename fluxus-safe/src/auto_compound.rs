@@ -152,7 +152,7 @@ impl Contract {
 
         // store the amount of reward earned
         let farm_info = compounder.get_mut_farm_info(farm_id);
-        farm_info.last_reward_amount = reward_amount.0;
+        farm_info.last_reward_amount += reward_amount.0;
 
         farm_info.next_cycle();
     }
@@ -662,7 +662,7 @@ impl Contract {
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
-            compounder_mut.increase_slippage();
+            farm_info_mut.increase_slippage();
             log!("ERR_FIRST_SWAP_FAILED");
 
             return PromiseOrValue::Value(0u64);
@@ -712,7 +712,7 @@ impl Contract {
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
-            compounder_mut.increase_slippage();
+            farm_info_mut.increase_slippage();
             log!("ERR_SECOND_SWAP_FAILED");
             return;
         }

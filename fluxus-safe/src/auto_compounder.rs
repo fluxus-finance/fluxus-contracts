@@ -57,6 +57,21 @@ impl StratFarmInfo {
             AutoCompounderCycle::Stake => self.cycle_stage = AutoCompounderCycle::ClaimReward,
         }
     }
+
+    pub fn increase_slippage(&mut self) {
+        if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
+            // increment slippage
+            self.slippage -= 4;
+
+            log!(
+                "Slippage updated to {}. It will applied in the next call",
+                self.slippage
+            );
+        } else {
+            self.state = AutoCompounderState::Ended;
+            log!("Slippage too high. State was updated to Ended");
+        }
+    }
 }
 
 // #[derive(BorshSerialize, BorshDeserialize)]
@@ -189,22 +204,6 @@ impl AutoCompounder {
         )
     }
 
-    pub fn increase_slippage(&mut self) {
-        unimplemented!()
-        // if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
-        //     // increment slippage
-        //     self.slippage -= 4;
-
-        //     log!(
-        //         "Slippage updated to {}. It will applied in the next call",
-        //         self.slippage
-        //     );
-        // } else {
-        //     self.state = AutoCompounderState::Ended;
-        //     log!("Slippage too high. State was updated to Ended");
-        // }
-    }
-
     pub fn get_farm_info(&self, farm_id: &str) -> StratFarmInfo {
         for farm in self.farms.iter() {
             if farm.id == farm_id {
@@ -233,8 +232,7 @@ impl AutoCompounder {
         for farm in self.farms.iter_mut() {
             if let Some(reward_earned) = rewards_map.get(&farm.reward_token.to_string()) {
                 if reward_earned.0 > 0 {
-                    farm.last_reward_amount = reward_earned.0;
-                    farm.next_cycle();
+                    farm.last_reward_amount += reward_earned.0;
                 }
             }
         }
