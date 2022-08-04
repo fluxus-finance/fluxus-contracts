@@ -75,7 +75,9 @@ impl Contract {
 
     ///Register a seed into the users_balance_by_fft_share
     pub fn register_seed(&mut self, fft_share: String) {
-        let mut temp = LookupMap::new(b"a");
+        let mut temp = LookupMap::new(StorageKey::SeedRegister {
+            fft_share: fft_share.clone(),
+        });
         temp.insert(&"".to_string(), &0_u128);
         self.data_mut()
             .users_balance_by_fft_share
@@ -105,10 +107,11 @@ impl Contract {
     ///Return the total_supply of an specific fft_share (ref lp token).
     pub fn total_supply_amount(&self, fft_share: String) -> u128 {
         let result = self.data().total_supply_by_fft_share.get(&fft_share);
+
         if let Some(res) = result {
-            *res
+            res
         } else {
-            0u128
+            0
         }
     }
 
@@ -125,7 +128,7 @@ impl Contract {
 
         let result = self.data_mut().total_supply_by_fft_share.get(&fft_share_id);
         if let Some(res) = result {
-            *res
+            res
         } else {
             0u128
         }
@@ -153,13 +156,12 @@ impl Contract {
         let new_balance = old_amount + balance;
         log!("{} + {} = new_balance {}", old_amount, balance, new_balance);
 
-        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
+        let mut map_temp = self
+            .data()
+            .users_balance_by_fft_share
+            .get(&fft_share)
+            .expect("err: fft does not exist");
 
-        let mut map_temp = if temp.is_some() {
-            temp.unwrap()
-        } else {
-            LookupMap::new(b"a")
-        };
         map_temp.insert(&user, &new_balance);
 
         self.data_mut()
@@ -170,7 +172,7 @@ impl Contract {
         let old_total = self.total_supply_amount(fft_share.clone());
         self.data_mut()
             .total_supply_by_fft_share
-            .insert(fft_share, (old_total + balance));
+            .insert(&fft_share, &(old_total + balance));
 
         //Returning the new balance
         new_balance
@@ -186,13 +188,11 @@ impl Contract {
         let new_balance = old_amount - balance;
         log!("{} - {} = new_balance {}", old_amount, balance, new_balance);
 
-        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
-
-        let mut map_temp = if temp.is_some() {
-            temp.unwrap()
-        } else {
-            LookupMap::new(b"a")
-        };
+        let mut map_temp = self
+            .data()
+            .users_balance_by_fft_share
+            .get(&fft_share)
+            .expect("err: fft does not exist");
 
         map_temp.insert(&user, &new_balance);
 
@@ -204,7 +204,7 @@ impl Contract {
         let old_total = self.total_supply_amount(fft_share.clone());
         self.data_mut()
             .total_supply_by_fft_share
-            .insert(fft_share, (old_total - balance));
+            .insert(&fft_share, &(old_total - balance));
 
         //Returning the new balance
         new_balance
@@ -276,16 +276,12 @@ impl Contract {
         let new_balance = old_amount - amount;
         log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
 
-        // let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
-        // hash_temp.insert(&sender_id, &new_balance);
+        let mut map_temp = self
+            .data()
+            .users_balance_by_fft_share
+            .get(&fft_share)
+            .expect("err: fft does not exist");
 
-        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
-
-        let mut map_temp = if temp.is_some() {
-            temp.unwrap()
-        } else {
-            LookupMap::new(b"a")
-        };
         map_temp.insert(&sender_id, &new_balance);
 
         self.data_mut()
@@ -296,16 +292,12 @@ impl Contract {
         let new_balance = old_amount + amount;
         log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
 
-        // let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
-        // hash_temp.insert(&receiver_id, &new_balance);
+        let mut map_temp = self
+            .data()
+            .users_balance_by_fft_share
+            .get(&fft_share)
+            .expect("err: fft does not exist");
 
-        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
-
-        let mut map_temp = if temp.is_some() {
-            temp.unwrap()
-        } else {
-            LookupMap::new(b"a")
-        };
         map_temp.insert(&receiver_id, &new_balance);
 
         self.data_mut()

@@ -59,6 +59,12 @@ pub(crate) enum StorageKey {
     Whitelist,
     AccountTokens { account_id: AccountId },
     Guardian,
+    NearDeposited,
+    UsersBalanceByShare,
+    TotalSupplyByShare,
+    SeedIdAmount,
+    SeedRegister { fft_share: String },
+    Strategy,
 }
 
 // TODO: update this to newer version, following AutoCompounderState
@@ -108,7 +114,6 @@ pub struct ContractData {
 
     ///It is a map that store the fft_share and a map of users and their balance.
     /// illustration: map(fft_share[i], map(user[i], balance[i])).
-    /// TODO: Change HashMap for LookupMap as it is more gas efficient
     users_balance_by_fft_share: LookupMap<String, LookupMap<String, u128>>,
 
     ///Store the auto-compounders of the seeds.
@@ -116,8 +121,7 @@ pub struct ContractData {
     // compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
     ///Store the fft_share total_supply for each seed_id.
-    /// TODO: Change HashMap for LookupMap as it is more gas efficient
-    total_supply_by_fft_share: HashMap<String, u128>,
+    total_supply_by_fft_share: LookupMap<String, u128>,
 
     ///Store the fft_share for each seed_id.
     /// TODO: Change HashMap for LookupMap as it is more gas efficient
@@ -384,12 +388,12 @@ impl Contract {
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
                 state: RunningState::Running,
-                users_total_near_deposited: LookupMap::new(b"a"),
-                users_balance_by_fft_share: LookupMap::new(b"a"),
+                users_total_near_deposited: LookupMap::new(StorageKey::NearDeposited),
+                users_balance_by_fft_share: LookupMap::new(StorageKey::UsersBalanceByShare),
                 // compounders_by_seed_id: HashMap::new(),
-                total_supply_by_fft_share: HashMap::new(),
+                total_supply_by_fft_share: LookupMap::new(StorageKey::TotalSupplyByShare),
                 fft_share_by_seed_id: HashMap::new(),
-                seed_id_amount: LookupMap::new(b"a"),
+                seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
                 exchange_contract_id,
                 farm_contract_id,
                 /// List of all the pools.
