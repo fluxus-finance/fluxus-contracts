@@ -124,7 +124,7 @@ pub struct ContractData {
     fft_share_by_seed_id: HashMap<String, String>,
 
     ///Store the fft_share for each seed_id.
-    seed_id_amount: HashMap<String, u128>,
+    seed_id_amount: LookupMap<String, u128>,
 
     // Contract address of the exchange used
     //TODO: Move it inside the strategy
@@ -389,7 +389,7 @@ impl Contract {
                 // compounders_by_seed_id: HashMap::new(),
                 total_supply_by_fft_share: HashMap::new(),
                 fft_share_by_seed_id: HashMap::new(),
-                seed_id_amount: HashMap::new(),
+                seed_id_amount: LookupMap::new(b"a"),
                 exchange_contract_id,
                 farm_contract_id,
                 /// List of all the pools.

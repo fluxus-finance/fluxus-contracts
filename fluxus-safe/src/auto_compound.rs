@@ -935,7 +935,7 @@ impl Contract {
         let data = self.data_mut();
 
         data.seed_id_amount
-            .insert(seed_id, total_seed + shares_received);
+            .insert(&seed_id, &(total_seed + shares_received));
 
         U128(shares_received)
     }

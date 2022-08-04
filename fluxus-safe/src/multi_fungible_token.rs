@@ -59,7 +59,7 @@ impl Contract {
 
         let user_fft_shares = self.users_fft_share_amount(fft_name.clone(), user);
         let total_fft = self.total_supply_amount(fft_name);
-        let total_seed = *self.data().seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        let total_seed = self.data().seed_id_amount.get(&seed_id).unwrap_or_default();
         log!(
             "user_fft {} total fft {} total seed {}",
             user_fft_shares,
@@ -88,7 +88,7 @@ impl Contract {
         let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, id);
 
         let temp = self.data().seed_id_amount.get(&seed_id).unwrap();
-        *temp
+        temp
     }
 
     ///Return users_balance of a specific fft_share
