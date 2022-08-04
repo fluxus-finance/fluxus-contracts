@@ -39,15 +39,14 @@ impl StorageManagement for Contract {
 
         if already_registered {
             let amount_already_deposited = self
-                .data_mut()
+                .data()
                 .users_total_near_deposited
-                .get_mut(&account_id.clone())
-                .unwrap()
-                .clone();
+                .get(&account_id.clone())
+                .unwrap();
 
             self.data_mut()
                 .users_total_near_deposited
-                .insert(account_id.clone(), amount + amount_already_deposited);
+                .insert(&account_id, &(amount + amount_already_deposited));
 
             log!(
                 "before + user_deposited_amount = {}",
@@ -56,7 +55,7 @@ impl StorageManagement for Contract {
         } else {
             self.data_mut()
                 .users_total_near_deposited
-                .insert(account_id.clone(), amount);
+                .insert(&account_id, &amount);
             log!("0 + amount = {}", amount);
         }
         self.storage_balance_of(account_id.try_into().unwrap())
@@ -75,11 +74,10 @@ impl StorageManagement for Contract {
         );
 
         let amount_already_deposited = self
-            .data_mut()
+            .data()
             .users_total_near_deposited
-            .get_mut(&account_id.clone())
-            .unwrap()
-            .clone();
+            .get(&account_id)
+            .unwrap();
 
         require!(
             amount_already_deposited >= amount,
@@ -103,7 +101,7 @@ impl StorageManagement for Contract {
 
         self.data_mut()
             .users_total_near_deposited
-            .insert(account_id.clone(), amount_already_deposited - amount);
+            .insert(&account_id, &(amount_already_deposited - amount));
         let withdraw_amount = self.internal_storage_withdraw(&account_id, amount);
         Promise::new(account_id.clone()).transfer(withdraw_amount);
         self.storage_balance_of(account_id.try_into().unwrap())

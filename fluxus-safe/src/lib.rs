@@ -104,16 +104,16 @@ pub struct ContractData {
     state: RunningState,
 
     // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
-    users_total_near_deposited: HashMap<AccountId, u128>,
+    users_total_near_deposited: LookupMap<AccountId, u128>,
 
     ///It is a map that store the fft_share and a map of users and their balance.
     /// illustration: map(fft_share[i], map(user[i], balance[i])).
     /// TODO: Change HashMap for LookupMap as it is more gas efficient
-    users_balance_by_fft_share: HashMap<String, HashMap<String, u128>>,
+    users_balance_by_fft_share: LookupMap<String, LookupMap<String, u128>>,
 
     ///Store the auto-compounders of the seeds.
     /// illustration: map( seed[i], vec(user[i]) ).//TODO
-    compounders_by_seed_id: HashMap<String, HashSet<String>>,
+    // compounders_by_seed_id: HashMap<String, HashSet<String>>,
 
     ///Store the fft_share total_supply for each seed_id.
     /// TODO: Change HashMap for LookupMap as it is more gas efficient
@@ -384,9 +384,9 @@ impl Contract {
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
                 state: RunningState::Running,
-                users_total_near_deposited: HashMap::new(),
-                users_balance_by_fft_share: HashMap::new(),
-                compounders_by_seed_id: HashMap::new(),
+                users_total_near_deposited: LookupMap::new(b"a"),
+                users_balance_by_fft_share: LookupMap::new(b"a"),
+                // compounders_by_seed_id: HashMap::new(),
                 total_supply_by_fft_share: HashMap::new(),
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: HashMap::new(),

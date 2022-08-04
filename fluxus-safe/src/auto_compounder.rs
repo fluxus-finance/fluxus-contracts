@@ -81,10 +81,12 @@ pub struct AutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
+    // TODO: remove it
     /// Struct that maps addresses to its currents shares added plus the received
     /// from the auto-compound strategy
     pub user_shares: HashMap<AccountId, SharesBalance>,
 
+    // TODO: remove it
     /// Keeps tracks of how much shares the contract gained from the auto-compound
     pub protocol_shares: u128,
 

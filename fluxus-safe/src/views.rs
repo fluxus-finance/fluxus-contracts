@@ -144,11 +144,15 @@ impl Contract {
         info
     }
 
-    // pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
-    //     let strat = self.get_strat(&token_id);
-    //     let compounder = strat.get();
-    //     compounder.state
-    // }
+    pub fn get_strat_state(self, farm_id_str: String) -> AutoCompounderState {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
+        let strat = self.get_strat(token_id);
+        let compounder = strat.get_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        farm_info.state
+    }
 
     /// Returns exchange and farm contracts
     pub fn get_contract_info(self) -> SafeInfo {

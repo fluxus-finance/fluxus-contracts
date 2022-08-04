@@ -42,7 +42,7 @@ impl Contract {
         let map = self.data().users_balance_by_fft_share.get(&fft_share);
         if let Some(shares) = map {
             if let Some(user_balance) = shares.get(&user) {
-                return *user_balance;
+                return user_balance;
             }
         }
 
@@ -75,11 +75,11 @@ impl Contract {
 
     ///Register a seed into the users_balance_by_fft_share
     pub fn register_seed(&mut self, fft_share: String) {
-        let mut temp = HashMap::new();
-        temp.insert("".to_string(), 0_u128);
+        let mut temp = LookupMap::new(b"a");
+        temp.insert(&"".to_string(), &0_u128);
         self.data_mut()
             .users_balance_by_fft_share
-            .insert(fft_share, temp);
+            .insert(&fft_share, &temp);
     }
 
     pub fn seed_total_amount(&self, token_id: String) -> u128 {
@@ -88,28 +88,28 @@ impl Contract {
         let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, id);
 
         let temp = self.data().seed_id_amount.get(&seed_id).unwrap();
-        temp.clone()
+        *temp
     }
 
     ///Return users_balance of a specific fft_share
-    #[inline]
-    pub fn users_share_map_by_fft_share(&self, fft_share: String) -> HashMap<String, u128> {
-        let temp = self
-            .data()
-            .users_balance_by_fft_share
-            .get(&fft_share)
-            .unwrap();
-        temp.clone()
-    }
+    // #[inline]
+    // pub fn users_share_map_by_fft_share(&self, fft_share: String, account_id: String) -> u128 {
+    //     let temp = self
+    //         .data()
+    //         .users_balance_by_fft_share
+    //         .get(&fft_share)
+    //         .unwrap();
+    //     temp.get(&account_id).unwrap()
+    // }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
     pub fn total_supply_amount(&self, fft_share: String) -> u128 {
-        let result: u128 = *self
-            .data()
-            .total_supply_by_fft_share
-            .get(&fft_share)
-            .unwrap_or(&0_u128);
-        result
+        let result = self.data().total_supply_by_fft_share.get(&fft_share);
+        if let Some(res) = result {
+            *res
+        } else {
+            0u128
+        }
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
@@ -123,12 +123,12 @@ impl Contract {
             .unwrap()
             .clone();
 
-        let result: u128 = *self
-            .data_mut()
-            .total_supply_by_fft_share
-            .get(&fft_share_id)
-            .unwrap_or(&0_u128);
-        result
+        let result = self.data_mut().total_supply_by_fft_share.get(&fft_share_id);
+        if let Some(res) = result {
+            *res
+        } else {
+            0u128
+        }
     }
     pub fn convert_pool_id_in_fft_share(&mut self, token_id: String) -> String {
         let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
@@ -152,18 +152,25 @@ impl Contract {
 
         let new_balance = old_amount + balance;
         log!("{} + {} = new_balance {}", old_amount, balance, new_balance);
-        let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
 
-        hash_temp.insert(user, new_balance);
+        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
+
+        let mut map_temp = if temp.is_some() {
+            temp.unwrap()
+        } else {
+            LookupMap::new(b"a")
+        };
+        map_temp.insert(&user, &new_balance);
+
         self.data_mut()
             .users_balance_by_fft_share
-            .insert(fft_share.clone(), hash_temp);
+            .insert(&fft_share, &map_temp);
 
         //Add balance to the total supply
         let old_total = self.total_supply_amount(fft_share.clone());
         self.data_mut()
             .total_supply_by_fft_share
-            .insert(fft_share, old_total + balance);
+            .insert(fft_share, (old_total + balance));
 
         //Returning the new balance
         new_balance
@@ -178,17 +185,26 @@ impl Contract {
         assert!(old_amount >= balance);
         let new_balance = old_amount - balance;
         log!("{} - {} = new_balance {}", old_amount, balance, new_balance);
-        let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
-        hash_temp.insert(user, new_balance);
+
+        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
+
+        let mut map_temp = if temp.is_some() {
+            temp.unwrap()
+        } else {
+            LookupMap::new(b"a")
+        };
+
+        map_temp.insert(&user, &new_balance);
+
         self.data_mut()
             .users_balance_by_fft_share
-            .insert(fft_share.clone(), hash_temp);
+            .insert(&fft_share, &map_temp);
 
         //Sub balance to the total supply
         let old_total = self.total_supply_amount(fft_share.clone());
         self.data_mut()
             .total_supply_by_fft_share
-            .insert(fft_share, old_total - balance);
+            .insert(fft_share, (old_total - balance));
 
         //Returning the new balance
         new_balance
@@ -260,20 +276,41 @@ impl Contract {
         let new_balance = old_amount - amount;
         log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
 
-        let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
-        hash_temp.insert(sender_id, new_balance);
+        // let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
+        // hash_temp.insert(&sender_id, &new_balance);
+
+        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
+
+        let mut map_temp = if temp.is_some() {
+            temp.unwrap()
+        } else {
+            LookupMap::new(b"a")
+        };
+        map_temp.insert(&sender_id, &new_balance);
+
         self.data_mut()
             .users_balance_by_fft_share
-            .insert(fft_share.clone(), hash_temp);
+            .insert(&fft_share, &map_temp);
 
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), receiver_id.clone());
         let new_balance = old_amount + amount;
         log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
-        let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
-        hash_temp.insert(receiver_id, new_balance);
+
+        // let mut hash_temp = self.users_share_map_by_fft_share(fft_share.clone());
+        // hash_temp.insert(&receiver_id, &new_balance);
+
+        let temp = self.data().users_balance_by_fft_share.get(&fft_share);
+
+        let mut map_temp = if temp.is_some() {
+            temp.unwrap()
+        } else {
+            LookupMap::new(b"a")
+        };
+        map_temp.insert(&receiver_id, &new_balance);
+
         self.data_mut()
             .users_balance_by_fft_share
-            .insert(fft_share, hash_temp);
+            .insert(&fft_share, &map_temp);
     }
 
     ///Transfer fft_shares internally (account to account),
