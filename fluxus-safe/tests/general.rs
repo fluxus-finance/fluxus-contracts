@@ -872,20 +872,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         user_amount_of_seed
     );
 
-    // let _res = owner
-    //     .call(&worker, safe_contract.id(), "unstake")
-    //     .args_json(serde_json::json!({ "token_id": token_id }))?
-    //     .gas(utils::TOTAL_GAS)
-    //     .transact()
-    //     .await?;
-
-    // let _res = farmer1
-    //     .call(&worker, safe_contract.id(), "unstake")
-    //     .args_json(serde_json::json!({ "token_id": token_id }))?
-    //     .gas(utils::TOTAL_GAS)
-    //     .transact()
-    //     .await?;
-
     // Get owner shares from exchange
     let owner_shares_on_exchange: String =
         utils::get_pool_shares(&owner, &exchange, pool_token1_token2, &worker).await?;
