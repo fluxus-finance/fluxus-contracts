@@ -116,10 +116,6 @@ pub struct ContractData {
     /// illustration: map(fft_share[i], map(user[i], balance[i])).
     users_balance_by_fft_share: LookupMap<String, LookupMap<String, u128>>,
 
-    ///Store the auto-compounders of the seeds.
-    /// illustration: map( seed[i], vec(user[i]) ).//TODO
-    // compounders_by_seed_id: HashMap<String, HashSet<String>>,
-
     ///Store the fft_share total_supply for each seed_id.
     total_supply_by_fft_share: LookupMap<String, u128>,
 
@@ -390,7 +386,6 @@ impl Contract {
                 state: RunningState::Running,
                 users_total_near_deposited: LookupMap::new(StorageKey::NearDeposited),
                 users_balance_by_fft_share: LookupMap::new(StorageKey::UsersBalanceByShare),
-                // compounders_by_seed_id: HashMap::new(),
                 total_supply_by_fft_share: LookupMap::new(StorageKey::TotalSupplyByShare),
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),

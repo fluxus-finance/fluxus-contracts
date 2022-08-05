@@ -93,17 +93,6 @@ impl Contract {
         temp
     }
 
-    ///Return users_balance of a specific fft_share
-    // #[inline]
-    // pub fn users_share_map_by_fft_share(&self, fft_share: String, account_id: String) -> u128 {
-    //     let temp = self
-    //         .data()
-    //         .users_balance_by_fft_share
-    //         .get(&fft_share)
-    //         .unwrap();
-    //     temp.get(&account_id).unwrap()
-    // }
-
     ///Return the total_supply of an specific fft_share (ref lp token).
     pub fn total_supply_amount(&self, fft_share: String) -> u128 {
         let result = self.data().total_supply_by_fft_share.get(&fft_share);
