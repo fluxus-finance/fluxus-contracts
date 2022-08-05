@@ -1,6 +1,5 @@
 use near_sdk::PromiseError;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
@@ -251,9 +250,10 @@ pub trait Callbacks {
         #[callback_result] claim_result: Result<(), PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128>;
-    fn callback_post_unclaimed_reward(
+    fn callback_post_unclaimed_rewards(
         &self,
-        #[callback_result] reward_result: Result<U128, PromiseError>,
+        #[callback_result] rewards_result: Result<HashMap<String, U128>, PromiseError>,
+        reward_token: AccountId,
     );
     fn callback_get_pool_shares(
         &self,

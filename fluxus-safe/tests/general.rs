@@ -3,23 +3,13 @@ use std::collections::HashMap;
 use fluxus_safe::{self, get_ids_from_farm};
 mod utils;
 
+use near_sdk::json_types::U128;
 use near_units::parse_near;
 use percentage::Percentage;
 use workspaces::{
     network::{DevAccountDeployer, Sandbox},
     Account, AccountId, Contract, Network, Worker,
 };
-
-const TOTAL_GAS: u64 = 300_000_000_000_000;
-
-const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
-const TOTAL_PROTOCOL_FEE: u128 = 10;
-const SENTRY_FEES_PERCENT: u128 = 10;
-const STRAT_FEES_PERCENT: u128 = 10;
-const TREASURY_FEES_PERCENT: u128 = 80;
-const POOL_ID_PLACEHOLDER: u64 = 9999;
-
-use utils::MIN_SEED_DEPOSIT;
 
 async fn fast_forward(
     blocks_to_forward: u64,
@@ -51,17 +41,24 @@ async fn do_harvest(
     farm_id_str: &String,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<u128> {
+    //Check amount of unclaimed rewards the Strategy has
+    let mut unclaimed_amount = 0u128;
+
     for i in 0..4 {
         let _res = sentry_acc
             .call(worker, contract.id(), "harvest")
             .args_json(serde_json::json!({ "farm_id_str": farm_id_str }))?
-            .gas(TOTAL_GAS)
+            .gas(utils::TOTAL_GAS)
             .transact()
             .await?;
         println!("harvest step {}: {:#?}\n", i + 1, _res);
+
+        if i == 0 {
+            unclaimed_amount = _res.json()?;
+        }
     }
 
-    Ok(0)
+    Ok(unclaimed_amount)
 }
 
 /// Runs the full cycle of auto-compound and fast forward
@@ -77,9 +74,9 @@ async fn do_auto_compound_with_fast_forward(
         fast_forward(blocks_to_forward, fast_forward_counter, worker).await?;
     }
 
-    do_harvest(sentry_acc, contract, farm_id_str, worker).await?;
+    let unclaimed_amount = do_harvest(sentry_acc, contract, farm_id_str, worker).await?;
 
-    Ok(0)
+    Ok(unclaimed_amount)
 }
 
 /// Return the number of shares that the account has in the auto-compound contract
@@ -97,7 +94,7 @@ async fn get_user_shares(
             "seed_id": seed_id,
             "user": account.to_string(),
         }))?
-        .gas(TOTAL_GAS)
+        .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
     // println!("just retrieved the info {:#?}", res);
@@ -175,7 +172,7 @@ async fn stake_into_safe(
             "amount": initial_shares,
             "msg": ""
         }))?
-        .gas(TOTAL_GAS)
+        .gas(utils::TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
@@ -236,7 +233,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
     let owner = worker.root_account();
 
-    let exchange_id: AccountId = CONTRACT_ID_REF_EXC.parse().unwrap();
+    let exchange_id: AccountId = utils::CONTRACT_ID_REF_EXC.parse().unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 1: Deploy relevant contracts
@@ -257,21 +254,21 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // Create multiple accounts
     let farmer1 = worker.dev_create_account().await?;
-    let strat_creator = worker.dev_create_account().await?;
-    let sentry = worker.dev_create_account().await?;
+    let strat_creator_acc = worker.dev_create_account().await?;
+    let sentry_acc = worker.dev_create_account().await?;
 
     println!(
-        "Ids: owner {} farmer1 {} strat_creator {} sentry {}",
+        "Ids: owner {} farmer1 {} strat_creator_acc {} sentry_acc {}",
         owner.id(),
         farmer1.id(),
-        strat_creator.id(),
-        sentry.id()
+        strat_creator_acc.id(),
+        sentry_acc.id()
     );
 
     // Transfer from owner to multiple accounts
     utils::transfer_tokens(
         &owner,
-        vec![&farmer1, &strat_creator, treasury.as_account()],
+        vec![&farmer1, &strat_creator_acc, treasury.as_account()],
         maplit::hashmap! {
             token_1.id() => parse_near!("10,000 N"),
             token_2.id() => parse_near!("10,000 N"),
@@ -293,11 +290,39 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
-    // Register contracts into exchange
+    // Register Sentry into tokens
     utils::register_into_contracts(
         &worker,
-        &sentry,
+        &sentry_acc,
         vec![
+            exchange.id(),
+            token_1.id(),
+            token_2.id(),
+            token_reward_1.id(),
+            token_reward_2.id(),
+        ],
+    )
+    .await?;
+
+    // Register Strat creator into tokens
+    utils::register_into_contracts(
+        &worker,
+        &strat_creator_acc,
+        vec![
+            exchange.id(),
+            token_1.id(),
+            token_2.id(),
+            token_reward_1.id(),
+            token_reward_2.id(),
+        ],
+    )
+    .await?;
+
+    utils::register_into_contracts(
+        &worker,
+        treasury.as_account(),
+        vec![
+            exchange.id(),
             token_1.id(),
             token_2.id(),
             token_reward_1.id(),
@@ -308,18 +333,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // register accounts into exchange and transfer tokens
     utils::register_into_contracts(&worker, &farmer1, vec![exchange.id()]).await?;
-    utils::register_into_contracts(
-        &worker,
-        &strat_creator,
-        vec![exchange.id(), token_reward_1.id(), token_reward_2.id()],
-    )
-    .await?;
-    utils::register_into_contracts(
-        &worker,
-        treasury.as_account(),
-        vec![exchange.id(), token_reward_1.id(), token_reward_2.id()],
-    )
-    .await?;
 
     utils::deposit_tokens(
         &worker,
@@ -358,7 +371,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
-    let seed_id1: String = format! {"{}@{}", CONTRACT_ID_REF_EXC, pool_token1_token2};
+    let seed_id1: String = format! {"{}@{}", utils::CONTRACT_ID_REF_EXC, pool_token1_token2};
 
     // Create farms
     let farm = utils::deploy_farm(&owner, &worker).await?;
@@ -372,11 +385,11 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // Stage 3: Deploy Safe contract
     ///////////////////////////////////////////////////////////////////////////
 
-    let safe_contract = utils::deploy_safe_contract(&strat_creator, &treasury, &worker).await?;
+    let safe_contract = utils::deploy_safe_contract(&strat_creator_acc, &treasury, &worker).await?;
     println!("safe contract {}", safe_contract.id());
 
     utils::create_strategy(
-        &strat_creator,
+        &strat_creator_acc,
         &safe_contract,
         &token_1,
         &token_2,
@@ -452,7 +465,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             "amount": initial_owner_shares.clone(),
             "msg": ""
         }))?
-        .gas(TOTAL_GAS)
+        .gas(utils::TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
@@ -475,10 +488,36 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     let mut fast_forward_counter: u64 = 0;
 
-    // utils::log_farm_info(&farm, &seed_id1, &worker).await;
+    let balance_before_sentry = i128::try_from(
+        utils::get_balance_of(&sentry_acc, &token_reward_1, true, &worker, None)
+            .await?
+            .0,
+    )
+    .unwrap();
 
-    do_auto_compound_with_fast_forward(
-        &owner,
+    let balance_before_treasury = i128::try_from(
+        utils::get_balance_of(
+            treasury.as_account(),
+            &exchange,
+            false,
+            &worker,
+            Some(token_reward_1.id().to_string()),
+        )
+        .await?
+        .0,
+    )
+    .unwrap();
+
+    println!("Checking treasury balance");
+    let balance_before_strat_creator = i128::try_from(
+        utils::get_balance_of(&strat_creator_acc, &token_reward_1, true, &worker, None)
+            .await?
+            .0,
+    )
+    .unwrap();
+
+    let amount_claimed = do_auto_compound_with_fast_forward(
+        &sentry_acc,
         &safe_contract,
         &farm_str0,
         700,
@@ -498,6 +537,70 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         "ERR_AUTO_COMPOUND_DOES_NOT_WORK. Expected {} and received {}",
         owner_deposited_shares,
         round1_owner_shares
+    );
+
+    let all_fees_amount = Percentage::from(utils::TOTAL_PROTOCOL_FEE).apply_to(amount_claimed);
+
+    println!(
+        "Amount claimed: {} | Protocol fees: {}",
+        amount_claimed, all_fees_amount
+    );
+
+    let sentry_due_fees =
+        i128::try_from(Percentage::from(utils::SENTRY_FEES_PERCENT).apply_to(all_fees_amount))
+            .unwrap();
+    let strat_creator_due_fees = i128::try_from(
+        Percentage::from(utils::STRAT_CREATOR_FEES_PERCENT).apply_to(all_fees_amount),
+    )
+    .unwrap();
+    let treasury_due_fees =
+        i128::try_from(Percentage::from(utils::TREASURY_FEES_PERCENT).apply_to(all_fees_amount))
+            .unwrap();
+    let balance_after_sentry = i128::try_from(
+        utils::get_balance_of(&sentry_acc, &token_reward_1, true, &worker, None)
+            .await?
+            .0,
+    )
+    .unwrap();
+    let balance_after_treasury = i128::try_from(
+        utils::get_balance_of(
+            treasury.as_account(),
+            &exchange,
+            false,
+            &worker,
+            Some(token_reward_1.id().to_string()),
+        )
+        .await?
+        .0,
+    )
+    .unwrap();
+    let balance_after_strat_creator = i128::try_from(
+        utils::get_balance_of(&strat_creator_acc, &token_reward_1, true, &worker, None)
+            .await?
+            .0,
+    )
+    .unwrap();
+    assert!(
+        (balance_after_sentry - (sentry_due_fees + balance_before_sentry)).abs() < 9,
+        "ERR: Sentry did not receive his due fees. there is: {} should be: {}",
+        balance_after_sentry,
+        (sentry_due_fees + balance_before_sentry)
+    );
+
+    assert!(
+        (balance_after_strat_creator - (strat_creator_due_fees + balance_before_strat_creator))
+            .abs()
+            < 9,
+        "ERR: Strat Creator did not receive his due fees. there is: {} should be: {}",
+        balance_before_strat_creator,
+        (strat_creator_due_fees + balance_before_strat_creator)
+    );
+
+    assert!(
+        (balance_after_treasury - (treasury_due_fees + balance_before_treasury)).abs() < 9,
+        "ERR: Treasury did not receive his due fees. there is: {} should be: {}",
+        balance_after_treasury,
+        (strat_creator_due_fees + balance_before_strat_creator)
     );
 
     println!("First round of auto-compound succeeded!");
@@ -534,7 +637,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             "amount": account1_initial_shares,
             "msg": ""
         }))?
-        .gas(TOTAL_GAS)
+        .gas(utils::TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
@@ -561,7 +664,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // utils::log_farm_info(&farm, &seed_id1, &worker).await;
 
     do_auto_compound_with_fast_forward(
-        &sentry,
+        &sentry_acc,
         &safe_contract,
         &farm_str0,
         900,
@@ -610,14 +713,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let _res = owner
         .call(&worker, safe_contract.id(), "unstake")
         .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
+        .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
 
     let _res = farmer1
         .call(&worker, safe_contract.id(), "unstake")
         .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
+        .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
 
@@ -653,7 +756,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let _res = owner
         .call(&worker, safe_contract.id(), "seed_total_amount")
         .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
+        .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
     let seed_total_amount: u128 = _res.json()?;
@@ -707,7 +810,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     utils::add_strategy(
         &safe_contract,
         &token_1,
-        POOL_ID_PLACEHOLDER,
+        utils::POOL_ID_PLACEHOLDER,
         pool_token1_token2,
         pool_token1_token2,
         farm_id2,
@@ -720,7 +823,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &safe_contract,
         &token_2,
         pool_token1_token2,
-        POOL_ID_PLACEHOLDER,
+        utils::POOL_ID_PLACEHOLDER,
         pool_token1_token2,
         farm_id3,
         &worker,
@@ -766,7 +869,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
             println!("farm_str {}", farm_str);
 
-            do_harvest(&sentry, &safe_contract, farm_str, &worker).await?;
+            do_harvest(&sentry_acc, &safe_contract, farm_str, &worker).await?;
 
             // checks farmers earnings
             for mut farmer in farmers_map.iter_mut() {
@@ -801,301 +904,3 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-// #[tokio::test]
-// async fn simulate_reward_distribution() -> anyhow::Result<()> {
-//     let worker = workspaces::sandbox().await?;
-//     let owner = worker.root_account();
-
-//     let exchange_id: AccountId = CONTRACT_ID_REF_EXC.parse().unwrap();
-
-//     ///////////////////////////////////////////////////////////////////////////
-//     // Stage 1: Deploy relevant contracts
-//     ///////////////////////////////////////////////////////////////////////////
-//     let (token_1, token_2, token_reward, exchange, treasury) =
-//         deploy_aux_contracts(&owner, &exchange_id, &worker).await;
-
-//     // Create needed accounts
-//     let farmer1 = worker.dev_create_account().await?;
-//     let strat_creator_acc = worker.dev_create_account().await?;
-//     let sentry_acc = worker.dev_create_account().await?;
-
-//     utils::transfer_tokens(
-//         &owner,
-//         &farmer1,
-//         maplit::hashmap! {
-//             token_1.id() => parse_near!("10,000 N"),
-//             token_2.id() => parse_near!("10,000 N"),
-//         },
-//         &worker,
-//     )
-//     .await?;
-
-//     // Register contracts into exchange
-//     utils::register_into_contracts(
-//         &worker,
-//         exchange.as_account(),
-//         vec![token_1.id(), token_2.id(), token_reward.id()],
-//     )
-//     .await?;
-
-//     // register accounts into exchange
-//     utils::register_into_contracts(&worker, &farmer1, vec![exchange.id()]).await?;
-//     utils::register_into_contracts(&worker, treasury.as_account(), vec![exchange.id()]).await?;
-
-//     utils::deposit_tokens(
-//         &worker,
-//         &farmer1,
-//         &exchange,
-//         maplit::hashmap! {
-//             token_1.id() => parse_near!("30 N"),
-//             token_2.id() => parse_near!("30 N"),
-//         },
-//     )
-//     .await?;
-
-//     ///////////////////////////////////////////////////////////////////////////
-//     // Stage 2: Create pools and farm
-//     ///////////////////////////////////////////////////////////////////////////
-
-//     let (pool_token1_token2, pool_token1_reward, pool_token2_reward) = utils::create_pools(
-//         &owner,
-//         &exchange,
-//         &token_1,
-//         &token_2,
-//         &token_reward,
-//         &worker,
-//     )
-//     .await?;
-
-//     let seed_id: String = format! {"{}@{}", CONTRACT_ID_REF_EXC, pool_token1_token2};
-
-//     // Create farm
-//     let farm = utils::deploy_farm(&owner, &worker).await?;
-//     let farm_id0 = utils::create_farm(&owner, &farm, &seed_id, &token_reward, &worker).await?;
-
-//     ///////////////////////////////////////////////////////////////////////////
-//     // Stage 3: Deploy Safe contract
-//     ///////////////////////////////////////////////////////////////////////////
-
-//     let contract = utils::deploy_safe_contract(&owner, &treasury, &worker).await?;
-
-//     utils::create_strategy(
-//         &strat_creator_acc,
-//         &contract,
-//         &token_1,
-//         &token_2,
-//         &token_reward,
-//         pool_token1_reward,
-//         pool_token2_reward,
-//         pool_token1_token2,
-//         farm_id0,
-//         &worker,
-//     )
-//     .await?;
-
-//     ///////////////////////////////////////////////////////////////////////////
-//     // Stage 4: Initialize Safe
-//     ///////////////////////////////////////////////////////////////////////////
-
-//     /* Register into farm contract */
-//     let res = contract
-//         .as_account()
-//         .call(&worker, farm.id(), "storage_deposit")
-//         .args_json(serde_json::json!({ "account_id": contract.id() }))?
-//         .deposit(parse_near!("1 N"))
-//         .transact()
-//         .await?;
-
-//     /* Register contract into tokens */
-//     utils::register_into_contracts(
-//         &worker,
-//         contract.as_account(),
-//         vec![&exchange_id, token_1.id(), token_2.id(), token_reward.id()],
-//     )
-//     .await?;
-
-//     let pool_id: String = format!(":{}", pool_token1_token2);
-
-//     let res = contract
-//         .as_account()
-//         .call(&worker, exchange.id(), "mft_register")
-//         .args_json(serde_json::json!({
-//             "token_id": pool_id.clone(),
-//             "account_id": contract.id() }))?
-//         .deposit(parse_near!("1 N"))
-//         .transact()
-//         .await?;
-//     // println!("mft_register {:#?}", res);
-//     ///////////////////////////////////////////////////////////////////////////
-//     // Stage 5: Start interacting with Safe
-//     ///////////////////////////////////////////////////////////////////////////
-
-//     let initial_owner_shares: String =
-//         utils::get_pool_shares(&owner, &exchange, pool_token1_token2, &worker).await?;
-
-//     let token_id: String = format!(":{}", pool_token1_token2);
-//     let seed_id: String = format!("{}@{}", exchange.id(), pool_token1_token2);
-//     /* Stake */
-//     let res = owner
-//         .call(&worker, exchange.id(), "mft_transfer_call")
-//         .args_json(serde_json::json!({
-//             "token_id": token_id,
-//             "receiver_id": contract.id().to_string(),
-//             "amount": initial_owner_shares.clone(),
-//             "msg": ""
-//         }))?
-//         .gas(TOTAL_GAS)
-//         .deposit(parse_near!("1 yN"))
-//         .transact()
-//         .await?;
-//     // println!("mft_transfer_call {:#?}\n", res);
-
-//     let owner_shares_on_contract = get_user_shares(&contract, &owner, &seed_id, &worker).await?;
-//     // assert that contract received the correct number of shares
-//     assert_eq!(
-//         owner_shares_on_contract,
-//         utils::str_to_u128(&initial_owner_shares),
-//         "ERR: the amount of shares doesn't match there is : {} should be {}",
-//         owner_shares_on_contract,
-//         initial_owner_shares
-//     );
-
-//     ///////////////////////////////////////////////////////////////////////////
-//     // Stage 6: Fast forward in the future and auto-compound
-//     ///////////////////////////////////////////////////////////////////////////
-//     // register user
-//     sentry_acc
-//         .call(&worker, token_reward.id(), "storage_deposit")
-//         .args_json(serde_json::json!({
-//             "account_id": sentry_acc.id()
-//         }))?
-//         .deposit(parse_near!("0.08 N"))
-//         .transact()
-//         .await?;
-
-//     // register user
-//     strat_creator_acc
-//         .call(&worker, token_reward.id(), "storage_deposit")
-//         .args_json(serde_json::json!({
-//             "account_id": strat_creator_acc.id()
-//         }))?
-//         .deposit(parse_near!("0.08 N"))
-//         .transact()
-//         .await?;
-
-//     let mut fast_forward_counter: u64 = 0;
-//     let balance_before_sentry = i128::try_from(
-//         utils::get_balance_of(&sentry_acc, &token_reward, true, &worker, None)
-//             .await?
-//             .0,
-//     )
-//     .unwrap();
-//     println!("Checking treasury balance");
-//     let balance_before_treasury = i128::try_from(
-//         utils::get_balance_of(
-//             treasury.as_account(),
-//             &exchange,
-//             false,
-//             &worker,
-//             Some(token_reward.id().to_string()),
-//         )
-//         .await?
-//         .0,
-//     )
-//     .unwrap();
-//     let balance_before_strat_creator = i128::try_from(
-//         utils::get_balance_of(&strat_creator_acc, &token_reward, true, &worker, None)
-//             .await?
-//             .0,
-//     )
-//     .unwrap();
-//     // println!("Checking sentry balance before: {:#?}",balance_before_sentry);
-//     // println!("Checking treasury balance before: {:#?}",balance_before_treasury);
-//     // println!("Checking strat_creator balance before: {:#?}",balance_before_strat_creator);
-
-//     let amount_claimed = do_auto_compound_with_fast_forward(
-//         &sentry_acc,
-//         &contract,
-//         &token_id,
-//         700,
-//         &mut fast_forward_counter,
-//         &worker,
-//     )
-//     .await?;
-
-//     // Validate claimed amount and percentuals after first compound cycle
-//     let unclaimed_amount = utils::get_unclaimed_rewards(&contract, &token_id, &worker).await?;
-//     assert!(
-//         unclaimed_amount == 0,
-//         "ERR: Unclaimend amount should be 0 after compounding round"
-//     );
-//     // println!("Users claimed amount: {:#?}\n", amount_claimed);
-//     let all_fees_amount = Percentage::from(TOTAL_PROTOCOL_FEE).apply_to(amount_claimed);
-//     let sentry_due_fees =
-//         i128::try_from(Percentage::from(SENTRY_FEES_PERCENT).apply_to(all_fees_amount)).unwrap();
-//     let strat_creator_due_fees =
-//         i128::try_from(Percentage::from(STRAT_FEES_PERCENT).apply_to(all_fees_amount)).unwrap();
-//     let treasury_due_fees =
-//         i128::try_from(Percentage::from(TREASURY_FEES_PERCENT).apply_to(all_fees_amount)).unwrap();
-//     let balance_after_sentry = i128::try_from(
-//         utils::get_balance_of(&sentry_acc, &token_reward, true, &worker, None)
-//             .await?
-//             .0,
-//     )
-//     .unwrap();
-//     let balance_after_treasury = i128::try_from(
-//         utils::get_balance_of(
-//             treasury.as_account(),
-//             &exchange,
-//             false,
-//             &worker,
-//             Some(token_reward.id().to_string()),
-//         )
-//         .await?
-//         .0,
-//     )
-//     .unwrap();
-//     let balance_after_strat_creator = i128::try_from(
-//         utils::get_balance_of(&strat_creator_acc, &token_reward, true, &worker, None)
-//             .await?
-//             .0,
-//     )
-//     .unwrap();
-//     assert!(
-//         (balance_after_sentry - (sentry_due_fees + balance_before_sentry)).abs() < 9,
-//         "ERR: Sentry did not receive his due fees. there is: {} should be: {}",
-//         balance_after_sentry,
-//         (sentry_due_fees + balance_before_sentry)
-//     );
-
-//     assert!(
-//         (balance_after_strat_creator - (strat_creator_due_fees + balance_before_strat_creator))
-//             .abs()
-//             < 9,
-//         "ERR: Strat Creator did not receive his due fees. there is: {} should be: {}",
-//         balance_before_strat_creator,
-//         (strat_creator_due_fees + balance_before_strat_creator)
-//     );
-
-//     assert!(
-//         (balance_after_treasury - (treasury_due_fees + balance_before_treasury)).abs() < 9,
-//         "ERR: Treasury did not receive his due fees. there is: {} should be: {}",
-//         balance_after_treasury,
-//         (strat_creator_due_fees + balance_before_strat_creator)
-//     );
-//     // println!("Checking sentry balance after: {:#?}",balance_after_sentry);
-//     // println!("Checking treasury balance after: {:#?}",balance_after_treasury);
-//     // println!("Checking strat_creator balance after: {:#?}",balance_after_strat_creator);
-//     let owner_deposited_shares: u128 = utils::str_to_u128(&initial_owner_shares);
-
-//     // Get owner shares from auto-compound contract
-//     let round1_owner_shares: u128 = get_user_shares(&contract, &owner, &seed_id, &worker).await?;
-//     // Assert the current value is higher than the initial value deposited
-//     assert!(
-//         round1_owner_shares > owner_deposited_shares,
-//         "ERR_AUTO_COMPOUND_DOES_NOT_WORK"
-//     );
-
-//     Ok(())
-// }
