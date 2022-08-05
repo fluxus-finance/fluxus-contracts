@@ -781,3 +781,23 @@ pub async fn create_account_and_add_liquidity(
     // println!("added liquidity: {:#?}\n", res);
     Ok(0)
 }
+
+pub async fn get_user_fft(
+    contract: &Contract,
+    account: &Account,
+    fft_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<u128> {
+    let res = contract
+        .call(worker, "users_fft_share_amount")
+        .args_json(serde_json::json!({
+            "fft_share": fft_id,
+            "user": account.id().to_string(),
+        }))?
+        .gas(TOTAL_GAS)
+        .transact()
+        .await?;
+    // println!("just retrieved the info {:#?}", res);
+    let account_shares: u128 = res.json()?;
+    Ok(account_shares)
+}

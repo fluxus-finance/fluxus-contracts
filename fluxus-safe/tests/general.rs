@@ -37,7 +37,7 @@ async fn fast_forward(
 
 async fn do_harvest(
     sentry_acc: &Account,
-    contract: &Contract,
+    safe_contract: &Contract,
     farm_id_str: &String,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<u128> {
@@ -46,7 +46,7 @@ async fn do_harvest(
 
     for i in 0..4 {
         let _res = sentry_acc
-            .call(worker, contract.id(), "harvest")
+            .call(worker, safe_contract.id(), "harvest")
             .args_json(serde_json::json!({ "farm_id_str": farm_id_str }))?
             .gas(utils::TOTAL_GAS)
             .transact()
@@ -87,7 +87,7 @@ async fn get_user_shares(
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
     // println!("Checking account id {:#?}", account.to_string());
-    // println!("Checking seed_id {:#?}", seed_id);
+    // println!("Checking seed_id1 {:#?}", seed_id1);
     let res = contract
         .call(worker, "user_share_seed_id")
         .args_json(serde_json::json!({
@@ -144,7 +144,7 @@ async fn stake_into_safe(
     exchange: &Contract,
     account: &Account,
     pool_id: u64,
-    seed_id: &String,
+    seed_id1: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
     // add liquidity to pool
@@ -178,7 +178,7 @@ async fn stake_into_safe(
         .await?;
     // println!("mft_transfer_call {:#?}\n", res);//
 
-    let deposited_shares = get_user_shares(safe_contract, account.id(), seed_id, worker).await?;
+    let deposited_shares = get_user_shares(safe_contract, account.id(), seed_id1, worker).await?;
 
     // assert that contract received the correct number of shares, due to precision issues derived of recurring tithe we must not accept aboslute errors bigger than 9
     // TODO: validates with fuzzing and way more testing to ensure absolute error is not bigger than 9
@@ -456,6 +456,13 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let initial_owner_shares: String =
         utils::get_pool_shares(&owner, &exchange, pool_token1_token2, &worker).await?;
 
+    let fft_token: String = owner
+        .call(&worker, safe_contract.id(), "fft_token_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
+        .transact()
+        .await?
+        .json()?;
+
     /* Stake */
     let res = owner
         .call(&worker, exchange.id(), "mft_transfer_call")
@@ -482,11 +489,18 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         initial_owner_shares
     );
 
+    let owner_fft_shares = utils::get_user_fft(&safe_contract, &owner, &fft_token, &worker).await?;
+    assert_eq!(
+        owner_fft_shares, owner_shares_on_contract,
+        "ERR: First user should receive the same amount of fft as seed_id1 deposited"
+    );
+
     ///////////////////////////////////////////////////////////////////////////
     // Stage 6: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
     let mut fast_forward_counter: u64 = 0;
+    println!("Checking fees balance");
 
     let balance_before_sentry = i128::try_from(
         utils::get_balance_of(&sentry_acc, &token_reward_1, true, &worker, None)
@@ -508,7 +522,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .unwrap();
 
-    println!("Checking treasury balance");
     let balance_before_strat_creator = i128::try_from(
         utils::get_balance_of(&strat_creator_acc, &token_reward_1, true, &worker, None)
             .await?
@@ -541,10 +554,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     let all_fees_amount = Percentage::from(utils::TOTAL_PROTOCOL_FEE).apply_to(amount_claimed);
 
-    println!(
-        "Amount claimed: {} | Protocol fees: {}",
-        amount_claimed, all_fees_amount
-    );
+    println!("Amount claimed: {}", amount_claimed);
 
     let sentry_due_fees =
         i128::try_from(Percentage::from(utils::SENTRY_FEES_PERCENT).apply_to(all_fees_amount))
@@ -603,7 +613,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         (strat_creator_due_fees + balance_before_strat_creator)
     );
 
-    println!("First round of auto-compound succeeded!");
+    println!("First round of auto-compound succeeded! Fees distributed correctly!");
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 7: Stake with another account
@@ -709,20 +719,172 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
     // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
+    //Total seed in the contract
+    let res = owner
+        .call(&worker, safe_contract.id(), "seed_total_amount")
+        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    let seed_before_withdraw: u128 = res.json()?;
+    println!(
+        "Total seed before the withdraw is =  {}",
+        seed_before_withdraw
+    );
 
-    let _res = owner
+    //Total user's amount of fft_shares
+    let res = owner
+        .call(&worker, safe_contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id1, "user":owner.id().to_string()}))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    //Available to unstake
+    let unstaked: u128 = res.json()?;
+
+    //Calling unstake
+    let res = owner
         .call(&worker, safe_contract.id(), "unstake")
         .args_json(serde_json::json!({ "token_id": token_id }))?
         .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
 
-    let _res = farmer1
-        .call(&worker, safe_contract.id(), "unstake")
+    //Getting user's amount of shares
+    let res = owner
+        .call(&worker, safe_contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id1, "user":owner.id().to_string()}))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    let user_amount_of_seed: u128 = res.json()?;
+
+    //Checking that the user has no balance after unstake all available.
+    assert_eq!(
+        user_amount_of_seed, 0_u128,
+        "User amount need to be 0 after unstake, but it is {}.",
+        user_amount_of_seed
+    );
+
+    //Getting the total seed available in the contract
+    let res = owner
+        .call(&worker, safe_contract.id(), "seed_total_amount")
         .args_json(serde_json::json!({ "token_id": token_id }))?
         .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
+    let seed_after_withdraw: u128 = res.json()?;
+    println!("Total seed is =  {}", seed_after_withdraw);
+
+    //Checking if the new amount of seed is correct
+    assert_eq!(
+        seed_after_withdraw,
+        seed_before_withdraw - unstaked,
+        "New amount of seed is incorrect: {} =! {} - {}",
+        seed_after_withdraw,
+        seed_before_withdraw,
+        unstaked
+    );
+    let mut seed_total = seed_after_withdraw;
+
+    //Getting the seed amount available for the user farmer1
+    let res = farmer1
+        .call(&worker, safe_contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id1, "user":farmer1.id().to_string()  }))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    let unstaked: u128 = res.json()?;
+
+    let withdraw1: U128 = U128::from((unstaked / 2_u128));
+
+    //Calling unstake with a half of the user's total available seed
+    let res = farmer1
+        .call(&worker, safe_contract.id(), "unstake")
+        .args_json(serde_json::json!({ "token_id": token_id , "amount_withdrawal":withdraw1 }))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    println!(" farmer1 unstaked successfully {:#?}", res);
+
+    //New amount in the contract needs to be:
+    seed_total = seed_total - unstaked / 2_u128;
+
+    let res = farmer1
+        .call(&worker, safe_contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id1, "user":farmer1.id().to_string()  }))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    let user_amount_of_seed: u128 = res.json()?;
+
+    //Checking if the user amount of shares
+    assert!(
+        user_amount_of_seed - (unstaked / 2) < 10,
+        "User amount need to be {} after unstake, but it is {}.",
+        (unstaked / 2),
+        user_amount_of_seed
+    );
+
+    let unstaked: u128 = res.json()?;
+    let withdraw2: U128 = U128::from((unstaked));
+
+    //Calling unstake to withdraw the rest
+    let res = farmer1
+        .call(&worker, safe_contract.id(), "unstake")
+        .args_json(serde_json::json!({ "token_id": token_id , "amount_withdrawal": withdraw2}))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    println!(" farmer1 unstaked successfully {:#?}", res);
+
+    let res = owner
+        .call(&worker, safe_contract.id(), "seed_total_amount")
+        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    let seed_after_withdraw: u128 = res.json()?;
+
+    //Testing the contract total amount after unstake
+    assert_eq!(
+        seed_after_withdraw,
+        seed_total - unstaked,
+        "New amount of seed is incorrect: {} =! {} - {}",
+        seed_after_withdraw,
+        seed_total,
+        unstaked
+    );
+
+    //Getting the user's amount of seed
+    let res = farmer1
+        .call(&worker, safe_contract.id(), "user_share_seed_id")
+        .args_json(serde_json::json!({ "seed_id": seed_id1, "user":farmer1.id().to_string()}))?
+        .gas(utils::TOTAL_GAS)
+        .transact()
+        .await?;
+    let user_amount_of_seed: u128 = res.json()?;
+
+    //Testing the user new amount after unstake
+    assert_eq!(
+        user_amount_of_seed, 0_u128,
+        "User amount need to be 0 after unstake, but it is {}.",
+        user_amount_of_seed
+    );
+
+    // let _res = owner
+    //     .call(&worker, safe_contract.id(), "unstake")
+    //     .args_json(serde_json::json!({ "token_id": token_id }))?
+    //     .gas(utils::TOTAL_GAS)
+    //     .transact()
+    //     .await?;
+
+    // let _res = farmer1
+    //     .call(&worker, safe_contract.id(), "unstake")
+    //     .args_json(serde_json::json!({ "token_id": token_id }))?
+    //     .gas(utils::TOTAL_GAS)
+    //     .transact()
+    //     .await?;
 
     // Get owner shares from exchange
     let owner_shares_on_exchange: String =
