@@ -2,26 +2,6 @@ use crate::*;
 
 #[near_bindgen]
 impl Contract {
-    /// Returns the number of shares some accountId has in the contract
-    /// Panics if token_id does not exist
-    pub fn get_user_shares(&self, account_id: AccountId, token_id: String) -> SharesBalance {
-        let strat = self.get_strat(token_id);
-
-        let compounder = strat.clone().get();
-
-        let shares = compounder
-            .user_shares
-            .get(&account_id)
-            .unwrap_or(&SharesBalance {
-                deposited: 0u128,
-                total: 0u128,
-            })
-            .clone();
-
-        log!("{:#?} has {:#?}", account_id.to_string(), shares);
-        shares
-    }
-
     /// Function that return the user`s near storage.
     /// WARN: DEPRECATED
     pub fn get_user_storage_state(&self, account_id: AccountId) -> Option<RefStorageState> {
@@ -133,11 +113,26 @@ impl Contract {
         info
     }
 
-    // pub fn get_strat_state(self, token_id: String) -> AutoCompounderState {
-    //     let strat = self.get_strat(&token_id);
-    //     let compounder = strat.get();
-    //     compounder.state
-    // }
+    pub fn get_strategies_info(&self) -> Vec<StratFarmInfo> {
+        let mut info: Vec<StratFarmInfo> = Vec::new();
+        for (_, strat) in self.data().strategies.iter() {
+            for farm in strat.get_ref().farms.iter() {
+                info.push(farm.clone());
+            }
+        }
+
+        info
+    }
+
+    pub fn get_strat_state(self, farm_id_str: String) -> AutoCompounderState {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
+        let strat = self.get_strat(token_id);
+        let compounder = strat.get_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        farm_info.state
+    }
 
     /// Returns exchange and farm contracts
     pub fn get_contract_info(self) -> SafeInfo {
@@ -152,20 +147,22 @@ impl Contract {
         self.data().guardians.to_vec()
     }
 
-    /// Returns current amount holden by the contract
-    pub fn get_contract_amount(self) -> U128 {
-        let mut amount: u128 = 0;
+    /// TODO: refactor it
+    // /// Returns current amount holden by the contract
+    // pub fn get_contract_amount(self) -> U128 {
+    //     let mut amount: u128 = 0;
 
-        for (_, strat) in self.data().strategies.clone() {
-            let compounder = strat.get();
+    //     for (_, strat) in self.data().strategies.clone() {
+    //         let compounder = strat.get();
 
-            for (_, shares) in compounder.user_shares {
-                amount += shares.total;
-            }
-        }
-        U128(amount)
-    }
+    //         for (_, shares) in compounder.user_shares {
+    //             amount += shares.total;
+    //         }
+    //     }
+    //     U128(amount)
+    // }
 
+    /// TODO: refactor it
     ///Return the u128 number of strategies that we have for a specific seed_id.
     // pub fn number_of_strategies_by_seed(&self, seed_id: String) -> u128 {
     //     let num = self.data().compounders_by_seed_id.get(&seed_id);
@@ -203,6 +200,36 @@ impl Contract {
         }
 
         false
+    }
+
+    pub fn current_strat_step(&self, farm_id_str: String) -> String {
+        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let compounder = self.get_strat(token_id).get_ref().clone();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        match farm_info.cycle_stage {
+            AutoCompounderCycle::ClaimReward => "claim_reward".to_string(),
+            AutoCompounderCycle::Withdrawal => "withdraw".to_string(),
+            AutoCompounderCycle::Swap => "swap".to_string(),
+            AutoCompounderCycle::Stake => "stake".to_string(),
+        }
+    }
+
+    pub fn get_farm_ids_by_seed(&self, token_id: String) -> Vec<String> {
+        let mut strats: Vec<String> = vec![];
+
+        let compounder = self.get_strat(token_id.clone()).get_ref().clone();
+
+        for farm in compounder.farms.iter() {
+            strats.push(format!("{}#{}", token_id, farm.id));
+        }
+
+        strats
+    }
+
+    pub fn get_harvest_timestamp(&self, token_id: String) -> String {
+        let compounder = self.get_strat(token_id).get_ref().clone();
+        compounder.harvest_timestamp.to_string()
     }
 }
 

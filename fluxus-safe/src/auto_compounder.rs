@@ -4,15 +4,6 @@ const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct SharesBalance {
-    /// stores the amount given address deposited
-    pub deposited: u128,
-    /// stores the amount given address deposited plus the earned shares
-    pub total: u128,
-}
-
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(crate = "near_sdk::serde")]
 pub struct StratFarmInfo {
     /// State is used to update the contract to a Paused/Running state
     pub state: AutoCompounderState,
@@ -57,6 +48,21 @@ impl StratFarmInfo {
             AutoCompounderCycle::Stake => self.cycle_stage = AutoCompounderCycle::ClaimReward,
         }
     }
+
+    pub fn increase_slippage(&mut self) {
+        if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
+            // increment slippage
+            self.slippage -= 4;
+
+            log!(
+                "Slippage updated to {}. It will applied in the next call",
+                self.slippage
+            );
+        } else {
+            self.state = AutoCompounderState::Ended;
+            log!("Slippage too high. State was updated to Ended");
+        }
+    }
 }
 
 // #[derive(BorshSerialize, BorshDeserialize)]
@@ -65,13 +71,6 @@ impl StratFarmInfo {
 pub struct AutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
-
-    /// Struct that maps addresses to its currents shares added plus the received
-    /// from the auto-compound strategy
-    pub user_shares: HashMap<AccountId, SharesBalance>,
-
-    /// Keeps tracks of how much shares the contract gained from the auto-compound
-    pub protocol_shares: u128,
 
     /// Address of the first token used by pool
     pub token1_address: AccountId,
@@ -90,6 +89,9 @@ pub struct AutoCompounder {
 
     /// Store all farms that were used to compound by some token_id
     pub farms: Vec<StratFarmInfo>,
+
+    /// Latest harvest timestamp
+    pub harvest_timestamp: u64,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
@@ -149,14 +151,13 @@ impl AutoCompounder {
 
         Self {
             admin_fees: admin_fee,
-            user_shares: HashMap::new(),
-            protocol_shares: 0u128,
             token1_address,
             token2_address,
             pool_id,
             seed_min_deposit,
             seed_id,
             farms: Vec::new(),
+            harvest_timestamp: 0u64,
         }
     }
 
@@ -164,8 +165,6 @@ impl AutoCompounder {
         // apply fees to reward amount
         let percent = Percentage::from(self.admin_fees.strategy_fee);
         let all_fees_amount = percent.apply_to(reward_amount);
-        // let percent = Percentage::from(treasury_fee_percentage);
-        // let protocol_amount = percent.apply_to(self.last_reward_amount);
 
         let percent = Percentage::from(self.admin_fees.sentries_fee);
         let sentry_amount = percent.apply_to(all_fees_amount);
@@ -183,22 +182,6 @@ impl AutoCompounder {
             sentry_amount,
             strat_creator_amount,
         )
-    }
-
-    pub fn increase_slippage(&mut self) {
-        unimplemented!()
-        // if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
-        //     // increment slippage
-        //     self.slippage -= 4;
-
-        //     log!(
-        //         "Slippage updated to {}. It will applied in the next call",
-        //         self.slippage
-        //     );
-        // } else {
-        //     self.state = AutoCompounderState::Ended;
-        //     log!("Slippage too high. State was updated to Ended");
-        // }
     }
 
     pub fn get_farm_info(&self, farm_id: &str) -> StratFarmInfo {
@@ -219,6 +202,20 @@ impl AutoCompounder {
         }
 
         panic!("Farm does not exist")
+    }
+
+    /// Iterate through farms inside a compounder
+    /// if `rewards_map` contains the same token than the strat, an reward > 0,
+    /// then updates the strat to the next cycle, to avoid claiming the seed multiple times
+    /// TODO: what if there are multiple farms with the same token_reward?
+    pub fn update_strats_by_seed(&mut self, rewards_map: HashMap<String, U128>) {
+        for farm in self.farms.iter_mut() {
+            if let Some(reward_earned) = rewards_map.get(&farm.reward_token.to_string()) {
+                if reward_earned.0 > 0 {
+                    farm.last_reward_amount += reward_earned.0;
+                }
+            }
+        }
     }
 }
 
@@ -248,14 +245,13 @@ impl VersionedCompounder {
 
         VersionedCompounder::V101(AutoCompounder {
             admin_fees: admin_fee,
-            protocol_shares: 0u128,
-            user_shares: HashMap::new(),
             token1_address,
             token2_address,
             pool_id,
             seed_min_deposit,
             seed_id,
             farms: Vec::new(),
+            harvest_timestamp: 0u64,
         })
     }
 }

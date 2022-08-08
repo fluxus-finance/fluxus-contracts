@@ -46,6 +46,27 @@ pub struct FarmInfo {
     pub beneficiary_reward: U128,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct TermsBoost {
+    pub reward_token: String,
+    pub start_at: u128,
+    pub daily_reward: U128,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct FarmInfoBoost {
+    pub farm_id: FarmId,
+    pub terms: TermsBoost,
+    pub total_reward: U128,
+    pub distributed_at: String,
+    pub distributed_reward: U128,
+    pub claimed_reward: U128,
+    pub amount_of_beneficiary: U128,
+    pub status: String,
+}
+
 type SeedId = String;
 type FarmId = String;
 
@@ -62,11 +83,24 @@ pub trait Farming {
     fn claim_reward_by_seed(&mut self, seed_id: String);
     fn claim_reward_by_farm(&mut self, farm_id: String);
     fn withdraw_seed(&mut self, seed_id: String, amount: U128, msg: String);
+    /// Boost contract
+    fn unlock_and_withdraw_seed(
+        &mut self,
+        seed_id: String,
+        unlock_amount: U128,
+        withdraw_amount: U128,
+    ) -> bool;
     fn withdraw_reward(&mut self, token_id: String, amount: U128, unregister: String) -> Promise;
     fn get_reward(&mut self, account_id: AccountId, token_id: AccountId) -> U128;
     fn get_unclaimed_reward(&mut self, account_id: AccountId, farm_id: String) -> U128;
+    fn get_unclaimed_rewards(
+        &mut self,
+        farmer_id: AccountId,
+        seed_id: String,
+    ) -> HashMap<String, U128>;
     fn list_user_seeds(&self, account_id: AccountId) -> HashMap<SeedId, U128>;
     fn list_farms_by_seed(&self, seed_id: SeedId) -> Vec<FarmInfo>;
+    fn list_seed_farms(&self, seed_id: SeedId) -> Vec<FarmInfoBoost>;
 }
 
 // Ref exchange functions that we need to call inside the auto_compounder.

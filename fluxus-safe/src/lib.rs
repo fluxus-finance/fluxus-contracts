@@ -1,6 +1,5 @@
 use near_sdk::PromiseError;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
@@ -27,7 +26,7 @@ mod storage_impl;
 mod token_receiver;
 
 mod external_contracts;
-use external_contracts::*;
+pub use external_contracts::*;
 
 mod utils;
 
@@ -59,6 +58,12 @@ pub(crate) enum StorageKey {
     Whitelist,
     AccountTokens { account_id: AccountId },
     Guardian,
+    NearDeposited,
+    UsersBalanceByShare,
+    TotalSupplyByShare,
+    SeedIdAmount,
+    SeedRegister { fft_share: String },
+    Strategy,
 }
 
 // TODO: update this to newer version, following AutoCompounderState
@@ -104,27 +109,21 @@ pub struct ContractData {
     state: RunningState,
 
     // Used by storage_impl and account_deposit to keep track of NEAR deposit in this contract
-    users_total_near_deposited: HashMap<AccountId, u128>,
+    users_total_near_deposited: LookupMap<AccountId, u128>,
 
     ///It is a map that store the fft_share and a map of users and their balance.
     /// illustration: map(fft_share[i], map(user[i], balance[i])).
-    /// TODO: Change HashMap for LookupMap as it is more gas efficient
-    users_balance_by_fft_share: HashMap<String, HashMap<String, u128>>,
-
-    ///Store the auto-compounders of the seeds.
-    /// illustration: map( seed[i], vec(user[i]) ).//TODO
-    compounders_by_seed_id: HashMap<String, HashSet<String>>,
+    users_balance_by_fft_share: LookupMap<String, LookupMap<String, u128>>,
 
     ///Store the fft_share total_supply for each seed_id.
-    /// TODO: Change HashMap for LookupMap as it is more gas efficient
-    total_supply_by_fft_share: HashMap<String, u128>,
+    total_supply_by_fft_share: LookupMap<String, u128>,
 
     ///Store the fft_share for each seed_id.
     /// TODO: Change HashMap for LookupMap as it is more gas efficient
     fft_share_by_seed_id: HashMap<String, String>,
 
     ///Store the fft_share for each seed_id.
-    seed_id_amount: HashMap<String, u128>,
+    seed_id_amount: LookupMap<String, u128>,
 
     // Contract address of the exchange used
     //TODO: Move it inside the strategy
@@ -208,7 +207,7 @@ pub trait Callbacks {
     ) -> Promise;
     fn callback_post_withdraw(
         &mut self,
-        #[callback_result] withdraw_result: Result<U128, PromiseError>,
+        #[callback_result] withdraw_result: Result<bool, PromiseError>,
         farm_id_str: String,
     ) -> Promise;
     fn callback_post_treasury_mft_transfer(
@@ -225,6 +224,8 @@ pub trait Callbacks {
         &self,
         #[callback_result] claim_result: Result<(), PromiseError>,
         farm_id_str: String,
+        reward_amount: U128,
+        rewards_map: HashMap<String, U128>,
     ) -> Promise;
     fn callback_post_first_swap(
         &mut self,
@@ -245,9 +246,10 @@ pub trait Callbacks {
         #[callback_result] claim_result: Result<(), PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128>;
-    fn callback_post_unclaimed_reward(
+    fn callback_post_unclaimed_rewards(
         &self,
-        #[callback_result] reward_result: Result<U128, PromiseError>,
+        #[callback_result] rewards_result: Result<HashMap<String, U128>, PromiseError>,
+        reward_token: AccountId,
     );
     fn callback_get_pool_shares(
         &self,
@@ -258,7 +260,7 @@ pub trait Callbacks {
     ) -> Promise;
     fn callback_list_farms_by_seed(
         &self,
-        #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
+        #[callback_result] farms_result: Result<Vec<FarmInfoBoost>, PromiseError>,
         farm_id_str: String,
     ) -> Promise;
     fn callback_post_ft_transfer(
@@ -382,12 +384,11 @@ impl Contract {
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
                 state: RunningState::Running,
-                users_total_near_deposited: HashMap::new(),
-                users_balance_by_fft_share: HashMap::new(),
-                compounders_by_seed_id: HashMap::new(),
-                total_supply_by_fft_share: HashMap::new(),
+                users_total_near_deposited: LookupMap::new(StorageKey::NearDeposited),
+                users_balance_by_fft_share: LookupMap::new(StorageKey::UsersBalanceByShare),
+                total_supply_by_fft_share: LookupMap::new(StorageKey::TotalSupplyByShare),
                 fft_share_by_seed_id: HashMap::new(),
-                seed_id_amount: HashMap::new(),
+                seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
                 exchange_contract_id,
                 farm_contract_id,
                 /// List of all the pools.

@@ -10,7 +10,7 @@ impl Contract {
             self.data().farm_contract_id.clone(),
             token_id.clone(),
             U128(shares),
-            "".to_string(),
+            "\"Free\"".to_string(),
             self.data().exchange_contract_id.clone(),
             1,
             Gas(80_000_000_000_000),
@@ -52,11 +52,11 @@ impl Contract {
         let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
 
         //Total seed_id
-        let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
 
         self.data_mut()
             .seed_id_amount
-            .insert(seed_id.clone(), total_seed + shares);
+            .insert(&seed_id, &(total_seed + shares));
 
         let fft_share_amount;
         if total_fft == 0 {
@@ -97,11 +97,11 @@ impl Contract {
         let total_fft = self.total_supply_amount(fft_share_id);
 
         //Total seed_id
-        let total_seed = *self
+        let total_seed = self
             .data_mut()
             .seed_id_amount
             .get(&seed_id)
-            .unwrap_or(&0_u128);
+            .unwrap_or_default();
 
         //Converting user total fft_shares in seed_id:
         let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
@@ -196,14 +196,15 @@ impl Contract {
             let amount = withdraw_amount - shares_on_exchange;
 
             // withdraw missing amount from farm
-            ext_farm::withdraw_seed(
+            ext_farm::unlock_and_withdraw_seed(
                 compounder.seed_id,
+                U128(0),
                 U128(amount),
-                "".to_string(),
                 self.data().farm_contract_id.clone(),
                 1,
                 Gas(180_000_000_000_000),
             )
+            // TODO: add callback and then call mft_transfer
             // transfer the total amount required
             .then(ext_exchange::mft_transfer(
                 token_id.clone(),
@@ -233,10 +234,10 @@ impl Contract {
         let data = self.data_mut();
         id.remove(0).to_string();
         let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
-        let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
         self.data_mut()
             .seed_id_amount
-            .insert(seed_id.clone(), total_seed - amount);
+            .insert(&seed_id, &(total_seed - amount));
         let fft_share_id = self
             .data()
             .fft_share_by_seed_id
@@ -388,35 +389,41 @@ impl Contract {
     // }
 
     /// Returns the amount of unclaimed reward given token_id has
-    // pub fn get_unclaimed_reward(&self, token_id: String) -> Promise {
-    //     let strat = self.get_strat(token_id);
-    //     unimplemented!()
-    //     // let farm_id: String = strat.get_ref().farm_id.clone();
+    pub fn get_unclaimed_rewards(&self, farm_id_str: String) -> Promise {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-    //     // ext_farm::get_unclaimed_reward(
-    //     //     env::current_account_id(),
-    //     //     farm_id,
-    //     //     self.data().farm_contract_id.clone(),
-    //     //     1,
-    //     //     Gas(3_000_000_000_000),
-    //     // )
-    //     // .then(ext_self::callback_post_unclaimed_reward(
-    //     //     env::current_account_id(),
-    //     //     0,
-    //     //     Gas(10_000_000_000_000),
-    //     // ))
-    // }
+        let strat = self.get_strat(token_id);
+        let compounder = strat.get_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        ext_farm::get_unclaimed_rewards(
+            env::current_account_id(),
+            seed_id,
+            self.data().farm_contract_id.clone(),
+            1,
+            Gas(3_000_000_000_000),
+        )
+        .then(ext_self::callback_post_unclaimed_rewards(
+            farm_info.reward_token,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
 
     #[private]
-    pub fn callback_post_unclaimed_reward(
+    pub fn callback_post_unclaimed_rewards(
         &self,
-        #[callback_result] reward_result: Result<U128, PromiseError>,
+        #[callback_result] rewards_result: Result<HashMap<String, U128>, PromiseError>,
+        reward_token: AccountId,
     ) -> U128 {
-        if let Ok(unclaimed_reward) = reward_result {
-            unclaimed_reward
-        } else {
-            U128(0)
+        if let Ok(tokens) = rewards_result {
+            if tokens.contains_key(&reward_token.to_string()) {
+                return *tokens.get(&reward_token.to_string()).unwrap();
+            }
         }
+
+        U128(0)
     }
 }
 
