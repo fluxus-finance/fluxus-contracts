@@ -389,35 +389,41 @@ impl Contract {
     // }
 
     /// Returns the amount of unclaimed reward given token_id has
-    // pub fn get_unclaimed_reward(&self, token_id: String) -> Promise {
-    //     let strat = self.get_strat(token_id);
-    //     unimplemented!()
-    //     // let farm_id: String = strat.get_ref().farm_id.clone();
+    pub fn get_unclaimed_rewards(&self, farm_id_str: String) -> Promise {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-    //     // ext_farm::get_unclaimed_reward(
-    //     //     env::current_account_id(),
-    //     //     farm_id,
-    //     //     self.data().farm_contract_id.clone(),
-    //     //     1,
-    //     //     Gas(3_000_000_000_000),
-    //     // )
-    //     // .then(ext_self::callback_post_unclaimed_reward(
-    //     //     env::current_account_id(),
-    //     //     0,
-    //     //     Gas(10_000_000_000_000),
-    //     // ))
-    // }
+        let strat = self.get_strat(token_id);
+        let compounder = strat.get_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        ext_farm::get_unclaimed_rewards(
+            env::current_account_id(),
+            seed_id,
+            self.data().farm_contract_id.clone(),
+            1,
+            Gas(3_000_000_000_000),
+        )
+        .then(ext_self::callback_post_unclaimed_rewards(
+            farm_info.reward_token,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
 
     #[private]
-    pub fn callback_post_unclaimed_reward(
+    pub fn callback_post_unclaimed_rewards(
         &self,
-        #[callback_result] reward_result: Result<U128, PromiseError>,
+        #[callback_result] rewards_result: Result<HashMap<String, U128>, PromiseError>,
+        reward_token: AccountId,
     ) -> U128 {
-        if let Ok(unclaimed_reward) = reward_result {
-            unclaimed_reward
-        } else {
-            U128(0)
+        if let Ok(tokens) = rewards_result {
+            if tokens.contains_key(&reward_token.to_string()) {
+                return *tokens.get(&reward_token.to_string()).unwrap();
+            }
         }
+
+        U128(0)
     }
 }
 

@@ -141,7 +141,7 @@ impl Contract {
         farm_id_str: String,
         reward_amount: U128,
         rewards_map: HashMap<String, U128>,
-    ) {
+    ) -> u128 {
         assert!(claim_reward_result.is_ok(), "ERR_WITHDRAW_FAILED");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -155,6 +155,8 @@ impl Contract {
         farm_info.last_reward_amount += reward_amount.0;
 
         farm_info.next_cycle();
+
+        reward_amount.0
     }
 
     /// Step 2
@@ -812,7 +814,7 @@ impl Contract {
             .remove(&env::current_account_id())
             .unwrap();
 
-        log!("amount {}", amount);
+        log!("Sending {} to sentry account {}", amount, sentry_acc_id);
 
         ext_reward_token::ft_transfer(
             sentry_acc_id.clone(),
@@ -854,6 +856,8 @@ impl Contract {
                 .admin_fees
                 .sentries
                 .insert(sentry_id, amount_earned);
+        } else {
+            log!("Transfer to sentry succeeded".to_string());
         }
 
         let strat = self.get_strat(token_id.clone());

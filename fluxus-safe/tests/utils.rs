@@ -8,7 +8,17 @@ use workspaces::prelude::*;
 use workspaces::{Account, AccountId, Contract, DevNetwork, Network, Worker};
 
 pub const TOTAL_GAS: u64 = 300_000_000_000_000;
-pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000; // 2_339_613_734_407_424
+pub const MIN_SEED_DEPOSIT: u128 = 1_000_000_000_000;
+
+pub const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
+pub const CONTRACT_ID_FARM: &str = "boostfarm.ref-finance.testnet";
+pub const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
+
+pub const TOTAL_PROTOCOL_FEE: u128 = 10;
+pub const SENTRY_FEES_PERCENT: u128 = 10;
+pub const STRAT_CREATOR_FEES_PERCENT: u128 = 10;
+pub const TREASURY_FEES_PERCENT: u128 = 80;
+pub const POOL_ID_PLACEHOLDER: u64 = 9999;
 
 type FarmId = String;
 type SeedId = String;
@@ -52,10 +62,6 @@ pub struct PoolInfo {
     pub amp: u64,
 }
 
-const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
-const CONTRACT_ID_FARM: &str = "boostfarm.ref-finance.testnet";
-const FT_CONTRACT_FILEPATH: &str = "./res/fungible_token.wasm";
-
 pub async fn add_strategy(
     safe_contract: &Contract,
     token_reward: &Contract,
@@ -90,7 +96,7 @@ pub async fn create_strategy(
 ) -> anyhow::Result<()> {
     let strat: AccountFee = AccountFee {
         account_id: strat_creator.id().parse().unwrap(),
-        fee_percentage: 10,
+        fee_percentage: STRAT_CREATOR_FEES_PERCENT,
         current_amount: 0,
     };
 
@@ -98,9 +104,9 @@ pub async fn create_strategy(
         .call(worker, "create_strategy")
         .args_json(serde_json::json!({
             "_strategy": "".to_string(),
-            "strategy_fee": 5,
+            "strategy_fee": TOTAL_PROTOCOL_FEE,
             "strat_creator": strat,
-            "sentry_fee": 10,
+            "sentry_fee": SENTRY_FEES_PERCENT,
             "token1_address": token1.id().to_string(),
             "token2_address": token2.id().to_string(),
             "pool_id": pool_id,
@@ -307,14 +313,6 @@ pub async fn deploy_farm(owner: &Account, worker: &Worker<Sandbox>) -> anyhow::R
         .transact()
         .await?;
 
-    // TODO: remove if not necessary
-    let _res = farm
-        .call(worker, "get_metadata")
-        .args_json(serde_json::json!({}))?
-        .deposit(parse_near!("0.1 N"))
-        .transact()
-        .await?;
-
     // increase reward per session in order to try to swap in the pool for a value that
     // is higher than the pool contains
 
@@ -328,12 +326,11 @@ pub async fn log_farm_info(
     seed_id: &String,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<()> {
-    let res = farm
-        .call(worker, "list_seed_farms")
-        .args_json(serde_json::json!({ "seed_id": seed_id }))?
-        .transact()
-        .await?;
+    let args = serde_json::json!({ "seed_id": seed_id })
+        .to_string()
+        .into_bytes();
 
+    let res = farm.view(worker, "list_seed_farms", args).await?;
     let info: Vec<FarmInfoBoost> = res.json().unwrap();
     println!("result {:#?}", info);
 
@@ -415,11 +412,11 @@ pub async fn create_pool_with_liquidity(
         .await?;
     // println!("added liquidity: {:#?}\n", res);
 
-    let res = ref_finance
-        .call(worker, "get_pool")
-        .args_json(serde_json::json!({ "pool_id": pool_id }))?
-        .transact()
-        .await?;
+    // let res = ref_finance
+    //     .call(worker, "get_pool")
+    //     .args_json(serde_json::json!({ "pool_id": pool_id }))?
+    //     .transact()
+    //     .await?;
 
     // println!("get pool {:#?}\n", res);
 
@@ -570,17 +567,17 @@ pub async fn register_into_contracts(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn get_pool_info(
     worker: &Worker<impl Network>,
     ref_finance: &Contract,
     pool_id: u64,
 ) -> anyhow::Result<()> {
-    let res = ref_finance
-        .call(worker, "get_pool")
-        .args_json(serde_json::json!({ "pool_id": pool_id }))?
-        .transact()
-        .await?;
+    let args = serde_json::json!({ "pool_id": pool_id })
+        .to_string()
+        .into_bytes();
 
+    let res = ref_finance.view(worker, "get_pool", args).await?;
     let pool_info: PoolInfo = res.json()?;
     println!("get pool {:#?}\n", pool_info);
 
@@ -601,15 +598,16 @@ pub struct SeedInfo {
     min_locking_duration_sec: u64,
 }
 
+#[allow(dead_code)]
 pub async fn get_farms_min_deposit(
     farm: &Contract,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<HashMap<String, U128>> {
-    let seeds = farm
-        .call(worker, "list_seeds_info")
-        .args_json(serde_json::json!({ "from_index": 0, "limit": 300 }))?
-        .transact()
-        .await?;
+    let args = serde_json::json!({ "from_index": 0u64, "limit": 300u64 })
+        .to_string()
+        .into_bytes();
+
+    let seeds = farm.view(worker, "list_seeds_info", args).await?;
 
     let farms_info: Vec<SeedInfo> = seeds.json()?;
 
@@ -672,17 +670,13 @@ pub async fn get_pool_shares(
     pool_id: u64,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<String> {
-    let res = account
-        .call(worker, exchange.id(), "get_pool_shares")
-        .args_json(serde_json::json!({
-            "pool_id": pool_id,
-            "account_id": account.id().to_string()
-        }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
+    let args = serde_json::json!({ "pool_id": pool_id, "account_id": account.id().to_string()  })
+        .to_string()
+        .into_bytes();
 
+    let res = exchange.view(worker, "get_pool_shares", args).await?;
     let shares: String = res.json()?;
+
     Ok(shares)
 }
 
@@ -693,33 +687,35 @@ pub async fn get_balance_of(
     worker: &Worker<impl Network>,
     mft_id: Option<String>,
 ) -> anyhow::Result<U128> {
-    let function_str = if is_ft {
-        "ft_balance_of"
+    let (function_str, args) = if is_ft {
+        (
+            "ft_balance_of",
+            serde_json::json!({"account_id": account.id()})
+                .to_string()
+                .into_bytes(),
+        )
     } else {
-        "mft_balance_of"
+        (
+            "mft_balance_of",
+            serde_json::json!({"token_id": mft_id.unwrap(), "account_id": account.id()})
+                .to_string()
+                .into_bytes(),
+        )
     };
-    let args = if is_ft {
-        serde_json::json!({"account_id": account.id()})
-    } else {
-        serde_json::json!({"token_id": mft_id.unwrap(), "account_id": account.id()})
-    };
-    let res: U128 = account
-        .call(worker, contract.id(), function_str)
-        .args_json(args)?
-        .transact()
-        .await?
-        .json()?;
+
+    let res: U128 = contract.view(worker, function_str, args).await?.json()?;
     Ok(res)
 }
 
+#[allow(dead_code)]
 pub async fn get_unclaimed_rewards(
     contract: &Contract,
-    token_id: &String,
+    farm_id_str: &String,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<u128> {
     let unclaimed_amount: U128 = contract
-        .call(worker, "get_unclaimed_reward")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .call(worker, "get_unclaimed_rewards")
+        .args_json(serde_json::json!({ "farm_id_str": farm_id_str }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?
@@ -727,6 +723,7 @@ pub async fn get_unclaimed_rewards(
     Ok(unclaimed_amount.0)
 }
 
+#[allow(dead_code)]
 pub async fn create_account_and_add_liquidity(
     owner: &Account,
     contract: &Contract,
@@ -768,4 +765,55 @@ pub async fn create_account_and_add_liquidity(
         .await?;
     // println!("added liquidity: {:#?}\n", res);
     Ok(0)
+}
+
+pub async fn get_user_fft(
+    contract: &Contract,
+    account: &Account,
+    fft_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<u128> {
+    let args = serde_json::json!({ "fft_share": fft_id, "user": account.id().to_string(), })
+        .to_string()
+        .into_bytes();
+    let res = contract
+        .view(worker, "users_fft_share_amount", args)
+        .await?;
+
+    let account_shares: u128 = res.json()?;
+    Ok(account_shares)
+}
+
+pub async fn get_fft_token_by_seed(
+    safe_contract: &Contract,
+    seed_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<String> {
+    let args = serde_json::json!({ "seed_id": seed_id })
+        .to_string()
+        .into_bytes();
+
+    let fft_token: String = safe_contract
+        .view(worker, "fft_token_seed_id", args)
+        .await?
+        .json()?;
+
+    Ok(fft_token)
+}
+
+pub async fn get_seed_total_amount(
+    safe_contract: &Contract,
+    token_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<u128> {
+    let args = serde_json::json!({ "token_id": token_id })
+        .to_string()
+        .into_bytes();
+
+    let seed_before_withdraw = safe_contract
+        .view(worker, "seed_total_amount", args)
+        .await?
+        .json()?;
+
+    Ok(seed_before_withdraw)
 }

@@ -165,8 +165,6 @@ impl AutoCompounder {
         // apply fees to reward amount
         let percent = Percentage::from(self.admin_fees.strategy_fee);
         let all_fees_amount = percent.apply_to(reward_amount);
-        // let percent = Percentage::from(treasury_fee_percentage);
-        // let protocol_amount = percent.apply_to(self.last_reward_amount);
 
         let percent = Percentage::from(self.admin_fees.sentries_fee);
         let sentry_amount = percent.apply_to(all_fees_amount);
