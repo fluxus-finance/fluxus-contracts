@@ -46,12 +46,15 @@ impl Contract {
                 data_mut.fft_share_by_seed_id.insert(seed_id, id.clone());
 
                 //Registering id in the users balance map
-                let mut temp = HashMap::new();
-                temp.insert("".to_string(), 0_u128);
-                data_mut.users_balance_by_fft_share.insert(id.clone(), temp);
+                let mut temp = LookupMap::new(StorageKey::Strategy);
+                // TODO: Why empty?
+                temp.insert(&"".to_string(), &0_u128);
+                data_mut
+                    .users_balance_by_fft_share
+                    .insert(&id.clone(), &temp);
 
                 //Registering total_supply
-                data_mut.total_supply_by_fft_share.insert(id, 0_u128);
+                data_mut.total_supply_by_fft_share.insert(&id, &0_u128);
             }
 
             data_mut.strategies.insert(token_id.clone(), strat);

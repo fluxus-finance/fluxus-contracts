@@ -4,15 +4,6 @@ const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct SharesBalance {
-    /// stores the amount given address deposited
-    pub deposited: u128,
-    /// stores the amount given address deposited plus the earned shares
-    pub total: u128,
-}
-
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(crate = "near_sdk::serde")]
 pub struct StratFarmInfo {
     /// State is used to update the contract to a Paused/Running state
     pub state: AutoCompounderState,
@@ -80,13 +71,6 @@ impl StratFarmInfo {
 pub struct AutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
-
-    /// Struct that maps addresses to its currents shares added plus the received
-    /// from the auto-compound strategy
-    pub user_shares: HashMap<AccountId, SharesBalance>,
-
-    /// Keeps tracks of how much shares the contract gained from the auto-compound
-    pub protocol_shares: u128,
 
     /// Address of the first token used by pool
     pub token1_address: AccountId,
@@ -167,8 +151,6 @@ impl AutoCompounder {
 
         Self {
             admin_fees: admin_fee,
-            user_shares: HashMap::new(),
-            protocol_shares: 0u128,
             token1_address,
             token2_address,
             pool_id,
@@ -265,8 +247,6 @@ impl VersionedCompounder {
 
         VersionedCompounder::V101(AutoCompounder {
             admin_fees: admin_fee,
-            protocol_shares: 0u128,
-            user_shares: HashMap::new(),
             token1_address,
             token2_address,
             pool_id,

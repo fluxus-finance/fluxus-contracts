@@ -52,11 +52,11 @@ impl Contract {
         let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
 
         //Total seed_id
-        let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
 
         self.data_mut()
             .seed_id_amount
-            .insert(seed_id.clone(), total_seed + shares);
+            .insert(&seed_id, &(total_seed + shares));
 
         let fft_share_amount;
         if total_fft == 0 {
@@ -97,11 +97,11 @@ impl Contract {
         let total_fft = self.total_supply_amount(fft_share_id);
 
         //Total seed_id
-        let total_seed = *self
+        let total_seed = self
             .data_mut()
             .seed_id_amount
             .get(&seed_id)
-            .unwrap_or(&0_u128);
+            .unwrap_or_default();
 
         //Converting user total fft_shares in seed_id:
         let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
@@ -234,10 +234,10 @@ impl Contract {
         let data = self.data_mut();
         id.remove(0).to_string();
         let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
-        let total_seed = *data.seed_id_amount.get(&seed_id).unwrap_or(&0_u128);
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
         self.data_mut()
             .seed_id_amount
-            .insert(seed_id.clone(), total_seed - amount);
+            .insert(&seed_id, &(total_seed - amount));
         let fft_share_id = self
             .data()
             .fft_share_by_seed_id
