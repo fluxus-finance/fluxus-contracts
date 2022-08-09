@@ -231,6 +231,13 @@ impl Contract {
         let compounder = self.get_strat(token_id).get_ref().clone();
         compounder.harvest_timestamp.to_string()
     }
+
+    pub fn get_strategy_kind(&self) -> String {
+        match self.data().strategies.values().next() {
+            Some(x) => x.kind(),
+            None => "No strategies available".into(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
