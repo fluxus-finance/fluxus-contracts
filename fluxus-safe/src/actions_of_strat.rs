@@ -46,9 +46,7 @@ impl Contract {
                 data_mut.fft_share_by_seed_id.insert(seed_id, id.clone());
 
                 //Registering id in the users balance map
-                let mut temp = LookupMap::new(StorageKey::Strategy);
-                // TODO: Why empty?
-                temp.insert(&"".to_string(), &0_u128);
+                let temp = LookupMap::new(StorageKey::Strategy);
                 data_mut
                     .users_balance_by_fft_share
                     .insert(&id.clone(), &temp);
