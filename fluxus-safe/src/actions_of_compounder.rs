@@ -10,7 +10,7 @@ impl Contract {
             self.data().farm_contract_id.clone(),
             token_id.clone(),
             U128(shares),
-            "".to_string(),
+            "\"Free\"".to_string(),
             self.data().exchange_contract_id.clone(),
             1,
             Gas(80_000_000_000_000),
@@ -29,30 +29,84 @@ impl Contract {
     #[private]
     pub fn callback_stake_result(
         &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
         token_id: String,
         account_id: AccountId,
         shares: u128,
     ) -> String {
-        // TODO: remove generic promise check
-        assert!(self.check_promise(), "ERR_STAKE_FAILED");
+        if let Ok(amount) = transfer_result {
+            assert_eq!(amount.0, 0, "ERR_STAKE_FAILED");
+        } else {
+            panic!("ERR_STAKE_FAILED");
+        }
 
-        let strat = self
-            .data_mut()
-            .strategies
-            .get_mut(&token_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+        let mut id = token_id;
+        id.remove(0).to_string();
 
-        let compounder = strat.get_mut();
+        //Total fft_share
+        let total_fft = self.total_supply_by_pool_id(id.clone());
+        log!("total fft is = {}", total_fft);
+        let fft_share_id = self.convert_pool_id_in_fft_share(id.clone());
 
-        // increment total shares deposited by account
-        compounder.increment_user_shares(&account_id, shares);
+        let data = self.data_mut();
+        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
 
-        format!("The {} added {} to {}", account_id, shares, token_id)
+        //Total seed_id
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(&seed_id, &(total_seed + shares));
+
+        let fft_share_amount;
+        if total_fft == 0 {
+            fft_share_amount = shares;
+        } else {
+            fft_share_amount =
+                (U256::from(shares) * U256::from(total_fft) / U256::from(total_seed)).as_u128();
+        }
+
+        log!(
+            "{} {} will be minted for {}",
+            fft_share_amount,
+            fft_share_id,
+            account_id.to_string()
+        );
+        self.mft_mint(fft_share_id, fft_share_amount, account_id.to_string());
+
+        format!(
+            "The {} added {} to {}",
+            account_id, fft_share_amount, seed_id
+        )
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
+    pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
+
+        let mut id = token_id.clone();
+        id.remove(0).to_string();
+
+        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
+
+        let fft_share_id = self.convert_pool_id_in_fft_share(id);
+        let mut user_fft_shares =
+            self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
+
+        //Total fft_share
+        let total_fft = self.total_supply_amount(fft_share_id);
+
+        //Total seed_id
+        let total_seed = self
+            .data_mut()
+            .seed_id_amount
+            .get(&seed_id)
+            .unwrap_or_default();
+
+        //Converting user total fft_shares in seed_id:
+        let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
+            / U256::from(total_fft))
+        .as_u128();
 
         let strat = self
             .data()
@@ -62,23 +116,21 @@ impl Contract {
 
         let compounder = strat.clone().get();
 
-        let user_shares = compounder
-            .user_shares
-            .get(&caller_id)
-            .expect("ERR_ACCOUNT_DOES_NOT_EXIST");
-
+        let amount: U128;
+        if let Some(amount_withdrawal) = amount_withdrawal {
+            amount = amount_withdrawal;
+            user_fft_shares = (U256::from(amount_withdrawal.0) * U256::from(total_fft)
+                / U256::from(total_seed))
+            .as_u128();
+        } else {
+            amount = U128(user_shares);
+        }
         assert!(
-            user_shares.total != 0,
-            "User does not have enough lps to withdraw"
-        );
-
-        let amount: U128 = amount_withdrawal.unwrap_or(U128(user_shares.total));
-        assert!(
-            user_shares.total >= amount.0,
+            user_shares >= amount.0,
             "{} is trying to withdrawal {} and only has {}",
-            caller_id.clone(),
+            caller_id,
             amount.0,
-            user_shares.total
+            user_shares
         );
 
         log!("{} is trying to withdrawal {}", caller_id, amount.0);
@@ -103,6 +155,7 @@ impl Contract {
             token_id,
             caller_id,
             amount.0,
+            user_fft_shares,
             contract_id,
             0,
             Gas(20_000_000_000_000),
@@ -143,14 +196,15 @@ impl Contract {
             let amount = withdraw_amount - shares_on_exchange;
 
             // withdraw missing amount from farm
-            ext_farm::withdraw_seed(
+            ext_farm::unlock_and_withdraw_seed(
                 compounder.seed_id,
+                U128(0),
                 U128(amount),
-                "".to_string(),
                 self.data().farm_contract_id.clone(),
                 1,
                 Gas(180_000_000_000_000),
             )
+            // TODO: add callback and then call mft_transfer
             // transfer the total amount required
             .then(ext_exchange::mft_transfer(
                 token_id.clone(),
@@ -170,21 +224,27 @@ impl Contract {
         token_id: String,
         account_id: AccountId,
         amount: Balance,
+        fft_shares: Balance,
     ) {
         // TODO: remove generic promise check
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
 
-        let strat = self
-            .data_mut()
-            .strategies
-            .get_mut(&token_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
-
-        let compounder = strat.get_mut();
-
-        // Decrement user shares
-        compounder.decrement_user_shares(&account_id, amount);
+        let mut id = token_id;
+        let data = self.data_mut();
+        id.remove(0).to_string();
+        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
+        self.data_mut()
+            .seed_id_amount
+            .insert(&seed_id, &(total_seed - amount));
+        let fft_share_id = self
+            .data()
+            .fft_share_by_seed_id
+            .get(&seed_id)
+            .unwrap()
+            .clone();
+        self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
     }
 }
 
@@ -196,16 +256,15 @@ impl Contract {
     #[payable]
     pub fn call_swap(
         &mut self,
-        pool_id_to_swap: u64,
+        pool_id: u64,
         token_in: AccountId,
         token_out: AccountId,
         amount_in: Option<U128>,
         min_amount_out: U128,
     ) -> Promise {
-        assert!(self.check_promise(), "Previous tx failed.");
         ext_exchange::swap(
             vec![SwapAction {
-                pool_id: pool_id_to_swap,
+                pool_id,
                 token_in,
                 token_out,
                 amount_in,
@@ -293,6 +352,78 @@ impl Contract {
             1,
             Gas(180_000_000_000_000),
         )
+    }
+
+    // /// Sentry user can redeem manually earned reward
+    // pub fn redeem_reward(&self, token_id: String) -> Promise {
+    //     let sentry_acc_id = env::predecessor_account_id();
+
+    //     let strat = self
+    //         .data()
+    //         .strategies
+    //         .get(&token_id)
+    //         .expect(ERR21_TOKEN_NOT_REG);
+
+    //     let compounder = strat.get_ref();
+
+    //     assert!(compounder.admin_fees.sentries.contains_key(&sentry_acc_id));
+
+    //     let amount = *compounder.admin_fees.sentries.get(&sentry_acc_id).unwrap();
+    //     ext_exchange::mft_transfer(
+    //         compounder.reward_token.to_string(),
+    //         sentry_acc_id.clone(),
+    //         U128(amount),
+    //         Some("".to_string()),
+    //         self.data().exchange_contract_id.clone(),
+    //         1,
+    //         Gas(20_000_000_000_000),
+    //     )
+    //     .then(ext_self::callback_post_sentry_mft_transfer(
+    //         token_id,
+    //         sentry_acc_id,
+    //         amount,
+    //         env::current_account_id(),
+    //         0,
+    //         Gas(20_000_000_000_000),
+    //     ))
+    // }
+
+    /// Returns the amount of unclaimed reward given token_id has
+    pub fn get_unclaimed_rewards(&self, farm_id_str: String) -> Promise {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
+        let strat = self.get_strat(token_id);
+        let compounder = strat.get_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        ext_farm::get_unclaimed_rewards(
+            env::current_account_id(),
+            seed_id,
+            self.data().farm_contract_id.clone(),
+            1,
+            Gas(3_000_000_000_000),
+        )
+        .then(ext_self::callback_post_unclaimed_rewards(
+            farm_info.reward_token,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_post_unclaimed_rewards(
+        &self,
+        #[callback_result] rewards_result: Result<HashMap<String, U128>, PromiseError>,
+        reward_token: AccountId,
+    ) -> U128 {
+        if let Ok(tokens) = rewards_result {
+            if tokens.contains_key(&reward_token.to_string()) {
+                return *tokens.get(&reward_token.to_string()).unwrap();
+            }
+        }
+
+        U128(0)
     }
 }
 

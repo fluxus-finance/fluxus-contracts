@@ -1,6 +1,6 @@
 [package]
 name = "fluxus_treasurer"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Pollum"]
 edition = "2021"
 

@@ -362,24 +362,24 @@ impl Contract {
         self.internal_save_account(&account_id, account);
     }
 
-    pub(crate) fn internal_register_account_sub(
-        &mut self,
-        account_id: &AccountId,
-        amount: Balance,
-    ) {
-        let mut account = self.internal_unwrap_or_default_account(&account_id);
-        log!(
-            "account.near_amount is = {} and amount = {}",
-            account.near_amount,
-            amount
-        );
-        account.near_amount -= amount;
-        log!(
-            "the new balance after subtracting = {}",
-            account.near_amount
-        );
-        self.internal_save_account(&account_id, account);
-    }
+    // pub(crate) fn internal_register_account_sub(
+    //     &mut self,
+    //     account_id: &AccountId,
+    //     amount: Balance,
+    // ) {
+    //     let mut account = self.internal_unwrap_or_default_account(&account_id);
+    //     log!(
+    //         "account.near_amount is = {} and amount = {}",
+    //         account.near_amount,
+    //         amount
+    //     );
+    //     account.near_amount -= amount;
+    //     log!(
+    //         "the new balance after subtracting = {}",
+    //         account.near_amount
+    //     );
+    //     self.internal_save_account(&account_id, account);
+    // }
 
     /// storage withdraw
     pub(crate) fn internal_storage_withdraw(
@@ -571,15 +571,15 @@ mod tests {
         // assert no storage is available until near is added
         assert_eq!(account.storage_available(), 0u128);
         account.deposit_with_storage_check(&to_account_id("uxu.near"), 10u128);
-        let uxu_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
-        assert_eq!(uxu_balance.unwrap_or(0u128), 0u128);
+        let fft_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
+        assert_eq!(fft_balance.unwrap_or(0u128), 0u128);
 
         account.near_amount = 100000000000000000000000u128;
         assert_ne!(account.storage_available(), 0u128);
 
         // deposit token with balance
         account.deposit_with_storage_check(&to_account_id("uxu.near"), 10u128);
-        let uxu_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
-        assert_eq!(uxu_balance.unwrap_or(1u128), 10u128);
+        let fft_balance: Option<Balance> = account.get_balance(&to_account_id("uxu.near"));
+        assert_eq!(fft_balance.unwrap_or(1u128), 10u128);
     }
 }
