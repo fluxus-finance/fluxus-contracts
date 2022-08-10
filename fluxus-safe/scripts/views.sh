@@ -113,3 +113,6 @@ near view $CONTRACT_NAME get_strategies_info  '{}'
 #     id: '1'
 #   }
 # ]
+
+near view $CONTRACT_NAME get_strategy_kind '{}'
+# 'AUTO_COMPOUNDER'

@@ -75,10 +75,9 @@ impl Contract {
 
     ///Register a seed into the users_balance_by_fft_share
     pub fn register_seed(&mut self, fft_share: String) {
-        let mut temp = LookupMap::new(StorageKey::SeedRegister {
+        let temp = LookupMap::new(StorageKey::SeedRegister {
             fft_share: fft_share.clone(),
         });
-        temp.insert(&"".to_string(), &0_u128);
         self.data_mut()
             .users_balance_by_fft_share
             .insert(&fft_share, &temp);
