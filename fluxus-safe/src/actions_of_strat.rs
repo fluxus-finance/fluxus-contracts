@@ -120,8 +120,9 @@ impl Contract {
 
         fft_share_id
     }
+
     pub fn harvest(&mut self, farm_id_str: String) -> Promise {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let strat = self.get_strat(token_id);
         let compounder = strat.get_ref();
         let farm_info = compounder.get_farm_info(&farm_id);
@@ -130,6 +131,20 @@ impl Contract {
             AutoCompounderCycle::Withdrawal => self.withdraw_of_reward(farm_id_str),
             AutoCompounderCycle::Swap => self.autocompounds_swap(farm_id_str),
             AutoCompounderCycle::Stake => self.autocompounds_liquidity_and_stake(farm_id_str),
+        }
+    }
+
+    pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
+        self.is_owner();
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let strat = self.get_strat_mut(&token_id);
+        let compounder = strat.get_mut();
+        for (i, farm) in compounder.farms.iter().enumerate() {
+            println!("{} - {}", farm_id_str, farm.id);
+            if farm_id_str == farm.id {
+                compounder.farms.remove(i);
+                break;
+            }
         }
     }
 }
