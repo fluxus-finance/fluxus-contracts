@@ -16,7 +16,7 @@ impl Contract {
             Gas(80_000_000_000_000),
         )
         // substitute for a generic callback, with a match for next step
-        .then(ext_self::callback_stake_result(
+        .then(callback_ref_exchange::callback_stake_result(
             token_id,
             account_id.clone(),
             shares,
@@ -143,7 +143,7 @@ impl Contract {
             0,
             Gas(20_000_000_000_000),
         )
-        .then(ext_self::callback_get_pool_shares(
+        .then(callback_ref_exchange::callback_get_pool_shares(
             token_id.clone(),
             caller_id.clone(),
             amount.0,
@@ -151,7 +151,7 @@ impl Contract {
             0,
             Gas(230_000_000_000_000),
         ))
-        .then(ext_self::callback_withdraw_shares(
+        .then(callback_ref_exchange::callback_withdraw_shares(
             token_id,
             caller_id,
             amount.0,
@@ -378,7 +378,7 @@ impl Contract {
     //         1,
     //         Gas(20_000_000_000_000),
     //     )
-    //     .then(ext_self::callback_post_sentry_mft_transfer(
+    //     .then(callback_ref_exchange::callback_post_sentry_mft_transfer(
     //         token_id,
     //         sentry_acc_id,
     //         amount,
@@ -403,7 +403,7 @@ impl Contract {
             1,
             Gas(3_000_000_000_000),
         )
-        .then(ext_self::callback_post_unclaimed_rewards(
+        .then(callback_ref_exchange::callback_post_unclaimed_rewards(
             farm_info.reward_token,
             env::current_account_id(),
             0,

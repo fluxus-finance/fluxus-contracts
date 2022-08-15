@@ -23,7 +23,7 @@ impl Contract {
             0,
             Gas(40_000_000_000_000),
         )
-        .then(ext_self::callback_list_farms_by_seed(
+        .then(callback_ref_exchange::callback_list_farms_by_seed(
             farm_id_str,
             env::current_account_id(),
             0,
@@ -66,7 +66,7 @@ impl Contract {
                 1,
                 Gas(3_000_000_000_000),
             )
-            .then(ext_self::callback_post_get_unclaimed_reward(
+            .then(callback_ref_exchange::callback_post_get_unclaimed_reward(
                 farm_id_str,
                 env::current_account_id(),
                 0,
@@ -123,7 +123,7 @@ impl Contract {
                 0,
                 Gas(40_000_000_000_000),
             )
-            .then(ext_self::callback_post_claim_reward(
+            .then(callback_ref_exchange::callback_post_claim_reward(
                 farm_id_str,
                 reward_amount,
                 rewards_map,
@@ -189,7 +189,7 @@ impl Contract {
                 0,
                 Gas(180_000_000_000_000),
             )
-            .then(ext_self::callback_post_withdraw(
+            .then(callback_ref_exchange::callback_post_withdraw(
                 farm_id_str,
                 env::current_account_id(),
                 0,
@@ -205,7 +205,7 @@ impl Contract {
                 1,
                 Gas(40_000_000_000_000),
             )
-            .then(ext_self::callback_post_ft_transfer(
+            .then(callback_ref_exchange::callback_post_ft_transfer(
                 farm_id_str,
                 env::current_account_id(),
                 0,
@@ -273,7 +273,7 @@ impl Contract {
                 1,
                 Gas(40_000_000_000_000),
             )
-            .then(ext_self::callback_post_ft_transfer(
+            .then(callback_ref_exchange::callback_post_ft_transfer(
                 farm_id_str,
                 env::current_account_id(),
                 0,
@@ -350,7 +350,7 @@ impl Contract {
                     U128(reward_amount),
                     common_token,
                 )
-                .then(ext_self::swap_to_auto(
+                .then(callback_ref_exchange::swap_to_auto(
                     farm_id_str,
                     U128(farm_info.available_balance[0]),
                     U128(reward_amount),
@@ -373,7 +373,7 @@ impl Contract {
                 1,
                 Gas(20_000_000_000_000),
             )
-            .then(ext_self::callback_post_treasury_mft_transfer(
+            .then(callback_ref_exchange::callback_post_treasury_mft_transfer(
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
@@ -390,7 +390,7 @@ impl Contract {
                 1,
                 Gas(20_000_000_000_000),
             )
-            .then(ext_self::callback_post_creator_ft_transfer(
+            .then(callback_ref_exchange::callback_post_creator_ft_transfer(
                 token_id,
                 env::current_account_id(),
                 0,
@@ -399,7 +399,7 @@ impl Contract {
         }
 
         self.get_tokens_return(farm_id_str.clone(), amount_in, amount_in, common_token)
-            .then(ext_self::swap_to_auto(
+            .then(callback_ref_exchange::swap_to_auto(
                 farm_id_str,
                 amount_in,
                 amount_in,
@@ -474,7 +474,7 @@ impl Contract {
                 0,
                 Gas(10_000_000_000_000),
             )
-            .then(ext_self::callback_get_token_return(
+            .then(callback_ref_exchange::callback_get_token_return(
                 common_token,
                 amount_token_1,
                 env::current_account_id(),
@@ -491,7 +491,7 @@ impl Contract {
                 0,
                 Gas(10_000_000_000_000),
             )
-            .then(ext_self::callback_get_token_return(
+            .then(callback_ref_exchange::callback_get_token_return(
                 common_token,
                 amount_token_2,
                 env::current_account_id(),
@@ -517,7 +517,7 @@ impl Contract {
                 0,
                 Gas(10_000_000_000_000),
             ))
-            .then(ext_self::callback_get_tokens_return(
+            .then(callback_ref_exchange::callback_get_tokens_return(
                 env::current_account_id(),
                 0,
                 Gas(10_000_000_000_000),
@@ -605,7 +605,7 @@ impl Contract {
                 Some(amount_in_2),
                 token2_min_out,
             )
-            .then(ext_self::callback_post_swap(
+            .then(callback_ref_exchange::callback_post_swap(
                 farm_id_str,
                 common_token,
                 env::current_account_id(),
@@ -622,7 +622,7 @@ impl Contract {
                 Some(amount_in_1),
                 token1_min_out,
             )
-            .then(ext_self::callback_post_swap(
+            .then(callback_ref_exchange::callback_post_swap(
                 farm_id_str,
                 common_token,
                 env::current_account_id(),
@@ -637,7 +637,7 @@ impl Contract {
                 Some(amount_in_1),
                 token1_min_out,
             )
-            .then(ext_self::callback_post_first_swap(
+            .then(callback_ref_exchange::callback_post_first_swap(
                 farm_id_str,
                 common_token,
                 amount_in_2,
@@ -681,7 +681,7 @@ impl Contract {
         let token_out2 = compounder_mut.token2_address.clone();
 
         PromiseOrValue::Promise(
-            ext_self::call_swap(
+            callback_ref_exchange::call_swap(
                 pool_id_to_swap2,
                 token_in2,
                 token_out2,
@@ -691,7 +691,7 @@ impl Contract {
                 0,
                 Gas(30_000_000_000_000),
             )
-            .then(ext_self::callback_post_swap(
+            .then(callback_ref_exchange::callback_post_swap(
                 farm_id_str,
                 common_token,
                 env::current_account_id(),
@@ -763,7 +763,7 @@ impl Contract {
             0,
             Gas(10_000_000_000_000),
         )
-        .then(ext_self::callback_post_sentry(
+        .then(callback_ref_exchange::callback_post_sentry(
             farm_id_str,
             sentry_acc_id,
             farm_info.reward_token,
@@ -824,7 +824,7 @@ impl Contract {
             1,
             Gas(20_000_000_000_000),
         )
-        .then(ext_self::callback_post_sentry_mft_transfer(
+        .then(callback_ref_exchange::callback_post_sentry_mft_transfer(
             farm_id_str,
             sentry_acc_id,
             amount,
@@ -888,7 +888,7 @@ impl Contract {
                 970000000000000000000, // TODO: create const to do a meaningful name to this value
                 Gas(30_000_000_000_000),
             )
-            .then(ext_self::callback_post_add_liquidity(
+            .then(callback_ref_exchange::callback_post_add_liquidity(
                 farm_id_str.clone(),
                 env::current_account_id(),
                 0,
@@ -903,7 +903,7 @@ impl Contract {
                 Gas(10_000_000_000_000),
             ))
             // Update user balance and stake
-            .then(ext_self::callback_post_get_pool_shares(
+            .then(callback_ref_exchange::callback_post_get_pool_shares(
                 farm_id_str,
                 env::current_account_id(),
                 0,
