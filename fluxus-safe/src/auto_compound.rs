@@ -17,9 +17,11 @@ impl Contract {
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
+        let compounder = self.get_strat(token_id).get();
+
         ext_farm::list_seed_farms(
             seed_id,
-            self.data().farm_contract_id.clone(),
+            compounder.farm_contract_id.clone(),
             0,
             Gas(40_000_000_000_000),
         )
@@ -58,11 +60,13 @@ impl Contract {
             }
         }
 
+        let compounder = self.get_strat(token_id).get();
+
         PromiseOrValue::Promise(
             ext_farm::get_unclaimed_rewards(
                 env::current_account_id(),
                 seed_id,
-                self.data().farm_contract_id.clone(),
+                compounder.farm_contract_id.clone(),
                 1,
                 Gas(3_000_000_000_000),
             )
@@ -119,7 +123,7 @@ impl Contract {
         PromiseOrValue::Promise(
             ext_farm::claim_reward_by_seed(
                 seed_id,
-                self.data().farm_contract_id.clone(),
+                compounder.farm_contract_id.clone(),
                 0,
                 Gas(40_000_000_000_000),
             )
@@ -185,7 +189,7 @@ impl Contract {
                 farm_info.reward_token.to_string(),
                 U128(amount_to_withdraw),
                 "false".to_string(),
-                self.data().farm_contract_id.clone(),
+                compounder.farm_contract_id.clone(),
                 0,
                 Gas(180_000_000_000_000),
             )
@@ -198,7 +202,7 @@ impl Contract {
         } else {
             // the withdraw succeeded but not the transfer
             ext_reward_token::ft_transfer_call(
-                self.exchange_acc(),
+                compounder.exchange_contract_id,
                 U128(farm_info.last_reward_amount + self.data().treasury.current_amount), //Amount after withdraw the rewards
                 "".to_string(),
                 farm_info.reward_token,
@@ -223,8 +227,6 @@ impl Contract {
         assert!(withdraw_result.is_ok(), "ERR_WITHDRAW_FROM_FARM_FAILED");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-
-        let exchange_id = self.exchange_acc();
 
         let data_mut = self.data_mut();
 
@@ -266,7 +268,7 @@ impl Contract {
 
         PromiseOrValue::Promise(
             ext_reward_token::ft_transfer_call(
-                exchange_id,
+                compounder.exchange_contract_id.clone(),
                 U128(amount), //Amount after withdraw the rewards
                 "".to_string(),
                 compounder.get_mut_farm_info(farm_id).reward_token.clone(),
@@ -369,7 +371,7 @@ impl Contract {
                 treasury_acc,
                 U128(treasury_curr_amount),
                 Some("".to_string()),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 1,
                 Gas(20_000_000_000_000),
             )
@@ -470,7 +472,7 @@ impl Contract {
                 farm_info.reward_token,
                 amount_token_2,
                 compounder.token2_address.clone(),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             )
@@ -487,7 +489,7 @@ impl Contract {
                 farm_info.reward_token,
                 amount_token_1,
                 compounder.token1_address.clone(),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             )
@@ -504,7 +506,7 @@ impl Contract {
                 farm_info.reward_token.clone(),
                 amount_token_1,
                 compounder.token1_address.clone(),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             )
@@ -513,7 +515,7 @@ impl Contract {
                 farm_info.reward_token,
                 amount_token_2,
                 compounder.token2_address.clone(),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             ))
@@ -572,6 +574,10 @@ impl Contract {
         let compounder_mut = self.get_strat_mut(&token_id).get_mut();
         let token_out1 = compounder_mut.token1_address.clone();
         let token_out2 = compounder_mut.token2_address.clone();
+
+        let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
+        let farm_contract_id: AccountId = compounder_mut.farm_contract_id.clone();
+
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         let pool_id_to_swap1 = farm_info_mut.pool_id_token1_reward;
@@ -599,6 +605,7 @@ impl Contract {
             // use the entire amount for the common token
             farm_info_mut.available_balance[0] = amount_in_1.0;
             self.call_swap(
+                exchange_contract_id,
                 pool_id_to_swap2,
                 token_in2,
                 token_out2,
@@ -616,6 +623,7 @@ impl Contract {
             // use the entire amount for the common token
             farm_info_mut.available_balance[1] = amount_in_2.0;
             self.call_swap(
+                exchange_contract_id,
                 pool_id_to_swap1,
                 token_in1,
                 token_out1,
@@ -631,6 +639,7 @@ impl Contract {
             ))
         } else {
             self.call_swap(
+                exchange_contract_id,
                 pool_id_to_swap1,
                 token_in1,
                 token_out1,
@@ -660,6 +669,9 @@ impl Contract {
     ) -> PromiseOrValue<u64> {
         let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let compounder_mut = self.get_strat_mut(&token_id).get_mut();
+
+        let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
+
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
@@ -682,6 +694,7 @@ impl Contract {
 
         PromiseOrValue::Promise(
             callback_ref_exchange::call_swap(
+                exchange_contract_id,
                 pool_id_to_swap2,
                 token_in2,
                 token_out2,
@@ -884,7 +897,7 @@ impl Contract {
                 pool_id,
                 vec![U128(token1_amount), U128(token2_amount)],
                 None,
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 970000000000000000000, // TODO: create const to do a meaningful name to this value
                 Gas(30_000_000_000_000),
             )
@@ -898,7 +911,7 @@ impl Contract {
             .then(ext_exchange::get_pool_shares(
                 pool_id,
                 env::current_account_id(),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 0,
                 Gas(10_000_000_000_000),
             ))
@@ -957,6 +970,9 @@ impl Contract {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
 
+        let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
+        let farm_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
+
         compounder_mut.harvest_timestamp = env::block_timestamp_ms();
 
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
@@ -981,7 +997,8 @@ impl Contract {
         }
 
         self.call_stake(
-            self.data().farm_contract_id.clone(),
+            exchange_contract_id,
+            farm_contract_id,
             token_id.to_string(),
             U128(accumulated_shares),
             "\"Free\"".to_string(),

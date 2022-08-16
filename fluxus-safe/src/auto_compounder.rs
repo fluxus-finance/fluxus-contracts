@@ -72,6 +72,12 @@ pub struct AutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
+    // Contract address of the exchange used
+    pub exchange_contract_id: AccountId,
+
+    // Contract address of the farm used
+    pub farm_contract_id: AccountId,
+
     /// Address of the first token used by pool
     pub token1_address: AccountId,
 
@@ -141,6 +147,8 @@ impl AutoCompounder {
         treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id: u64,
@@ -151,6 +159,8 @@ impl AutoCompounder {
 
         Self {
             admin_fees: admin_fee,
+            exchange_contract_id,
+            farm_contract_id,
             token1_address,
             token2_address,
             pool_id,
@@ -235,6 +245,8 @@ impl VersionedCompounder {
         treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id: u64,
@@ -245,6 +257,8 @@ impl VersionedCompounder {
 
         VersionedCompounder::V101(AutoCompounder {
             admin_fees: admin_fee,
+            exchange_contract_id,
+            farm_contract_id,
             token1_address,
             token2_address,
             pool_id,

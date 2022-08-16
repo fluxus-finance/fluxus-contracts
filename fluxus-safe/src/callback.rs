@@ -5,6 +5,7 @@ pub trait RefExchangeCallbacks {
     fn call_get_pool_shares(&mut self, pool_id: u64, account_id: AccountId) -> String;
     fn call_swap(
         &self,
+        exchange_contract_id: AccountId,
         pool_id: u64,
         token_in: AccountId,
         token_out: AccountId,

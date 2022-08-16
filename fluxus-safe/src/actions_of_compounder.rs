@@ -1,17 +1,21 @@
 use crate::*;
 
+use crate::callback::*;
+
 /// Auto-compounder strategy methods
 #[near_bindgen]
 impl Contract {
     #[private]
     pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
+        let exchange_contract_id = self.get_strat(token_id.clone()).get().exchange_contract_id;
+        let farm_contract_id = self.get_strat(token_id.clone()).get().farm_contract_id;
         // decide which strategies
         ext_exchange::mft_transfer_call(
-            self.data().farm_contract_id.clone(),
+            farm_contract_id.clone(),
             token_id.clone(),
             U128(shares),
             "\"Free\"".to_string(),
-            self.data().exchange_contract_id.clone(),
+            exchange_contract_id.clone(),
             1,
             Gas(80_000_000_000_000),
         )
@@ -40,17 +44,20 @@ impl Contract {
             panic!("ERR_STAKE_FAILED");
         }
 
-        let mut id = token_id;
+        let mut id = token_id.clone();
         id.remove(0).to_string();
 
+        let exchange_contract_id = self.get_strat(token_id).get().exchange_contract_id;
+        let seed_id: String = format!("{}@{}", exchange_contract_id, id);
+
+        log!("my seed {}", seed_id);
+
         //Total fft_share
-        let total_fft = self.total_supply_by_pool_id(id.clone());
+        let total_fft = self.total_supply_by_pool_id(seed_id.clone());
         log!("total fft is = {}", total_fft);
-        let fft_share_id = self.convert_pool_id_in_fft_share(id.clone());
+        let fft_share_id = self.convert_pool_id_in_fft_share(seed_id.clone());
 
         let data = self.data_mut();
-        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
-
         //Total seed_id
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
 
@@ -87,9 +94,15 @@ impl Contract {
         let mut id = token_id.clone();
         id.remove(0).to_string();
 
-        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, id);
+        let exchange_contract_id = self
+            .get_strat(token_id.clone())
+            .get()
+            .exchange_contract_id
+            .clone();
 
-        let fft_share_id = self.convert_pool_id_in_fft_share(id);
+        let seed_id: String = format!("{}@{}", exchange_contract_id, id);
+
+        let fft_share_id = self.convert_pool_id_in_fft_share(seed_id.clone());
         let mut user_fft_shares =
             self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
 
@@ -139,7 +152,7 @@ impl Contract {
         ext_exchange::get_pool_shares(
             compounder.pool_id,
             contract_id.clone(),
-            self.data().exchange_contract_id.clone(),
+            compounder.exchange_contract_id.clone(),
             0,
             Gas(20_000_000_000_000),
         )
@@ -188,7 +201,7 @@ impl Contract {
                 receiver_id,
                 U128(withdraw_amount),
                 Some("".to_string()),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 1,
                 Gas(30_000_000_000_000),
             )
@@ -200,7 +213,7 @@ impl Contract {
                 compounder.seed_id,
                 U128(0),
                 U128(amount),
-                self.data().farm_contract_id.clone(),
+                compounder.farm_contract_id.clone(),
                 1,
                 Gas(180_000_000_000_000),
             )
@@ -211,7 +224,7 @@ impl Contract {
                 receiver_id,
                 U128(withdraw_amount),
                 Some("".to_string()),
-                self.data().exchange_contract_id.clone(),
+                compounder.exchange_contract_id.clone(),
                 1,
                 Gas(30_000_000_000_000),
             ))
@@ -229,11 +242,17 @@ impl Contract {
         // TODO: remove generic promise check
         assert!(self.check_promise());
         // assert!(mft_transfer_result.is_ok());
+        let exchange_contract_id = self
+            .get_strat(token_id.clone())
+            .get()
+            .exchange_contract_id
+            .clone();
 
         let mut id = token_id;
         let data = self.data_mut();
         id.remove(0).to_string();
-        let seed_id: String = format!("{}@{}", data.exchange_contract_id, id);
+
+        let seed_id: String = format!("{}@{}", exchange_contract_id, id);
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
         self.data_mut()
             .seed_id_amount
@@ -256,6 +275,7 @@ impl Contract {
     #[payable]
     pub fn call_swap(
         &mut self,
+        exchange_contract_id: AccountId,
         pool_id: u64,
         token_in: AccountId,
         token_out: AccountId,
@@ -271,7 +291,7 @@ impl Contract {
                 min_amount_out,
             }],
             None,
-            self.data().exchange_contract_id.clone(),
+            exchange_contract_id,
             1,
             Gas(20_000_000_000_000),
         )
@@ -279,12 +299,17 @@ impl Contract {
 
     /// Call the ref get_pool_shares function.
     #[private]
-    pub fn call_get_pool_shares(&self, pool_id: u64, account_id: AccountId) -> Promise {
+    pub fn call_get_pool_shares(
+        &self,
+        exchange_contract_id: AccountId,
+        pool_id: u64,
+        account_id: AccountId,
+    ) -> Promise {
         assert!(self.check_promise(), "Previous tx failed.");
         ext_exchange::get_pool_shares(
             pool_id,
             account_id,
-            self.data().exchange_contract_id.clone(),
+            exchange_contract_id,
             0,
             Gas(10_000_000_000_000),
         )
@@ -293,6 +318,7 @@ impl Contract {
     /// Ref function to add liquidity in the pool.
     pub fn call_add_liquidity(
         &self,
+        exchange_contract_id: AccountId,
         pool_id: u64,
         amounts: Vec<U128>,
         min_amounts: Option<Vec<U128>>,
@@ -301,7 +327,7 @@ impl Contract {
             pool_id,
             amounts,
             min_amounts,
-            self.data().exchange_contract_id.clone(),
+            exchange_contract_id,
             970000000000000000000,
             Gas(30_000_000_000_000),
         )
@@ -309,10 +335,14 @@ impl Contract {
 
     /// Call the ref user_register function.
     /// TODO: remove this if not necessary
-    pub fn call_user_register(&self, account_id: AccountId) -> Promise {
+    pub fn call_user_register(
+        &self,
+        exchange_contract_id: AccountId,
+        account_id: AccountId,
+    ) -> Promise {
         ext_exchange::storage_deposit(
             account_id,
-            self.data().exchange_contract_id.clone(),
+            exchange_contract_id,
             10000000000000000000000,
             Gas(3_000_000_000_000),
         )
@@ -321,6 +351,7 @@ impl Contract {
     /// Ref function to stake the lps/shares.
     pub fn call_stake(
         &self,
+        exchange_contract_id: AccountId,
         receiver_id: AccountId,
         token_id: String,
         amount: U128,
@@ -331,26 +362,9 @@ impl Contract {
             token_id,
             amount,
             msg,
-            self.data().exchange_contract_id.clone(),
+            exchange_contract_id,
             1,
             Gas(80_000_000_000_000),
-        )
-    }
-
-    /// Ref function to withdraw the rewards to exchange ref contract.
-    pub fn call_withdraw_reward(
-        &self,
-        token_id: String,
-        amount: U128,
-        unregister: String,
-    ) -> Promise {
-        ext_farm::withdraw_reward(
-            token_id,
-            amount,
-            unregister,
-            self.data().farm_contract_id.clone(),
-            1,
-            Gas(180_000_000_000_000),
         )
     }
 
@@ -399,7 +413,7 @@ impl Contract {
         ext_farm::get_unclaimed_rewards(
             env::current_account_id(),
             seed_id,
-            self.data().farm_contract_id.clone(),
+            compounder.farm_contract_id.clone(),
             1,
             Gas(3_000_000_000_000),
         )

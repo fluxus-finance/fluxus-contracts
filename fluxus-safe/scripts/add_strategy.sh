@@ -11,6 +11,8 @@ near call $CONTRACT_NAME create_strategy '{
     "strategy_fee": 5,
     "strat_creator": { "account_id": "'$username'", "fee_percentage": 5, "current_amount" : 0 },
     "sentry_fee": 10,
+    "exchange_contract_id": "'$exchange_contract_id'", 
+    "farm_contract_id": "'$farm_contract_id'",
     "token1_address": "'$token1_address'", 
     "token2_address": "'$token2_address'", 
     "pool_id": '$pool_id', 

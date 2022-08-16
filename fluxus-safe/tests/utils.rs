@@ -107,6 +107,8 @@ pub async fn create_strategy(
             "strategy_fee": TOTAL_PROTOCOL_FEE,
             "strat_creator": strat,
             "sentry_fee": SENTRY_FEES_PERCENT,
+            "exchange_contract_id": CONTRACT_ID_REF_EXC,
+            "farm_contract_id": CONTRACT_ID_FARM,
             "token1_address": token1.id().to_string(),
             "token2_address": token2.id().to_string(),
             "pool_id": pool_id,
@@ -132,8 +134,6 @@ pub async fn deploy_safe_contract(
         .call(worker, "new")
         .args_json(serde_json::json!({
             "owner_id": owner.id(),
-            "exchange_contract_id": CONTRACT_ID_REF_EXC,
-            "farm_contract_id": CONTRACT_ID_FARM,
             "treasure_contract_id": treasure.id()
         }))?
         .transact()

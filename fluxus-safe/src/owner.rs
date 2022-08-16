@@ -9,16 +9,6 @@ impl Contract {
         format!("{} is {:#?}", env::current_account_id(), self.data().state)
     }
 
-    pub fn update_exchange_contract(&mut self, contract_id: AccountId) {
-        self.is_owner();
-        self.data_mut().exchange_contract_id = contract_id;
-    }
-
-    pub fn update_farm_contract(&mut self, contract_id: AccountId) {
-        self.is_owner();
-        self.data_mut().farm_contract_id = contract_id;
-    }
-
     pub fn update_treasure_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
         self.data_mut().treasury.account_id = contract_id;

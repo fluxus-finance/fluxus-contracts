@@ -9,6 +9,8 @@ impl Contract {
         strategy_fee: u128,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id: u64,
@@ -21,7 +23,7 @@ impl Contract {
         return if self.data().strategies.contains_key(&token_id) {
             format!("VersionedStrategy for {} already exist", token_id)
         } else {
-            let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id);
+            let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
@@ -33,6 +35,8 @@ impl Contract {
                 treasury,
                 strat_creator,
                 sentry_fee,
+                exchange_contract_id,
+                farm_contract_id,
                 token1_address,
                 token2_address,
                 pool_id,

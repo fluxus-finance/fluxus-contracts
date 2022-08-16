@@ -128,14 +128,6 @@ pub struct ContractData {
     ///Store the fft_share for each seed_id.
     seed_id_amount: LookupMap<String, u128>,
 
-    // Contract address of the exchange used
-    //TODO: Move it inside the strategy
-    exchange_contract_id: AccountId,
-
-    // Contract address of the farm used
-    //TODO: Move it inside the strategy
-    farm_contract_id: AccountId,
-
     // Pools used to harvest, in the ":X" format
     token_ids: Vec<String>,
 
@@ -220,12 +212,7 @@ impl VersionedContractData {}
 #[near_bindgen]
 impl Contract {
     #[init]
-    pub fn new(
-        owner_id: AccountId,
-        exchange_contract_id: AccountId,
-        farm_contract_id: AccountId,
-        treasure_contract_id: AccountId,
-    ) -> Self {
+    pub fn new(owner_id: AccountId, treasure_contract_id: AccountId) -> Self {
         assert!(!env::state_exists(), "Already initialized");
         let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
@@ -250,8 +237,6 @@ impl Contract {
                 total_supply_by_fft_share: LookupMap::new(StorageKey::TotalSupplyByShare),
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
-                exchange_contract_id,
-                farm_contract_id,
                 /// List of all the pools.
                 token_ids: Vec::new(),
                 strategies: HashMap::new(),
@@ -287,13 +272,13 @@ impl Contract {
         }
     }
 
-    fn exchange_acc(&self) -> AccountId {
-        self.data().exchange_contract_id.clone()
-    }
+    // fn exchange_acc(&self) -> AccountId {
+    //     self.data().exchange_contract_id.clone()
+    // }
 
-    fn farm_acc(&self) -> AccountId {
-        self.data().farm_contract_id.clone()
-    }
+    // fn farm_acc(&self) -> AccountId {
+    //     self.data().farm_contract_id.clone()
+    // }
 
     fn treasure_acc(&self) -> AccountId {
         self.data().treasury.account_id.clone()
