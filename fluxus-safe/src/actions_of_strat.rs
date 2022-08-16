@@ -17,7 +17,9 @@ impl Contract {
         self.is_owner();
 
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
-
+        
+        let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
+        self.register_lp(token_id.clone(),contract_id.to_string());
         return if self.data().strategies.contains_key(&token_id) {
             format!("VersionedStrategy for {} already exist", token_id)
         } else {
@@ -59,6 +61,16 @@ impl Contract {
 
             format!("VersionedStrategy for {} created successfully", token_id)
         };
+    }
+
+    fn register_lp(&mut self, token_id: String, account_id: String){
+        ext_exchange::mft_register(
+            token_id,
+            account_id,
+            self.data().exchange_contract_id.clone(),
+            0,
+            Gas(40_000_000_000_000),
+        );
     }
 
     pub fn add_farm_to_strategy(

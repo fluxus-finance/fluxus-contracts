@@ -137,6 +137,7 @@ pub trait RefExchange {
         amount: U128,
         msg: String,
     );
+    fn mft_register(&mut self, token_id: String, account_id: String);
     fn mft_transfer(
         &mut self,
         token_id: String,
