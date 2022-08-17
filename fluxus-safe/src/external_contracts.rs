@@ -90,7 +90,8 @@ pub trait Farming {
         unlock_amount: U128,
         withdraw_amount: U128,
     ) -> bool;
-    fn withdraw_reward(&mut self, token_id: String, amount: U128, unregister: String) -> Promise;
+    fn withdraw_reward(&mut self, token_id: AccountId, amount: U128, unregister: String)
+        -> Promise;
     fn get_reward(&mut self, account_id: AccountId, token_id: AccountId) -> U128;
     fn get_unclaimed_reward(&mut self, account_id: AccountId, farm_id: String) -> U128;
     fn get_unclaimed_rewards(

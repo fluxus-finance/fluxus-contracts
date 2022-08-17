@@ -89,18 +89,12 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        self.assert_token_id(token_id.clone());
+        let caller_id = env::predecessor_account_id();
+        self.assert_strategy_is_running(&caller_id, &token_id);
 
-        let (caller, _) = self.get_predecessor_and_current_account();
-        log!("{}", caller);
+        let seed_id: String = format!("{}@{}", caller_id, unwrap_token_id(&token_id));
 
-        // TODO: strategies will be by seed_id, exchange@pool_id
-        // this way, we can sort out different strategies for common seeds,
-        // like, ref@28, jumbo@28, etc...
-        //Check: Is the token_id the vault's pool_id? If is not, send it back
-        let strat = self.get_strat(token_id.clone());
-
-        let compounder = strat.get();
+        let compounder = self.get_strat(&seed_id).get();
 
         let amount_in_u128: u128 = amount.into();
 
@@ -111,7 +105,7 @@ impl MFTTokenReceiver for Contract {
         );
 
         // initiate stake process
-        compounder.stake(token_id, &sender_id, amount_in_u128);
+        compounder.stake(token_id, seed_id, &sender_id, amount_in_u128);
 
         // TODO: remove this and return promise
         PromiseOrValue::Value(U128(0))

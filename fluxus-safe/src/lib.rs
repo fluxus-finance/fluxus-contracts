@@ -152,7 +152,7 @@ impl Contract {
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        let strat = self.get_strat(token_id);
+        let strat = self.get_strat(&seed_id);
         let compounder = strat.get_ref();
 
         for farm in compounder.farms.iter() {
@@ -168,8 +168,9 @@ impl Contract {
 
     // TODO: rename this method
     /// Ensures that at least one strategy is running for given token_id
-    fn assert_token_id(&self, token_id: String) {
-        let strat = self.get_strat(token_id);
+    fn assert_strategy_is_running(&self, exchange_id: &AccountId, token_id: &str) {
+        let seed_id: String = format!("{}@{}", exchange_id, unwrap_token_id(token_id));
+        let strat = self.get_strat(&seed_id);
         let compounder = strat.get_ref();
 
         let mut has_running_strategy = false;
@@ -184,11 +185,6 @@ impl Contract {
         if !has_running_strategy {
             panic!("There is no running strategy for this pool")
         }
-    }
-
-    /// wrap token_id into correct format in MFT standard
-    pub(crate) fn wrap_mft_token_id(&self, token_id: &String) -> String {
-        format!(":{}", token_id)
     }
 }
 
@@ -245,6 +241,7 @@ impl Contract {
 /// Splits farm_id_str
 /// Returns seed_id, token_id, farm_id
 /// (exchange@pool_id, :pool_id, farm_id) => ref-finance@10, :10, 0
+// TODO: can it be a &str?
 pub fn get_ids_from_farm(farm_id_str: String) -> (String, String, String) {
     let ids: Vec<&str> = farm_id_str.split('#').collect();
     let token_id: Vec<&str> = ids[0].split('@').collect();
@@ -252,6 +249,22 @@ pub fn get_ids_from_farm(farm_id_str: String) -> (String, String, String) {
     let token_id_wrapped = format!(":{}", token_id[1]);
 
     (ids[0].to_owned(), token_id_wrapped, ids[1].to_owned())
+}
+
+pub fn get_predecessor_and_current_account() -> (AccountId, AccountId) {
+    (env::predecessor_account_id(), env::current_account_id())
+}
+
+pub fn unwrap_token_id(token_id: &str) -> String {
+    let mut chars = token_id.chars();
+    chars.next();
+
+    chars.collect()
+}
+
+/// wrap token_id into correct format in MFT standard
+pub fn wrap_mft_token_id(token_id: &str) -> String {
+    format!(":{}", token_id)
 }
 
 impl Contract {

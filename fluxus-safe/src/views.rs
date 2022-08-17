@@ -44,9 +44,8 @@ impl Contract {
     }
 
     /// Returns the minimum value accepted for given token_id
-    pub fn get_seed_min_deposit(self, token_id: String) -> U128 {
-        let strat = self.get_strat(token_id);
-        let compounder = strat.clone().get();
+    pub fn get_seed_min_deposit(self, seed_id: String) -> U128 {
+        let compounder = self.get_strat(&seed_id).get();
         compounder.seed_min_deposit
     }
 
@@ -126,8 +125,7 @@ impl Contract {
     pub fn get_strat_state(self, farm_id_str: String) -> AutoCompounderState {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        let strat = self.get_strat(token_id);
-        let compounder = strat.get_ref();
+        let compounder = self.get_strat(&seed_id).get();
         let farm_info = compounder.get_farm_info(&farm_id);
 
         farm_info.state
@@ -184,13 +182,13 @@ impl Contract {
         count
     }
 
-    pub fn check_fee_by_strategy(&self, token_id: String) -> String {
-        let compounder = self.get_strat(token_id).get_ref().clone();
+    pub fn check_fee_by_strategy(&self, seed_id: String) -> String {
+        let compounder = self.get_strat(&seed_id).get();
         format!("{}%", compounder.admin_fees.strategy_fee)
     }
 
-    pub fn is_strategy_active(&self, token_id: String) -> bool {
-        let compounder = self.get_strat(token_id).get_ref().clone();
+    pub fn is_strategy_active(&self, seed_id: String) -> bool {
+        let compounder = self.get_strat(&seed_id).get();
 
         for farm in compounder.farms.iter() {
             if farm.state == AutoCompounderState::Running {
@@ -202,8 +200,8 @@ impl Contract {
     }
 
     pub fn current_strat_step(&self, farm_id_str: String) -> String {
-        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str);
-        let compounder = self.get_strat(token_id).get_ref().clone();
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+        let compounder = self.get_strat(&seed_id).get();
         let farm_info = compounder.get_farm_info(&farm_id);
 
         match farm_info.cycle_stage {
@@ -214,20 +212,20 @@ impl Contract {
         }
     }
 
-    pub fn get_farm_ids_by_seed(&self, token_id: String) -> Vec<String> {
-        let mut strats: Vec<String> = vec![];
+    // pub fn get_farm_ids_by_seed(&self, seed_id: String) -> Vec<String> {
+    //     let mut strats: Vec<String> = vec![];
 
-        let compounder = self.get_strat(token_id.clone()).get_ref().clone();
+    //     let compounder = self.get_strat(&seed_id).get_ref().clone();
 
-        for farm in compounder.farms.iter() {
-            strats.push(format!("{}#{}", token_id, farm.id));
-        }
+    //     for farm in compounder.farms.iter() {
+    //         strats.push(format!("{}#{}", token_id, farm.id));
+    //     }
 
-        strats
-    }
+    //     strats
+    // }
 
-    pub fn get_harvest_timestamp(&self, token_id: String) -> String {
-        let compounder = self.get_strat(token_id).get_ref().clone();
+    pub fn get_harvest_timestamp(&self, seed_id: String) -> String {
+        let compounder = self.get_strat(&seed_id).get_ref().clone();
         compounder.harvest_timestamp.to_string()
     }
 

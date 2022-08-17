@@ -243,9 +243,16 @@ impl AutoCompounder {
         }
     }
 
-    pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
+    pub fn stake(
+        &self,
+        token_id: String,
+        seed_id: String,
+        account_id: &AccountId,
+        shares: u128,
+    ) -> Promise {
         let exchange_contract_id = self.exchange_contract_id.clone();
         let farm_contract_id = self.farm_contract_id.clone();
+
         // decide which strategies
         ext_exchange::mft_transfer_call(
             farm_contract_id,
@@ -257,8 +264,9 @@ impl AutoCompounder {
             Gas(80_000_000_000_000),
         )
         // substitute for a generic callback, with a match for next step
-        .then(callback_ref_exchange::callback_stake_result(
+        .then(callback_ref_finance::callback_stake_result(
             token_id,
+            seed_id,
             account_id.clone(),
             shares,
             env::current_account_id(),

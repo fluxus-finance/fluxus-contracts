@@ -83,15 +83,8 @@ impl Contract {
             .insert(&fft_share, &temp);
     }
 
-    pub fn seed_total_amount(&self, token_id: String) -> u128 {
-        let mut id = token_id.clone();
-        id.remove(0).to_string();
-
-        let compounder = self.get_strat(token_id.clone()).get_ref().clone();
-        let seed_id: String = format!("{}@{}", compounder.exchange_contract_id, id);
-
-        let temp = self.data().seed_id_amount.get(&seed_id).unwrap();
-        temp
+    pub fn seed_total_amount(&self, seed_id: &String) -> u128 {
+        self.data().seed_id_amount.get(seed_id).unwrap_or(0u128)
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
