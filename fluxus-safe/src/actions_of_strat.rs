@@ -20,19 +20,20 @@ impl Contract {
 
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
 
+        // TODO: update to seed
         return if self.data().strategies.contains_key(&token_id) {
             format!("VersionedStrategy for {} already exist", token_id)
         } else {
             let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
+            // OK
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
-            let treasury = data_mut.treasury.clone();
+            // TODO: REMOVE
             data_mut.token_ids.push(token_id.clone());
 
             let strat: VersionedStrategy = VersionedStrategy::AutoCompounder(AutoCompounder::new(
                 strategy_fee,
-                treasury,
                 strat_creator,
                 sentry_fee,
                 exchange_contract_id,
@@ -51,14 +52,17 @@ impl Contract {
 
                 //Registering id in the users balance map
                 let temp = LookupMap::new(StorageKey::Strategy);
+                // TODO: why id?
                 data_mut
                     .users_balance_by_fft_share
                     .insert(&id.clone(), &temp);
 
                 //Registering total_supply
+                // TODO: why id?
                 data_mut.total_supply_by_fft_share.insert(&id, &0_u128);
             }
 
+            // TODO: update to seed id
             data_mut.strategies.insert(token_id.clone(), strat);
 
             format!("VersionedStrategy for {} created successfully", token_id)
@@ -76,7 +80,7 @@ impl Contract {
         self.is_owner();
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
 
-        // let data_mut = self.data_mut();
+        // TODO: should be seed
         let compounder = self.get_strat_mut(&token_id).get_mut();
 
         for farm in compounder.farms.clone() {
@@ -126,6 +130,7 @@ impl Contract {
     }
     pub fn harvest(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        // TODO: should use seed
         let strat = self.get_strat(token_id);
         let compounder = strat.get_ref();
         let farm_info = compounder.get_farm_info(&farm_id);

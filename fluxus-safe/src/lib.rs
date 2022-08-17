@@ -238,6 +238,7 @@ impl Contract {
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
                 /// List of all the pools.
+                /// TODO: with more exchanges, this should not exist
                 token_ids: Vec::new(),
                 strategies: HashMap::new(),
             }),
@@ -245,8 +246,9 @@ impl Contract {
     }
 }
 
-/// Splits farm_id_str into token_id and farm_id
-/// Returns seed_id, token_id, farm_id (exchange@pool_id, farm_id)
+/// Splits farm_id_str
+/// Returns seed_id, token_id, farm_id
+/// (exchange@pool_id, :pool_id, farm_id) => ref-finance@10, :10, 0
 pub fn get_ids_from_farm(farm_id_str: String) -> (String, String, String) {
     let ids: Vec<&str> = farm_id_str.split('#').collect();
     let token_id: Vec<&str> = ids[0].split('@').collect();

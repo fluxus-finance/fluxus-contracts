@@ -1,7 +1,8 @@
 use crate::*;
 
+/// Defining cross-contract interface. This allows to create a new promise.
 #[ext_contract(callback_ref_exchange)]
-pub trait RefExchangeCallbacks {
+pub trait RefExchangeAutoCompound {
     fn call_get_pool_shares(&mut self, pool_id: u64, account_id: AccountId) -> String;
     fn call_swap(
         &self,
@@ -142,3 +143,8 @@ pub trait RefExchangeCallbacks {
         reward_token: AccountId,
     );
 }
+
+// pub trait RefExchangeAutoCompound {
+//     fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise;
+//     fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise;
+// }

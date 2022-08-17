@@ -2,33 +2,146 @@ use crate::*;
 
 use crate::callback::*;
 
+// impl RefExchangeAutoCompound for Contract {
+//     fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
+//         let exchange_contract_id = self.get_strat(token_id.clone()).get().exchange_contract_id;
+//         let farm_contract_id = self.get_strat(token_id.clone()).get().farm_contract_id;
+//         // decide which strategies
+//         ext_exchange::mft_transfer_call(
+//             farm_contract_id.clone(),
+//             token_id.clone(),
+//             U128(shares),
+//             "\"Free\"".to_string(),
+//             exchange_contract_id.clone(),
+//             1,
+//             Gas(80_000_000_000_000),
+//         )
+//         // substitute for a generic callback, with a match for next step
+//         .then(callback_ref_exchange::callback_stake_result(
+//             token_id,
+//             account_id.clone(),
+//             shares,
+//             env::current_account_id(),
+//             0,
+//             Gas(10_000_000_000_000),
+//         ))
+//     }
+
+//     fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
+//         let (caller_id, contract_id) = self.get_predecessor_and_current_account();
+
+//         let mut id = token_id.clone();
+//         id.remove(0).to_string();
+
+//         let exchange_contract_id = self
+//             .get_strat(token_id.clone())
+//             .get()
+//             .exchange_contract_id
+//             .clone();
+
+//         let seed_id: String = format!("{}@{}", exchange_contract_id, id);
+
+//         let fft_share_id = self.convert_pool_id_in_fft_share(seed_id.clone());
+//         let mut user_fft_shares =
+//             self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
+
+//         //Total fft_share
+//         let total_fft = self.total_supply_amount(fft_share_id);
+
+//         //Total seed_id
+//         let total_seed = self
+//             .data_mut()
+//             .seed_id_amount
+//             .get(&seed_id)
+//             .unwrap_or_default();
+
+//         //Converting user total fft_shares in seed_id:
+//         let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
+//             / U256::from(total_fft))
+//         .as_u128();
+
+//         let strat = self
+//             .data()
+//             .strategies
+//             .get(&token_id)
+//             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+//         let compounder = strat.clone().get();
+
+//         let amount: U128;
+//         if let Some(amount_withdrawal) = amount_withdrawal {
+//             amount = amount_withdrawal;
+//             user_fft_shares = (U256::from(amount_withdrawal.0) * U256::from(total_fft)
+//                 / U256::from(total_seed))
+//             .as_u128();
+//         } else {
+//             amount = U128(user_shares);
+//         }
+//         assert!(
+//             user_shares >= amount.0,
+//             "{} is trying to withdrawal {} and only has {}",
+//             caller_id,
+//             amount.0,
+//             user_shares
+//         );
+
+//         log!("{} is trying to withdrawal {}", caller_id, amount.0);
+
+//         // Unstake shares/lps
+//         ext_exchange::get_pool_shares(
+//             compounder.pool_id,
+//             contract_id.clone(),
+//             compounder.exchange_contract_id.clone(),
+//             0,
+//             Gas(20_000_000_000_000),
+//         )
+//         .then(callback_ref_exchange::callback_get_pool_shares(
+//             token_id.clone(),
+//             caller_id.clone(),
+//             amount.0,
+//             contract_id.clone(),
+//             0,
+//             Gas(230_000_000_000_000),
+//         ))
+//         .then(callback_ref_exchange::callback_withdraw_shares(
+//             token_id,
+//             caller_id,
+//             amount.0,
+//             user_fft_shares,
+//             contract_id,
+//             0,
+//             Gas(20_000_000_000_000),
+//         ))
+//     }
+// }
+
 /// Auto-compounder strategy methods
 #[near_bindgen]
 impl Contract {
-    #[private]
-    pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
-        let exchange_contract_id = self.get_strat(token_id.clone()).get().exchange_contract_id;
-        let farm_contract_id = self.get_strat(token_id.clone()).get().farm_contract_id;
-        // decide which strategies
-        ext_exchange::mft_transfer_call(
-            farm_contract_id.clone(),
-            token_id.clone(),
-            U128(shares),
-            "\"Free\"".to_string(),
-            exchange_contract_id.clone(),
-            1,
-            Gas(80_000_000_000_000),
-        )
-        // substitute for a generic callback, with a match for next step
-        .then(callback_ref_exchange::callback_stake_result(
-            token_id,
-            account_id.clone(),
-            shares,
-            env::current_account_id(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
-    }
+    // #[private]
+    // pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
+    //     let exchange_contract_id = self.get_strat(token_id.clone()).get().exchange_contract_id;
+    //     let farm_contract_id = self.get_strat(token_id.clone()).get().farm_contract_id;
+    //     // decide which strategies
+    //     ext_exchange::mft_transfer_call(
+    //         farm_contract_id.clone(),
+    //         token_id.clone(),
+    //         U128(shares),
+    //         "\"Free\"".to_string(),
+    //         exchange_contract_id.clone(),
+    //         1,
+    //         Gas(80_000_000_000_000),
+    //     )
+    //     // substitute for a generic callback, with a match for next step
+    //     .then(callback_ref_exchange::callback_stake_result(
+    //         token_id,
+    //         account_id.clone(),
+    //         shares,
+    //         env::current_account_id(),
+    //         0,
+    //         Gas(10_000_000_000_000),
+    //     ))
+    // }
 
     #[private]
     pub fn callback_stake_result(
@@ -87,93 +200,93 @@ impl Contract {
         )
     }
 
-    /// Withdraw user lps and send it to the contract.
-    pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
-        let (caller_id, contract_id) = self.get_predecessor_and_current_account();
+    // /// Withdraw user lps and send it to the contract.
+    // pub fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise {
+    //     let (caller_id, contract_id) = self.get_predecessor_and_current_account();
 
-        let mut id = token_id.clone();
-        id.remove(0).to_string();
+    //     let mut id = token_id.clone();
+    //     id.remove(0).to_string();
 
-        let exchange_contract_id = self
-            .get_strat(token_id.clone())
-            .get()
-            .exchange_contract_id
-            .clone();
+    //     let exchange_contract_id = self
+    //         .get_strat(token_id.clone())
+    //         .get()
+    //         .exchange_contract_id
+    //         .clone();
 
-        let seed_id: String = format!("{}@{}", exchange_contract_id, id);
+    //     let seed_id: String = format!("{}@{}", exchange_contract_id, id);
 
-        let fft_share_id = self.convert_pool_id_in_fft_share(seed_id.clone());
-        let mut user_fft_shares =
-            self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
+    //     let fft_share_id = self.convert_pool_id_in_fft_share(seed_id.clone());
+    //     let mut user_fft_shares =
+    //         self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
 
-        //Total fft_share
-        let total_fft = self.total_supply_amount(fft_share_id);
+    //     //Total fft_share
+    //     let total_fft = self.total_supply_amount(fft_share_id);
 
-        //Total seed_id
-        let total_seed = self
-            .data_mut()
-            .seed_id_amount
-            .get(&seed_id)
-            .unwrap_or_default();
+    //     //Total seed_id
+    //     let total_seed = self
+    //         .data_mut()
+    //         .seed_id_amount
+    //         .get(&seed_id)
+    //         .unwrap_or_default();
 
-        //Converting user total fft_shares in seed_id:
-        let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
-            / U256::from(total_fft))
-        .as_u128();
+    //     //Converting user total fft_shares in seed_id:
+    //     let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
+    //         / U256::from(total_fft))
+    //     .as_u128();
 
-        let strat = self
-            .data()
-            .strategies
-            .get(&token_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+    //     let strat = self
+    //         .data()
+    //         .strategies
+    //         .get(&token_id)
+    //         .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
-        let compounder = strat.clone().get();
+    //     let compounder = strat.clone().get();
 
-        let amount: U128;
-        if let Some(amount_withdrawal) = amount_withdrawal {
-            amount = amount_withdrawal;
-            user_fft_shares = (U256::from(amount_withdrawal.0) * U256::from(total_fft)
-                / U256::from(total_seed))
-            .as_u128();
-        } else {
-            amount = U128(user_shares);
-        }
-        assert!(
-            user_shares >= amount.0,
-            "{} is trying to withdrawal {} and only has {}",
-            caller_id,
-            amount.0,
-            user_shares
-        );
+    //     let amount: U128;
+    //     if let Some(amount_withdrawal) = amount_withdrawal {
+    //         amount = amount_withdrawal;
+    //         user_fft_shares = (U256::from(amount_withdrawal.0) * U256::from(total_fft)
+    //             / U256::from(total_seed))
+    //         .as_u128();
+    //     } else {
+    //         amount = U128(user_shares);
+    //     }
+    //     assert!(
+    //         user_shares >= amount.0,
+    //         "{} is trying to withdrawal {} and only has {}",
+    //         caller_id,
+    //         amount.0,
+    //         user_shares
+    //     );
 
-        log!("{} is trying to withdrawal {}", caller_id, amount.0);
+    //     log!("{} is trying to withdrawal {}", caller_id, amount.0);
 
-        // Unstake shares/lps
-        ext_exchange::get_pool_shares(
-            compounder.pool_id,
-            contract_id.clone(),
-            compounder.exchange_contract_id.clone(),
-            0,
-            Gas(20_000_000_000_000),
-        )
-        .then(callback_ref_exchange::callback_get_pool_shares(
-            token_id.clone(),
-            caller_id.clone(),
-            amount.0,
-            contract_id.clone(),
-            0,
-            Gas(230_000_000_000_000),
-        ))
-        .then(callback_ref_exchange::callback_withdraw_shares(
-            token_id,
-            caller_id,
-            amount.0,
-            user_fft_shares,
-            contract_id,
-            0,
-            Gas(20_000_000_000_000),
-        ))
-    }
+    //     // Unstake shares/lps
+    //     ext_exchange::get_pool_shares(
+    //         compounder.pool_id,
+    //         contract_id.clone(),
+    //         compounder.exchange_contract_id.clone(),
+    //         0,
+    //         Gas(20_000_000_000_000),
+    //     )
+    //     .then(callback_ref_exchange::callback_get_pool_shares(
+    //         token_id.clone(),
+    //         caller_id.clone(),
+    //         amount.0,
+    //         contract_id.clone(),
+    //         0,
+    //         Gas(230_000_000_000_000),
+    //     ))
+    //     .then(callback_ref_exchange::callback_withdraw_shares(
+    //         token_id,
+    //         caller_id,
+    //         amount.0,
+    //         user_fft_shares,
+    //         contract_id,
+    //         0,
+    //         Gas(20_000_000_000_000),
+    //     ))
+    // }
 
     #[private]
     pub fn callback_get_pool_shares(
@@ -441,7 +554,7 @@ impl Contract {
     }
 }
 
-/// Auto-compounder functionality methods
+// Auto-compounder functionality methods
 // #[near_bindgen]
 // impl Contract {
 //     pub fn update_seed_min_deposit(&mut self, min_deposit: U128) -> U128 {
@@ -450,6 +563,3 @@ impl Contract {
 //         self.seed_min_deposit
 //     }
 // }
-
-/// Auto-compounder internal methods
-impl Contract {}

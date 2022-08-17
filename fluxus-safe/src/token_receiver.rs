@@ -91,6 +91,12 @@ impl MFTTokenReceiver for Contract {
     ) -> PromiseOrValue<U128> {
         self.assert_token_id(token_id.clone());
 
+        let (caller, _) = self.get_predecessor_and_current_account();
+        log!("{}", caller);
+
+        // TODO: strategies will be by seed_id, exchange@pool_id
+        // this way, we can sort out different strategies for common seeds,
+        // like, ref@28, jumbo@28, etc...
         //Check: Is the token_id the vault's pool_id? If is not, send it back
         let strat = self.get_strat(token_id.clone());
 
@@ -105,8 +111,9 @@ impl MFTTokenReceiver for Contract {
         );
 
         // initiate stake process
-        self.stake(token_id, &sender_id, amount_in_u128);
+        compounder.stake(token_id, &sender_id, amount_in_u128);
 
+        // TODO: remove this and return promise
         PromiseOrValue::Value(U128(0))
     }
 }

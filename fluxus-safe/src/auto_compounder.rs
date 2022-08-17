@@ -144,7 +144,6 @@ impl From<&AutoCompounderCycle> for String {
 impl AutoCompounder {
     pub(crate) fn new(
         strategy_fee: u128,
-        treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
         exchange_contract_id: AccountId,
@@ -227,6 +226,51 @@ impl AutoCompounder {
             }
         }
     }
+
+    pub fn stake_on_ref_finance(&self) {}
+    pub fn stake_on_jumbo(&self) {}
+
+    pub fn internal_stake_resolver(
+        &self,
+        exchange_account_id: SupportedExchanges,
+        token_id: String,
+        account_id: &AccountId,
+        shares: u128,
+    ) {
+        match exchange_account_id {
+            SupportedExchanges::RefFinance => self.stake_on_ref_finance(),
+            SupportedExchanges::Jumbo => self.stake_on_jumbo(),
+        }
+    }
+
+    pub fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise {
+        let exchange_contract_id = self.exchange_contract_id.clone();
+        let farm_contract_id = self.farm_contract_id.clone();
+        // decide which strategies
+        ext_exchange::mft_transfer_call(
+            farm_contract_id,
+            token_id.clone(),
+            U128(shares),
+            "\"Free\"".to_string(),
+            exchange_contract_id,
+            1,
+            Gas(80_000_000_000_000),
+        )
+        // substitute for a generic callback, with a match for next step
+        .then(callback_ref_exchange::callback_stake_result(
+            token_id,
+            account_id.clone(),
+            shares,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+}
+
+pub enum SupportedExchanges {
+    RefFinance,
+    Jumbo,
 }
 
 /// Versioned Farmer, used for lazy upgrade.
