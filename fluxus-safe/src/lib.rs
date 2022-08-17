@@ -128,9 +128,6 @@ pub struct ContractData {
     ///Store the fft_share for each seed_id.
     seed_id_amount: LookupMap<String, u128>,
 
-    // Pools used to harvest, in the ":X" format
-    token_ids: Vec<String>,
-
     // Keeps track of token_id to strategy used
     strategies: HashMap<String, VersionedStrategy>,
 }
@@ -239,7 +236,6 @@ impl Contract {
                 seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
                 /// List of all the pools.
                 /// TODO: with more exchanges, this should not exist
-                token_ids: Vec::new(),
                 strategies: HashMap::new(),
             }),
         }

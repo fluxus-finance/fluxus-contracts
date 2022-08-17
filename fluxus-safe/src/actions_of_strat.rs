@@ -29,8 +29,6 @@ impl Contract {
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
-            // TODO: REMOVE
-            data_mut.token_ids.push(token_id.clone());
 
             let strat: VersionedStrategy = VersionedStrategy::AutoCompounder(AutoCompounder::new(
                 strategy_fee,

@@ -73,8 +73,7 @@ impl Contract {
     pub fn get_running_farm_ids(&self) -> Vec<String> {
         let mut running_strategies: Vec<String> = Vec::new();
 
-        for token in self.data().token_ids.clone() {
-            let strat = self.get_strat(token);
+        for (_, strat) in self.data().strategies.iter() {
             let compounder = strat.get_ref();
             for farm in compounder.farms.iter() {
                 if farm.state == AutoCompounderState::Running {
@@ -134,13 +133,13 @@ impl Contract {
         farm_info.state
     }
 
-    /// Returns exchange and farm contracts
-    pub fn get_contract_info(self) -> SafeInfo {
-        SafeInfo {
-            exchange_address: self.exchange_acc(),
-            farm_address: self.farm_acc(),
-        }
-    }
+    // /// Returns exchange and farm contracts
+    // pub fn get_contract_info(self) -> SafeInfo {
+    //     SafeInfo {
+    //         exchange_address: self.exchange_acc(),
+    //         farm_address: self.farm_acc(),
+    //     }
+    // }
 
     /// Only get guardians info
     pub fn get_guardians(&self) -> Vec<AccountId> {
