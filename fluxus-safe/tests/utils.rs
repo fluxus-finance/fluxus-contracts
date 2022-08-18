@@ -65,16 +65,16 @@ pub struct PoolInfo {
 pub async fn add_strategy(
     safe_contract: &Contract,
     token_reward: &Contract,
+    seed_id: String,
     pool_id_token1_reward: u64,
     pool_id_token2_reward: u64,
-    pool_id: u64,
     farm_id: u64,
     worker: &Worker<impl DevNetwork>,
 ) -> anyhow::Result<()> {
     let res = safe_contract
         .call(worker, "add_farm_to_strategy")
         .args_json(serde_json::json!({
-            "pool_id": pool_id,
+            "seed_id": seed_id,
             "pool_id_token1_reward": pool_id_token1_reward,
             "pool_id_token2_reward": pool_id_token2_reward,
             "reward_token": token_reward.id().to_string(),
@@ -803,10 +803,10 @@ pub async fn get_fft_token_by_seed(
 
 pub async fn get_seed_total_amount(
     safe_contract: &Contract,
-    token_id: &String,
+    seed_id: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
-    let args = serde_json::json!({ "token_id": token_id })
+    let args = serde_json::json!({ "seed_id": seed_id })
         .to_string()
         .into_bytes();
 
