@@ -9,7 +9,6 @@ impl Contract {
     pub fn callback_stake_result(
         &mut self,
         #[callback_result] transfer_result: Result<U128, PromiseError>,
-        token_id: String,
         seed_id: String,
         account_id: AccountId,
         shares: u128,
@@ -112,7 +111,7 @@ impl Contract {
             Gas(20_000_000_000_000),
         )
         .then(callback_ref_finance::callback_get_pool_shares(
-            token_id.clone(),
+            token_id,
             seed_id.clone(),
             caller_id.clone(),
             amount.0,
@@ -121,7 +120,6 @@ impl Contract {
             Gas(230_000_000_000_000),
         ))
         .then(callback_ref_finance::callback_withdraw_shares(
-            token_id,
             seed_id,
             caller_id,
             amount.0,
@@ -137,28 +135,23 @@ impl Contract {
         &self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
         token_id: String,
+        seed_id: String,
         receiver_id: AccountId,
         withdraw_amount: u128,
     ) -> Promise {
         assert!(shares_result.is_ok(), "ERR");
 
-        let strat = self
-            .data()
-            .strategies
-            .get(&token_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
-
-        let compounder = strat.clone().get();
+        let compounder = self.get_strat(&seed_id).get();
 
         let shares_on_exchange: u128 = shares_result.unwrap().into();
 
         if shares_on_exchange >= withdraw_amount {
             ext_exchange::mft_transfer(
-                token_id.clone(),
+                token_id,
                 receiver_id,
                 U128(withdraw_amount),
                 Some("".to_string()),
-                compounder.exchange_contract_id.clone(),
+                compounder.exchange_contract_id,
                 1,
                 Gas(30_000_000_000_000),
             )
@@ -177,11 +170,11 @@ impl Contract {
             // TODO: add callback and then call mft_transfer
             // transfer the total amount required
             .then(ext_exchange::mft_transfer(
-                token_id.clone(),
+                token_id,
                 receiver_id,
                 U128(withdraw_amount),
                 Some("".to_string()),
-                compounder.exchange_contract_id.clone(),
+                compounder.exchange_contract_id,
                 1,
                 Gas(30_000_000_000_000),
             ))
@@ -191,7 +184,6 @@ impl Contract {
     #[private]
     pub fn callback_withdraw_shares(
         &mut self,
-        token_id: String,
         seed_id: String,
         account_id: AccountId,
         amount: Balance,
@@ -355,16 +347,15 @@ impl Contract {
 
     /// Returns the amount of unclaimed reward given token_id has
     pub fn get_unclaimed_rewards(&self, farm_id_str: String) -> Promise {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let strat = self.get_strat(&seed_id);
-        let compounder = strat.get_ref();
+        let compounder = self.get_strat(&seed_id).get();
         let farm_info = compounder.get_farm_info(&farm_id);
 
         ext_farm::get_unclaimed_rewards(
             env::current_account_id(),
             seed_id,
-            compounder.farm_contract_id.clone(),
+            compounder.farm_contract_id,
             1,
             Gas(3_000_000_000_000),
         )

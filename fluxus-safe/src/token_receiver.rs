@@ -90,9 +90,9 @@ impl MFTTokenReceiver for Contract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         let caller_id = env::predecessor_account_id();
-        self.assert_strategy_is_running(&caller_id, &token_id);
 
         let seed_id: String = format!("{}@{}", caller_id, unwrap_token_id(&token_id));
+        self.assert_strategy_is_running(&seed_id);
 
         let compounder = self.get_strat(&seed_id).get();
 

@@ -309,7 +309,7 @@ impl Contract {
         let treasury_acc: AccountId = self.treasure_acc();
         let treasury_curr_amount: u128 = self.data().treasury.current_amount;
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
         let compounder = self.get_strat(&seed_id).get();
         let farm_info = compounder.get_farm_info(&farm_id);
 
@@ -920,9 +920,9 @@ impl Contract {
     ) -> U128 {
         assert!(shares_result.is_ok(), "ERR");
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let compounder_mut = self.get_strat_mut(&token_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         // ensure that in the next run we won't have a balance unless previous steps succeeds
@@ -954,8 +954,8 @@ impl Contract {
     ) {
         assert!(total_shares_result.is_ok(), "ERR");
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-        let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
         let farm_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
@@ -986,7 +986,7 @@ impl Contract {
         self.call_stake(
             exchange_contract_id,
             farm_contract_id,
-            token_id.to_string(),
+            token_id,
             U128(accumulated_shares),
             "\"Free\"".to_string(),
         );

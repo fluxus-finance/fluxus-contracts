@@ -89,10 +89,10 @@ impl Contract {
     pub fn get_strategies(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
-        for (token_id, strat) in self.data().strategies.clone() {
+        for (seed_id, strat) in self.data().strategies.clone() {
             let compounder = strat.get();
             let mut seed_info = AutoCompounderInfo {
-                token_id,
+                seed_id,
                 is_active: false,
                 reward_tokens: vec![],
             };
@@ -240,7 +240,7 @@ impl Contract {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AutoCompounderInfo {
-    pub token_id: String,
+    pub seed_id: String,
     pub is_active: bool,
     pub reward_tokens: Vec<String>,
 }

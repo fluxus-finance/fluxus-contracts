@@ -150,7 +150,7 @@ impl Contract {
     fn assert_strategy_not_cleared(&self, farm_id_str: &str) {
         self.assert_contract_running();
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let strat = self.get_strat(&seed_id);
         let compounder = strat.get_ref();
@@ -168,9 +168,8 @@ impl Contract {
 
     // TODO: rename this method
     /// Ensures that at least one strategy is running for given token_id
-    fn assert_strategy_is_running(&self, exchange_id: &AccountId, token_id: &str) {
-        let seed_id: String = format!("{}@{}", exchange_id, unwrap_token_id(token_id));
-        let strat = self.get_strat(&seed_id);
+    fn assert_strategy_is_running(&self, seed_id: &str) {
+        let strat = self.get_strat(seed_id);
         let compounder = strat.get_ref();
 
         let mut has_running_strategy = false;

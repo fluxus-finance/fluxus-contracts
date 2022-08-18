@@ -95,7 +95,6 @@ pub trait RefExchangeAutoCompound {
     ) -> String;
     fn callback_withdraw_shares(
         &mut self,
-        token_id: String,
         seed_id: String,
         account_id: AccountId,
         amount: Balance,
@@ -115,7 +114,6 @@ pub trait RefExchangeAutoCompound {
     fn callback_stake_result(
         &mut self,
         #[callback_result] transfer_result: Result<U128, PromiseError>,
-        token_id: String,
         seed_id: String,
         account_id: AccountId,
         shares: u128,

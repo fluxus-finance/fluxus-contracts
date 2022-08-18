@@ -20,7 +20,7 @@ near call $CONTRACT_NAME create_strategy '{
     }' --accountId $CONTRACT_NAME --gas $total_gas
 
 near call $CONTRACT_NAME add_farm_to_strategy '{
-    "pool_id": '$pool_id', 
+    "seed_id": "'$seed_id'",
     "pool_id_token1_reward": '$pool_id_token1_reward', 
     "pool_id_token2_reward": '$pool_id_token2_reward', 
     "reward_token": "'$reward_token'",

@@ -47,17 +47,23 @@ impl Contract {
             if let Some(id) = uxu_share_id {
                 log!("Registering {} to {}", id, seed_id);
                 //Registering id for the specific seed
+
+                log!("map {} to {} on fft_share_by_seed_id", seed_id, id);
+
                 data_mut
                     .fft_share_by_seed_id
                     .insert(seed_id.clone(), id.clone());
 
                 //Registering id in the users balance map
                 let temp = LookupMap::new(StorageKey::Strategy);
+
+                log!("map {} to {:?} on users_balance_by_fft_share", id, temp);
                 // TODO: why id?
                 data_mut
                     .users_balance_by_fft_share
                     .insert(&id.clone(), &temp);
 
+                log!("map {} to {} on total_supply_by_fft_share", id, 0u128);
                 //Registering total_supply
                 // TODO: why id?
                 data_mut.total_supply_by_fft_share.insert(&id, &0_u128);
@@ -73,16 +79,12 @@ impl Contract {
     pub fn add_farm_to_strategy(
         &mut self,
         seed_id: String,
-        pool_id: u64,
         pool_id_token1_reward: u64,
         pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm_id: String,
     ) -> String {
         self.is_owner();
-        // let token_id = self.wrap_mft_token_id(&pool_id.to_string());
-
-        // TODO: should be seed
         let compounder = self.get_strat_mut(&seed_id).get_mut();
 
         for farm in compounder.farms.clone() {

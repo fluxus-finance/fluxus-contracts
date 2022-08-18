@@ -256,7 +256,7 @@ impl AutoCompounder {
         // decide which strategies
         ext_exchange::mft_transfer_call(
             farm_contract_id,
-            token_id.clone(),
+            token_id,
             U128(shares),
             "\"Free\"".to_string(),
             exchange_contract_id,
@@ -265,7 +265,6 @@ impl AutoCompounder {
         )
         // substitute for a generic callback, with a match for next step
         .then(callback_ref_finance::callback_stake_result(
-            token_id,
             seed_id,
             account_id.clone(),
             shares,

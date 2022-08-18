@@ -364,7 +364,7 @@ impl Contract {
                 };
                 self.internal_mft_transfer(
                     token_id,
-                    (*receiver_id).to_string(),
+                    receiver_id.to_string(),
                     refund_to.to_string(),
                     refund_amount,
                     None,
