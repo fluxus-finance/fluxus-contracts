@@ -25,10 +25,6 @@ near call $CONTRACT_NAME add_farm_to_strategy '{
     "farm_id": "'$farm_id'" 
 }' --accountId $CONTRACT_NAME --gas $total_gas
 
-# Register the contract in the pool 
-#### TODO: move this call to create_auto_compounder method
-near call $exchange_contract_id mft_register '{ "token_id" : ":'$pool_id'", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
-
 #At reward token
 near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --gas 300000000000000 --deposit 0.00125
 
