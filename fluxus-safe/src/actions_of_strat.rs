@@ -68,7 +68,7 @@ impl Contract {
             token_id,
             account_id,
             self.data().exchange_contract_id.clone(),
-            0,
+            970000000000000000000,
             Gas(40_000_000_000_000),
         );
     }
