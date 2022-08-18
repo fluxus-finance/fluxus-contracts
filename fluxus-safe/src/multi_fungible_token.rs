@@ -88,8 +88,7 @@ impl Contract {
         id.remove(0).to_string();
         let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, id);
 
-        let temp = self.data().seed_id_amount.get(&seed_id).unwrap();
-        temp
+        self.data().seed_id_amount.get(&seed_id).unwrap_or(0u128)
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
