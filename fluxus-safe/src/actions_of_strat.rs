@@ -19,10 +19,10 @@ impl Contract {
         let token_id = self.wrap_mft_token_id(&pool_id.to_string());
         
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
-        self.register_lp(token_id.clone(),contract_id.to_string());
         return if self.data().strategies.contains_key(&token_id) {
             format!("VersionedStrategy for {} already exist", token_id)
         } else {
+            self.register_lp(token_id.clone(),contract_id.to_string());
             let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id);
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
