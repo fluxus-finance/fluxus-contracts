@@ -40,19 +40,26 @@ impl Contract {
                 seed_min_deposit,
             ));
 
-            if let Some(id) = uxu_share_id {
-                log!("Registering {} to {}", id, seed_id);
+            if let Some(share_id) = uxu_share_id {
+                log!("Registering {} to {}", share_id, seed_id);
                 //Registering id for the specific seed
-                data_mut.fft_share_by_seed_id.insert(seed_id, id.clone());
+                data_mut
+                    .fft_share_by_seed_id
+                    .insert(seed_id, share_id.clone());
 
                 //Registering id in the users balance map
-                let temp = LookupMap::new(StorageKey::Strategy);
+                let temp = LookupMap::new(StorageKey::Strategy {
+                    fft_share_id: share_id.clone(),
+                });
+
                 data_mut
                     .users_balance_by_fft_share
-                    .insert(&id.clone(), &temp);
+                    .insert(&share_id.clone(), &temp);
 
                 //Registering total_supply
-                data_mut.total_supply_by_fft_share.insert(&id, &0_u128);
+                data_mut
+                    .total_supply_by_fft_share
+                    .insert(&share_id, &0_u128);
             }
 
             data_mut.strategies.insert(token_id.clone(), strat);

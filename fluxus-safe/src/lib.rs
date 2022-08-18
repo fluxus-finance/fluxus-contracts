@@ -63,7 +63,7 @@ pub(crate) enum StorageKey {
     TotalSupplyByShare,
     SeedIdAmount,
     SeedRegister { fft_share: String },
-    Strategy,
+    Strategy { fft_share_id: String },
 }
 
 // TODO: update this to newer version, following AutoCompounderState
