@@ -94,7 +94,7 @@ impl MFTTokenReceiver for Contract {
         let seed_id: String = format!("{}@{}", caller_id, unwrap_token_id(&token_id));
         self.assert_strategy_is_running(&seed_id);
 
-        let compounder = self.get_strat(&seed_id).get();
+        let compounder = self.get_strat(&seed_id).get_compounder();
 
         let amount_in_u128: u128 = amount.into();
 

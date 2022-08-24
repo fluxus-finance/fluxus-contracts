@@ -1,6 +1,7 @@
 use crate::*;
 
 use crate::auto_compounder::AutoCompounder;
+// use crate::sable
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -15,6 +16,7 @@ use near_sdk::{
 #[serde(crate = "near_sdk::serde")]
 pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
+    StableAutoCompounder(StableAutoCompounder),
 }
 
 impl VersionedStrategy {
@@ -22,6 +24,7 @@ impl VersionedStrategy {
     pub fn kind(&self) -> String {
         match self {
             VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::StableAutoCompounder(_) => "STABLE_AUTO_COMPOUNDER".to_string(),
         }
     }
 
@@ -39,7 +42,9 @@ impl VersionedStrategy {
             VersionedStrategy::AutoCompounder(compounder) => {
                 VersionedStrategy::AutoCompounder(compounder.clone())
             }
-            _ => unimplemented!(),
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => {
+                VersionedStrategy::StableAutoCompounder(stable_compounder.clone())
+            }
         }
     }
 
@@ -48,7 +53,7 @@ impl VersionedStrategy {
     pub fn need_upgrade(&self) -> bool {
         match self {
             Self::AutoCompounder(_) => false,
-            _ => unimplemented!(),
+            Self::StableAutoCompounder(_) => false,
         }
     }
 
@@ -62,21 +67,23 @@ impl VersionedStrategy {
     // }
 
     #[allow(unreachable_patterns)]
-    pub fn get(self) -> AutoCompounder {
+    pub fn get_compounder(self) -> AutoCompounder {
         match self {
             VersionedStrategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }
+
     #[allow(unreachable_patterns)]
-    pub fn get_ref(&self) -> &AutoCompounder {
+    pub fn get_compounder_ref(&self) -> &AutoCompounder {
         match self {
             VersionedStrategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }
+
     #[allow(unreachable_patterns)]
-    pub fn get_mut(&mut self) -> &mut AutoCompounder {
+    pub fn get_compounder_mut(&mut self) -> &mut AutoCompounder {
         match self {
             VersionedStrategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),

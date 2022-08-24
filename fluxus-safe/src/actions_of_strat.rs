@@ -82,7 +82,7 @@ impl Contract {
         farm_id: String,
     ) -> String {
         self.is_owner();
-        let compounder = self.get_strat_mut(&seed_id).get_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         for farm in compounder.farms.clone() {
             if farm.id == farm_id {
@@ -133,7 +133,7 @@ impl Contract {
     pub fn harvest(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let strat = self.get_strat(&seed_id);
-        let compounder = strat.get_ref();
+        let compounder = strat.get_compounder_ref();
         let farm_info = compounder.get_farm_info(&farm_id);
         match farm_info.cycle_stage {
             AutoCompounderCycle::ClaimReward => self.claim_reward(farm_id_str),
@@ -147,7 +147,7 @@ impl Contract {
         self.is_owner();
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.clone());
         let strat = self.get_strat_mut(&token_id);
-        let compounder = strat.get_mut();
+        let compounder = strat.get_compounder_mut();
         for (i, farm) in compounder.farms.iter().enumerate() {
             println!("{} - {}", farm_id_str, farm.id);
             if farm_id_str == farm.id {

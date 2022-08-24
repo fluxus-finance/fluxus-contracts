@@ -79,7 +79,7 @@ impl Contract {
             .get(&seed_id)
             .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
 
-        let compounder = strat.clone().get();
+        let compounder = strat.get_compounder_ref();
 
         let amount: U128;
         if let Some(amount_withdrawal) = amount_withdrawal {
@@ -106,7 +106,7 @@ impl Contract {
         ext_exchange::get_pool_shares(
             compounder.pool_id,
             contract_id.clone(),
-            compounder.exchange_contract_id,
+            compounder.exchange_contract_id.clone(),
             0,
             Gas(20_000_000_000_000),
         )
@@ -141,7 +141,7 @@ impl Contract {
     ) -> Promise {
         assert!(shares_result.is_ok(), "ERR");
 
-        let compounder = self.get_strat(&seed_id).get();
+        let compounder = self.get_strat(&seed_id).get_compounder();
 
         let shares_on_exchange: u128 = shares_result.unwrap().into();
 
@@ -349,7 +349,7 @@ impl Contract {
     pub fn get_unclaimed_rewards(&self, farm_id_str: String) -> Promise {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let compounder = self.get_strat(&seed_id).get();
+        let compounder = self.get_strat(&seed_id).get_compounder();
         let farm_info = compounder.get_farm_info(&farm_id);
 
         ext_farm::get_unclaimed_rewards(

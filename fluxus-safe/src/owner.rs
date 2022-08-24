@@ -45,7 +45,7 @@ impl Contract {
         self.is_owner();
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         if farm_info_mut.state != state {
@@ -93,7 +93,7 @@ impl Contract {
         // Should not accept, say, 0 slippage
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
         farm_info_mut.slippage = 100 - new_slippage;
 

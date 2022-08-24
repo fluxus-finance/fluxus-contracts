@@ -4,7 +4,7 @@ const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct StratFarmInfo {
+pub struct StableStratFarmInfo {
     /// State is used to update the contract to a Paused/Running state
     pub state: AutoCompounderState,
 
@@ -25,21 +25,18 @@ pub struct StratFarmInfo {
     /// Pool used to swap the reward received by the token used to add liquidity
     pub pool_id_token1_reward: u64,
 
-    /// Pool used to swap the reward received by the token used to add liquidity
-    pub pool_id_token2_reward: u64,
-
     /// Address of the reward token given by the farm
     pub reward_token: AccountId,
 
     /// Store balance of available token1 and token2
     /// obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
-    pub available_balance: Vec<Balance>,
+    pub available_balance: Balance,
 
     /// Farm used to auto-compound
     pub id: String,
 }
 
-impl StratFarmInfo {
+impl StableStratFarmInfo {
     pub(crate) fn next_cycle(&mut self) {
         match self.cycle_stage {
             AutoCompounderCycle::ClaimReward => self.cycle_stage = AutoCompounderCycle::Withdrawal,
@@ -68,7 +65,7 @@ impl StratFarmInfo {
 // #[derive(BorshSerialize, BorshDeserialize)]
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct AutoCompounder {
+pub struct StableAutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
@@ -81,9 +78,6 @@ pub struct AutoCompounder {
     /// Address of the first token used by pool
     pub token1_address: AccountId,
 
-    /// Address of the token used by the pool
-    pub token2_address: AccountId,
-
     /// Pool used to add liquidity and farming
     pub pool_id: u64,
 
@@ -94,54 +88,14 @@ pub struct AutoCompounder {
     pub seed_id: String,
 
     /// Store all farms that were used to compound by some token_id
-    pub farms: Vec<StratFarmInfo>,
+    pub farms: Vec<StableStratFarmInfo>,
 
     /// Latest harvest timestamp
     pub harvest_timestamp: u64,
 }
 
-#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
-#[serde(crate = "near_sdk::serde")]
-pub enum AutoCompounderState {
-    Running,
-    Ended,
-    Cleared,
-} //Should we really add paused state ? It would be best if our code is at such a synchronicity with ref-farm that we won't ever need to pause it.
-
-impl From<&AutoCompounderState> for String {
-    fn from(status: &AutoCompounderState) -> Self {
-        match *status {
-            AutoCompounderState::Running => String::from("Running"),
-            // Define how long the strategy should be on ended state, waiting for withdrawal
-            AutoCompounderState::Ended => String::from("Ended"),
-            // Latest state, after all withdraw was done
-            AutoCompounderState::Cleared => String::from("Cleared"),
-        }
-    }
-}
-
-#[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
-#[serde(crate = "near_sdk::serde")]
-pub enum AutoCompounderCycle {
-    ClaimReward,
-    Withdrawal,
-    Swap,
-    Stake,
-}
-
-impl From<&AutoCompounderCycle> for String {
-    fn from(cycle: &AutoCompounderCycle) -> Self {
-        match *cycle {
-            AutoCompounderCycle::ClaimReward => String::from("Reward"),
-            AutoCompounderCycle::Withdrawal => String::from("Withdrawal"),
-            AutoCompounderCycle::Swap => String::from("Swap"),
-            AutoCompounderCycle::Stake => String::from("Stake"),
-        }
-    }
-}
-
 /// Auto-compounder internal methods
-impl AutoCompounder {
+impl StableAutoCompounder {
     pub(crate) fn new(
         strategy_fee: u128,
         strat_creator: AccountFee,
@@ -149,7 +103,6 @@ impl AutoCompounder {
         exchange_contract_id: AccountId,
         farm_contract_id: AccountId,
         token1_address: AccountId,
-        token2_address: AccountId,
         pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
@@ -161,7 +114,6 @@ impl AutoCompounder {
             exchange_contract_id,
             farm_contract_id,
             token1_address,
-            token2_address,
             pool_id,
             seed_min_deposit,
             seed_id,
@@ -193,7 +145,7 @@ impl AutoCompounder {
         )
     }
 
-    pub fn get_farm_info(&self, farm_id: &str) -> StratFarmInfo {
+    pub fn get_farm_info(&self, farm_id: &str) -> StableStratFarmInfo {
         for farm in self.farms.iter() {
             if farm.id == farm_id {
                 return farm.clone();
@@ -203,7 +155,7 @@ impl AutoCompounder {
         panic!("Farm does not exist")
     }
 
-    pub fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StratFarmInfo {
+    pub fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StableStratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
                 return farm;
@@ -280,43 +232,43 @@ pub enum SupportedExchanges {
     Jumbo,
 }
 
-// Versioned Farmer, used for lazy upgrade.
-// Which means this structure would upgrade automatically when used.
-// To achieve that, each time the new version comes in,
-// each function of this enum should be carefully re-code!
-// #[derive(BorshSerialize, BorshDeserialize)]
-// pub enum VersionedCompounder {
-//     V101(AutoCompounder),
-// }
+/// Versioned Farmer, used for lazy upgrade.
+/// Which means this structure would upgrade automatically when used.
+/// To achieve that, each time the new version comes in,
+/// each function of this enum should be carefully re-code!
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum VersionedCompounder {
+    V101(AutoCompounder),
+}
 
-// impl VersionedCompounder {
-//     #[allow(dead_code)]
-//     pub fn new(
-//         strategy_fee: u128,
-//         treasury: AccountFee,
-//         strat_creator: AccountFee,
-//         sentry_fee: u128,
-//         exchange_contract_id: AccountId,
-//         farm_contract_id: AccountId,
-//         token1_address: AccountId,
-//         token2_address: AccountId,
-//         pool_id: u64,
-//         seed_id: String,
-//         seed_min_deposit: U128,
-//     ) -> Self {
-//         let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
+impl VersionedCompounder {
+    #[allow(dead_code)]
+    pub fn new(
+        strategy_fee: u128,
+        treasury: AccountFee,
+        strat_creator: AccountFee,
+        sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
+        token1_address: AccountId,
+        token2_address: AccountId,
+        pool_id: u64,
+        seed_id: String,
+        seed_min_deposit: U128,
+    ) -> Self {
+        let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
 
-//         VersionedCompounder::V101(AutoCompounder {
-//             admin_fees: admin_fee,
-//             exchange_contract_id,
-//             farm_contract_id,
-//             token1_address,
-//             token2_address,
-//             pool_id,
-//             seed_min_deposit,
-//             seed_id,
-//             farms: Vec::new(),
-//             harvest_timestamp: 0u64,
-//         })
-//     }
-// }
+        VersionedCompounder::V101(AutoCompounder {
+            admin_fees: admin_fee,
+            exchange_contract_id,
+            farm_contract_id,
+            token1_address,
+            token2_address,
+            pool_id,
+            seed_min_deposit,
+            seed_id,
+            farms: Vec::new(),
+            harvest_timestamp: 0u64,
+        })
+    }
+}

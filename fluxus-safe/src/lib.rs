@@ -36,6 +36,9 @@ use crate::errors::*;
 pub mod auto_compounder;
 pub use auto_compounder::*;
 
+pub mod stable_auto_compounder;
+pub use stable_auto_compounder::*;
+
 mod actions_of_compounder;
 
 mod views;
@@ -153,7 +156,7 @@ impl Contract {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let strat = self.get_strat(&seed_id);
-        let compounder = strat.get_ref();
+        let compounder = strat.get_compounder_ref();
 
         for farm in compounder.farms.iter() {
             if farm.id == farm_id {
@@ -170,7 +173,7 @@ impl Contract {
     /// Ensures that at least one strategy is running for given token_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
-        let compounder = strat.get_ref();
+        let compounder = strat.get_compounder_ref();
 
         let mut has_running_strategy = false;
 
