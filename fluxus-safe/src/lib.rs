@@ -169,24 +169,32 @@ impl Contract {
         }
     }
 
-    // TODO: rename this method
     /// Ensures that at least one strategy is running for given token_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
-        let compounder = strat.get_compounder_ref();
 
-        let mut has_running_strategy = false;
+        match strat {
+            VersionedStrategy::AutoCompounder(_) => {
+                let compounder = strat.get_compounder_ref();
 
-        for farm in compounder.farms.iter() {
-            if farm.state == AutoCompounderState::Running {
-                has_running_strategy = true;
-                break;
+                for farm in compounder.farms.iter() {
+                    if farm.state == AutoCompounderState::Running {
+                        return;
+                    }
+                }
+            }
+            VersionedStrategy::StableAutoCompounder(_) => {
+                let compounder = strat.get_stable_compounder_ref();
+
+                for farm in compounder.farms.iter() {
+                    if farm.state == AutoCompounderState::Running {
+                        return;
+                    }
+                }
             }
         }
 
-        if !has_running_strategy {
-            panic!("There is no running strategy for this pool")
-        }
+        panic!("There is no running strategy for this pool")
     }
 }
 

@@ -89,6 +89,30 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_stable_compounder(self) -> StableAutoCompounder {
+        match self {
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_stable_compounder_ref(&self) -> &StableAutoCompounder {
+        match self {
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_stable_compounder_mut(&mut self) -> &mut StableAutoCompounder {
+        match self {
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder,
+            _ => unimplemented!(),
+        }
+    }
 }
 
 impl Contract {
