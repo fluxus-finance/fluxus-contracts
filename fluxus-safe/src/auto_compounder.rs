@@ -72,6 +72,12 @@ pub struct AutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
+    // Contract address of the exchange used
+    pub exchange_contract_id: AccountId,
+
+    // Contract address of the farm used
+    pub farm_contract_id: AccountId,
+
     /// Address of the first token used by pool
     pub token1_address: AccountId,
 
@@ -138,9 +144,10 @@ impl From<&AutoCompounderCycle> for String {
 impl AutoCompounder {
     pub(crate) fn new(
         strategy_fee: u128,
-        treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id: u64,
@@ -151,6 +158,8 @@ impl AutoCompounder {
 
         Self {
             admin_fees: admin_fee,
+            exchange_contract_id,
+            farm_contract_id,
             token1_address,
             token2_address,
             pool_id,
@@ -217,6 +226,58 @@ impl AutoCompounder {
             }
         }
     }
+
+    pub fn stake_on_ref_finance(&self) {}
+    pub fn stake_on_jumbo(&self) {}
+
+    pub fn internal_stake_resolver(
+        &self,
+        exchange_account_id: SupportedExchanges,
+        token_id: String,
+        account_id: &AccountId,
+        shares: u128,
+    ) {
+        match exchange_account_id {
+            SupportedExchanges::RefFinance => self.stake_on_ref_finance(),
+            SupportedExchanges::Jumbo => self.stake_on_jumbo(),
+        }
+    }
+
+    pub fn stake(
+        &self,
+        token_id: String,
+        seed_id: String,
+        account_id: &AccountId,
+        shares: u128,
+    ) -> Promise {
+        let exchange_contract_id = self.exchange_contract_id.clone();
+        let farm_contract_id = self.farm_contract_id.clone();
+
+        // decide which strategies
+        ext_exchange::mft_transfer_call(
+            farm_contract_id,
+            token_id,
+            U128(shares),
+            "\"Free\"".to_string(),
+            exchange_contract_id,
+            1,
+            Gas(80_000_000_000_000),
+        )
+        // substitute for a generic callback, with a match for next step
+        .then(callback_ref_finance::callback_stake_result(
+            seed_id,
+            account_id.clone(),
+            shares,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+}
+
+pub enum SupportedExchanges {
+    RefFinance,
+    Jumbo,
 }
 
 /// Versioned Farmer, used for lazy upgrade.
@@ -235,6 +296,8 @@ impl VersionedCompounder {
         treasury: AccountFee,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id: u64,
@@ -245,6 +308,8 @@ impl VersionedCompounder {
 
         VersionedCompounder::V101(AutoCompounder {
             admin_fees: admin_fee,
+            exchange_contract_id,
+            farm_contract_id,
             token1_address,
             token2_address,
             pool_id,

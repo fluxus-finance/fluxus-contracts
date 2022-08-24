@@ -89,12 +89,12 @@ impl MFTTokenReceiver for Contract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        self.assert_token_id(token_id.clone());
+        let caller_id = env::predecessor_account_id();
 
-        //Check: Is the token_id the vault's pool_id? If is not, send it back
-        let strat = self.get_strat(token_id.clone());
+        let seed_id: String = format!("{}@{}", caller_id, unwrap_token_id(&token_id));
+        self.assert_strategy_is_running(&seed_id);
 
-        let compounder = strat.get();
+        let compounder = self.get_strat(&seed_id).get();
 
         let amount_in_u128: u128 = amount.into();
 
@@ -105,8 +105,9 @@ impl MFTTokenReceiver for Contract {
         );
 
         // initiate stake process
-        self.stake(token_id, &sender_id, amount_in_u128);
+        compounder.stake(token_id, seed_id, &sender_id, amount_in_u128);
 
+        // TODO: remove this and return promise
         PromiseOrValue::Value(U128(0))
     }
 }

@@ -9,6 +9,8 @@ impl Contract {
         strategy_fee: u128,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
         token1_address: AccountId,
         token2_address: AccountId,
         pool_id: u64,
@@ -16,23 +18,25 @@ impl Contract {
     ) -> String {
         self.is_owner();
 
-        let token_id = self.wrap_mft_token_id(&pool_id.to_string());
+        let token_id = wrap_mft_token_id(&pool_id.to_string());
 
-        return if self.data().strategies.contains_key(&token_id) {
+        let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
+
+        // TODO: update to seed
+        return if self.data().strategies.contains_key(&seed_id) {
             format!("VersionedStrategy for {} already exist", token_id)
         } else {
-            let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, pool_id);
+            // OK
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
-            let treasury = data_mut.treasury.clone();
-            data_mut.token_ids.push(token_id.clone());
 
             let strat: VersionedStrategy = VersionedStrategy::AutoCompounder(AutoCompounder::new(
                 strategy_fee,
-                treasury,
                 strat_creator,
                 sentry_fee,
+                exchange_contract_id,
+                farm_contract_id,
                 token1_address,
                 token2_address,
                 pool_id,
@@ -45,7 +49,7 @@ impl Contract {
                 //Registering id for the specific seed
                 data_mut
                     .fft_share_by_seed_id
-                    .insert(seed_id, share_id.clone());
+                    .insert(seed_id.clone(), share_id.clone());
 
                 //Registering id in the users balance map
                 let temp = LookupMap::new(StorageKey::Strategy {
@@ -62,7 +66,8 @@ impl Contract {
                     .insert(&share_id, &0_u128);
             }
 
-            data_mut.strategies.insert(token_id.clone(), strat);
+            // TODO: update to seed id
+            data_mut.strategies.insert(seed_id, strat);
 
             format!("VersionedStrategy for {} created successfully", token_id)
         };
@@ -70,21 +75,18 @@ impl Contract {
 
     pub fn add_farm_to_strategy(
         &mut self,
-        pool_id: u64,
+        seed_id: String,
         pool_id_token1_reward: u64,
         pool_id_token2_reward: u64,
         reward_token: AccountId,
         farm_id: String,
     ) -> String {
         self.is_owner();
-        let token_id = self.wrap_mft_token_id(&pool_id.to_string());
-
-        // let data_mut = self.data_mut();
-        let compounder = self.get_strat_mut(&token_id).get_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_mut();
 
         for farm in compounder.farms.clone() {
             if farm.id == farm_id {
-                return format!("Farm with index {} for {} already exist", farm_id, token_id);
+                return format!("Farm with index {} for {} already exist", farm_id, seed_id);
             }
         }
 
@@ -105,7 +107,7 @@ impl Contract {
 
         format!(
             "Farm with index {} for {} created successfully",
-            farm_id, token_id
+            farm_id, seed_id
         )
     }
 
@@ -129,8 +131,8 @@ impl Contract {
     }
 
     pub fn harvest(&mut self, farm_id_str: String) -> Promise {
-        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-        let strat = self.get_strat(token_id);
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let strat = self.get_strat(&seed_id);
         let compounder = strat.get_ref();
         let farm_info = compounder.get_farm_info(&farm_id);
         match farm_info.cycle_stage {

@@ -31,7 +31,7 @@ impl Contract {
     /// Checks if predecessor_account_id is either the contract or the owner of the contract
     #[private]
     pub(crate) fn is_owner(&self) {
-        let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
+        let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
         require!(
             caller_acc_id == contract_id || caller_acc_id == self.data().owner_id,
             "ERR_NOT_ALLOWED"
@@ -41,7 +41,7 @@ impl Contract {
     /// Checks if account_id is either the caller account or the contract
     #[private]
     pub(crate) fn is_caller(&self, account_id: AccountId) {
-        let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
+        let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
         assert!(
             (caller_acc_id == account_id) || (caller_acc_id == contract_id),
             "ERR_NOT_ALLOWED"
@@ -78,15 +78,11 @@ impl Contract {
         }
     }
 
-    #[private]
-    pub fn get_predecessor_and_current_account(&self) -> (AccountId, AccountId) {
-        (env::predecessor_account_id(), env::current_account_id())
-    }
-
     pub fn contract_version(&self) -> String {
         String::from(env!("CARGO_PKG_VERSION"))
     }
 
+    // TODO: REMOVE
     #[private]
     pub fn check_promise(&self) -> bool {
         match env::promise_results_count() {

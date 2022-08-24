@@ -402,9 +402,9 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     utils::add_strategy(
         &safe_contract,
         &token_reward_1,
+        seed_id1.clone(),
         pool_token1_reward1,
         pool_token2_reward1,
-        pool_token1_token2,
         farm_id0,
         &worker,
     )
@@ -716,30 +716,37 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
     // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
+
+    println!("Starting unstake and checking received shares");
+
     //Total seed in the contract
     let seed_before_withdraw: u128 =
-        utils::get_seed_total_amount(&safe_contract, &token_id, &worker).await?;
+        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
     println!(
         "Total seed before the withdraw is =  {}",
         seed_before_withdraw
     );
 
+    println!("1");
     //Total user's amount of fft_shares
     //Available to unstake
     let unstaked: u128 = get_user_shares(&safe_contract, owner.id(), &seed_id1, &worker).await?;
 
+    println!("2");
     //Calling unstake
     let res = owner
         .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
         .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
 
     //Getting user's amount of shares
+    println!("3");
     let user_amount_of_seed: u128 =
         get_user_shares(&safe_contract, owner.id(), &seed_id1, &worker).await?;
 
+    println!("4");
     //Checking that the user has no balance after unstake all available.
     assert_eq!(
         user_amount_of_seed, 0_u128,
@@ -747,11 +754,13 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         user_amount_of_seed
     );
 
+    println!("5");
     //Getting the total seed available in the contract
     let seed_after_withdraw: u128 =
-        utils::get_seed_total_amount(&safe_contract, &token_id, &worker).await?;
+        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
     println!("Total seed is =  {}", seed_after_withdraw);
 
+    println!("6");
     //Checking if the new amount of seed is correct
     assert_eq!(
         seed_after_withdraw,
@@ -762,15 +771,17 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         unstaked
     );
 
+    println!("7");
     //Getting the seed amount available for the user farmer1
     let unstaked: u128 = get_user_shares(&safe_contract, farmer1.id(), &seed_id1, &worker).await?;
     let mut seed_total = unstaked;
     let withdraw1: U128 = U128::from(unstaked / 2_u128);
 
+    println!("8");
     //Calling unstake with a half of the user's total available seed
     let res = farmer1
         .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "token_id": token_id , "amount_withdrawal":withdraw1 }))?
+        .args_json(serde_json::json!({ "seed_id": seed_id1 , "amount_withdrawal":withdraw1 }))?
         .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
@@ -795,7 +806,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     //Calling unstake to withdraw the rest
     let res = farmer1
         .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "token_id": token_id , "amount_withdrawal": withdraw2}))?
+        .args_json(serde_json::json!({ "seed_id": seed_id1 , "amount_withdrawal": withdraw2}))?
         .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
@@ -805,7 +816,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     );
 
     let seed_after_withdraw: u128 =
-        utils::get_seed_total_amount(&safe_contract, &token_id, &worker).await?;
+        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
 
     //Testing the contract total amount after unstake
     assert_eq!(
@@ -858,7 +869,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // assert that fft supply is 0
     let seed_total_amount: u128 =
-        utils::get_seed_total_amount(&safe_contract, &token_id, &worker).await?;
+        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
 
     assert!(
         seed_total_amount == 0u128,
@@ -897,9 +908,9 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     utils::add_strategy(
         &safe_contract,
         &token_reward_2,
+        seed_id1.clone(),
         pool_token1_reward2,
         pool_token2_reward2,
-        pool_token1_token2,
         farm_id1,
         &worker,
     )
@@ -909,8 +920,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     utils::add_strategy(
         &safe_contract,
         &token_1,
+        seed_id1.clone(),
         utils::POOL_ID_PLACEHOLDER,
-        pool_token1_token2,
         pool_token1_token2,
         farm_id2,
         &worker,
@@ -921,9 +932,9 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     utils::add_strategy(
         &safe_contract,
         &token_2,
+        seed_id1.clone(),
         pool_token1_token2,
         utils::POOL_ID_PLACEHOLDER,
-        pool_token1_token2,
         farm_id3,
         &worker,
     )

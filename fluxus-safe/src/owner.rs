@@ -9,16 +9,6 @@ impl Contract {
         format!("{} is {:#?}", env::current_account_id(), self.data().state)
     }
 
-    pub fn update_exchange_contract(&mut self, contract_id: AccountId) {
-        self.is_owner();
-        self.data_mut().exchange_contract_id = contract_id;
-    }
-
-    pub fn update_farm_contract(&mut self, contract_id: AccountId) {
-        self.is_owner();
-        self.data_mut().farm_contract_id = contract_id;
-    }
-
     pub fn update_treasure_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
         self.data_mut().treasury.account_id = contract_id;
@@ -54,8 +44,8 @@ impl Contract {
     ) -> String {
         self.is_owner();
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-        let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         if farm_info_mut.state != state {
@@ -101,15 +91,15 @@ impl Contract {
         assert!(self.is_owner_or_guardians(), "ERR_");
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let compounder_mut = self.get_strat_mut(&token_id.to_string()).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
         farm_info_mut.slippage = 100 - new_slippage;
 
         format!(
             "The current slippage for {} is {}",
-            token_id, farm_info_mut.slippage
+            seed_id, farm_info_mut.slippage
         )
     }
 }

@@ -83,12 +83,8 @@ impl Contract {
             .insert(&fft_share, &temp);
     }
 
-    pub fn seed_total_amount(&self, token_id: String) -> u128 {
-        let mut id = token_id;
-        id.remove(0).to_string();
-        let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, id);
-
-        self.data().seed_id_amount.get(&seed_id).unwrap_or(0u128)
+    pub fn seed_total_amount(&self, seed_id: &String) -> u128 {
+        self.data().seed_id_amount.get(seed_id).unwrap_or(0u128)
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
@@ -103,8 +99,7 @@ impl Contract {
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
-    pub fn total_supply_by_pool_id(&mut self, token_id: String) -> u128 {
-        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
+    pub fn total_supply_by_pool_id(&mut self, seed_id: String) -> u128 {
         log!("Total supply of: {}", seed_id);
         let fft_share_id = self
             .data_mut()
@@ -120,9 +115,7 @@ impl Contract {
             0u128
         }
     }
-    pub fn convert_pool_id_in_fft_share(&mut self, token_id: String) -> String {
-        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
-
+    pub fn convert_pool_id_in_fft_share(&mut self, seed_id: String) -> String {
         let fft_share_id = self
             .data_mut()
             .fft_share_by_seed_id
@@ -371,7 +364,7 @@ impl Contract {
                 };
                 self.internal_mft_transfer(
                     token_id,
-                    (*receiver_id).to_string(),
+                    receiver_id.to_string(),
                     refund_to.to_string(),
                     refund_amount,
                     None,
@@ -415,8 +408,6 @@ mod tests {
         let mut account = create_account();
         let mut contract = Contract::new(
             "auto_compounder.near".parse().unwrap(),
-            "ref-finance-101.testnet".parse().unwrap(),
-            "farm101.fluxusfi.testnet".parse().unwrap(),
             "dev-1656420526638-61041719201929".parse().unwrap(),
         );
 
@@ -445,8 +436,6 @@ mod tests {
 
         let mut account = create_account();
         let mut contract = Contract::new(
-            "auto_compounder.near".parse().unwrap(),
-            "ref-finance-101.testnet".parse().unwrap(),
             "farm101.fluxusfi.testnet".parse().unwrap(),
             "dev-1656420526638-61041719201929".parse().unwrap(),
         );
@@ -475,8 +464,6 @@ mod tests {
         let mut account = create_account();
         let mut contract = Contract::new(
             "auto_compounder.near".parse().unwrap(),
-            "ref-finance-101.testnet".parse().unwrap(),
-            "farm101.fluxusfi.testnet".parse().unwrap(),
             "dev-1656420526638-61041719201929".parse().unwrap(),
         );
 
