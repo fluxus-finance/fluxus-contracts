@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use fluxus_safe::{self, get_ids_from_farm};
 mod utils;
 
 use near_sdk::json_types::U128;
