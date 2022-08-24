@@ -44,29 +44,26 @@ impl Contract {
                 seed_min_deposit,
             ));
 
-            if let Some(id) = uxu_share_id {
-                log!("Registering {} to {}", id, seed_id);
+            if let Some(share_id) = uxu_share_id {
+                log!("Registering {} to {}", share_id, seed_id);
                 //Registering id for the specific seed
-
-                log!("map {} to {} on fft_share_by_seed_id", seed_id, id);
-
                 data_mut
                     .fft_share_by_seed_id
-                    .insert(seed_id.clone(), id.clone());
+                    .insert(seed_id.clone(), share_id.clone());
 
                 //Registering id in the users balance map
-                let temp = LookupMap::new(StorageKey::Strategy);
+                let temp = LookupMap::new(StorageKey::Strategy {
+                    fft_share_id: share_id.clone(),
+                });
 
-                log!("map {} to {:?} on users_balance_by_fft_share", id, temp);
-                // TODO: why id?
                 data_mut
                     .users_balance_by_fft_share
-                    .insert(&id.clone(), &temp);
+                    .insert(&share_id.clone(), &temp);
 
-                log!("map {} to {} on total_supply_by_fft_share", id, 0u128);
                 //Registering total_supply
-                // TODO: why id?
-                data_mut.total_supply_by_fft_share.insert(&id, &0_u128);
+                data_mut
+                    .total_supply_by_fft_share
+                    .insert(&share_id, &0_u128);
             }
 
             // TODO: update to seed id
@@ -132,6 +129,7 @@ impl Contract {
 
         fft_share_id
     }
+
     pub fn harvest(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let strat = self.get_strat(&seed_id);
@@ -142,6 +140,20 @@ impl Contract {
             AutoCompounderCycle::Withdrawal => self.withdraw_of_reward(farm_id_str),
             AutoCompounderCycle::Swap => self.autocompounds_swap(farm_id_str),
             AutoCompounderCycle::Stake => self.autocompounds_liquidity_and_stake(farm_id_str),
+        }
+    }
+
+    pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
+        self.is_owner();
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let strat = self.get_strat_mut(&token_id);
+        let compounder = strat.get_mut();
+        for (i, farm) in compounder.farms.iter().enumerate() {
+            println!("{} - {}", farm_id_str, farm.id);
+            if farm_id_str == farm.id {
+                compounder.farms.remove(i);
+                break;
+            }
         }
     }
 }
