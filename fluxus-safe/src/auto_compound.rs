@@ -949,14 +949,14 @@ impl Contract {
         &mut self,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
-    ) {
+    ) -> PromiseOrValue<u128> {
         assert!(total_shares_result.is_ok(), "ERR");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
-        let farm_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
+        let farm_contract_id: AccountId = compounder_mut.farm_contract_id.clone();
 
         compounder_mut.harvest_timestamp = env::block_timestamp_ms();
 
@@ -978,15 +978,15 @@ impl Contract {
                 "The current number of shares {} is below minimum deposit",
                 accumulated_shares
             );
-            return;
+            return PromiseOrValue::Value(0u128);
         }
 
-        self.call_stake(
+        PromiseOrValue::Promise(self.call_stake(
             exchange_contract_id,
             farm_contract_id,
             token_id,
             U128(accumulated_shares),
             "\"Free\"".to_string(),
-        );
+        ))
     }
 }
