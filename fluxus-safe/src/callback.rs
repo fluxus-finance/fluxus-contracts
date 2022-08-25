@@ -246,11 +246,11 @@ pub trait RefExchangeStableAutoCompound {
         fft_shares: Balance,
     );
     fn stable_callback_get_deposits(&self) -> Promise;
-    fn stable_callback_post_add_liquidity(
+    fn stable_callback_post_add_stable_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
-    );
+    ) -> Promise;
     fn stable_callback_post_get_pool_shares(
         &mut self,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,

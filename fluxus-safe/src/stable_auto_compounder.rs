@@ -411,38 +411,6 @@ impl StableAutoCompounder {
         )
     }
 
-    // pub fn get_tokens_return(&self, farm_id_str: String, amount_token: U128) -> Promise {
-    //     let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-
-    //     let farm_info = self.get_farm_info(&farm_id);
-
-    //     ext_exchange::get_return(
-    //         farm_info.pool_id_token1_reward,
-    //         farm_info.reward_token,
-    //         amount_token_1,
-    //         self.token1_address.clone(),
-    //         self.exchange_contract_id.clone(),
-    //         0,
-    //         Gas(10_000_000_000_000),
-    //     )
-    //     .then(callback_ref_finance::callback_get_token_return(
-    //         common_token,
-    //         amount_token_2,
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(10_000_000_000_000),
-    //     ))
-    //     .then(callback_ref_finance::swap_to_auto(
-    //         farm_id_str,
-    //         amount_in,
-    //         amount_in,
-    //         common_token,
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(140_000_000_000_000),
-    //     ))
-    // }
-
     pub fn autocompounds_liquidity_and_stake(&self, farm_id_str: String) -> Promise {
         log!("autocompounds_liquidity_and_stake");
 
@@ -461,13 +429,13 @@ impl StableAutoCompounder {
             0,
             Gas(10_000_000_000_000),
         )
-        .then(callback_ref_finance::callback_post_sentry(
+        .then(callback_stable_ref_finance::stable_callback_post_sentry(
             farm_id_str,
             sentry_acc_id,
             farm_info.reward_token,
             env::current_account_id(),
             0,
-            Gas(240_000_000_000_000),
+            Gas(250_000_000_000_000),
         ))
     }
 }
