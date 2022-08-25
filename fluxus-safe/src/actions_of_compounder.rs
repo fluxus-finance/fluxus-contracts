@@ -103,31 +103,6 @@ impl Contract {
         );
 
         strat.unstake(seed_id, caller_id, amount.0, user_fft_shares)
-
-        // let compounder = strat.get_compounder_ref();
-        // let token_id: String = wrap_mft_token_id(&compounder.pool_id.to_string());
-
-        // compounder.unstake(token_id, seed_id, caller_id, amount.0, user_fft_shares)
-        // log!("{} is trying to withdrawal {}", caller_id, amount.0);
-
-        // // Unstake shares/lps
-        // ext_exchange::get_pool_shares(
-        //     compounder.pool_id,
-        //     contract_id.clone(),
-        //     compounder.exchange_contract_id.clone(),
-        //     0,
-        //     Gas(20_000_000_000_000),
-        // )
-        // .then(callback_ref_finance::callback_get_pool_shares(
-        //     token_id,
-        //     seed_id.clone(),
-        //     caller_id.clone(),
-        //     amount.0,
-        //     user_fft_shares,
-        //     contract_id.clone(),
-        //     0,
-        //     Gas(260_000_000_000_000),
-        // ))
     }
 
     #[private]

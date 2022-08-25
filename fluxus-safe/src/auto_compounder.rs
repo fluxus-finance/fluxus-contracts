@@ -336,9 +336,8 @@ impl AutoCompounder {
     ) -> Promise {
         log!("withdraw_of_reward");
 
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        // let compounder = self.get_strat(&seed_id).get_compounder();
         let farm_info = self.get_farm_info(&farm_id);
 
         // contract_id does not exist on sentries

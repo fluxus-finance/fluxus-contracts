@@ -45,6 +45,7 @@ impl Contract {
 
     /// Returns the minimum value accepted for given token_id
     pub fn get_seed_min_deposit(self, seed_id: String) -> U128 {
+        // TODO: stable version
         let compounder = self.get_strat(&seed_id).get_compounder();
         compounder.seed_min_deposit
     }
@@ -72,6 +73,7 @@ impl Contract {
     pub fn get_running_farm_ids(&self) -> Vec<String> {
         let mut running_strategies: Vec<String> = Vec::new();
 
+        // TODO: stable versions
         for (_, strat) in self.data().strategies.iter() {
             let compounder = strat.get_compounder_ref();
             for farm in compounder.farms.iter() {
@@ -89,6 +91,7 @@ impl Contract {
     pub fn get_strategies(self) -> Vec<AutoCompounderInfo> {
         let mut info: Vec<AutoCompounderInfo> = Vec::new();
 
+        // TODO: stable version
         for (seed_id, strat) in self.data().strategies.clone() {
             let compounder = strat.get_compounder();
             let mut seed_info = AutoCompounderInfo {
@@ -113,6 +116,7 @@ impl Contract {
 
     pub fn get_strategies_info(&self) -> Vec<StratFarmInfo> {
         let mut info: Vec<StratFarmInfo> = Vec::new();
+        // TODO: stable version
         for (_, strat) in self.data().strategies.iter() {
             for farm in strat.get_compounder_ref().farms.iter() {
                 info.push(farm.clone());
@@ -122,6 +126,7 @@ impl Contract {
         info
     }
 
+    // TODO: refactor it
     // /// Running strategies to use in the bot
     // pub fn get_running_strategies(&self, farm_id_str: String) -> String {
     //     let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str);
@@ -136,6 +141,7 @@ impl Contract {
     pub fn get_strat_state(self, farm_id_str: String) -> AutoCompounderState {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
+        // TODO: stale version
         let compounder = self.get_strat(&seed_id).get_compounder();
         let farm_info = compounder.get_farm_info(&farm_id);
 
@@ -185,6 +191,7 @@ impl Contract {
     pub fn number_of_strategies(&self) -> u128 {
         let mut count: u128 = 0;
 
+        // TODO: stable versions
         for (_, strat) in self.data().strategies.iter() {
             let size = strat.get_compounder_ref().farms.len();
             count += size as u128;
@@ -194,11 +201,13 @@ impl Contract {
     }
 
     pub fn check_fee_by_strategy(&self, seed_id: String) -> String {
+        // TODO: stable version
         let compounder = self.get_strat(&seed_id).get_compounder();
         format!("{}%", compounder.admin_fees.strategy_fee)
     }
 
     pub fn is_strategy_active(&self, seed_id: String) -> bool {
+        // TODO: stable version
         let compounder = self.get_strat(&seed_id).get_compounder();
 
         for farm in compounder.farms.iter() {
@@ -212,6 +221,7 @@ impl Contract {
 
     pub fn current_strat_step(&self, farm_id_str: String) -> String {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+        // TODO: stable version
         let compounder = self.get_strat(&seed_id).get_compounder();
         let farm_info = compounder.get_farm_info(&farm_id);
 
@@ -223,6 +233,7 @@ impl Contract {
         }
     }
 
+    // TODO: refactor it
     // pub fn get_farm_ids_by_seed(&self, seed_id: String) -> Vec<String> {
     //     let mut strats: Vec<String> = vec![];
 
@@ -236,6 +247,7 @@ impl Contract {
     // }
 
     pub fn get_harvest_timestamp(&self, seed_id: String) -> String {
+        // TODO: stable version
         let compounder = self.get_strat(&seed_id).get_compounder_ref().clone();
         compounder.harvest_timestamp.to_string()
     }

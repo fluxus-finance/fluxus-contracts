@@ -139,6 +139,7 @@ impl Contract {
         strat.harvest_proxy(farm_id_str, treasury)
     }
 
+    // TODO: stable version
     pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
         self.is_owner();
         let (_, token_id, _) = get_ids_from_farm(farm_id_str.clone());

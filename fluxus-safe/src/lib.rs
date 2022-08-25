@@ -150,26 +150,6 @@ impl Contract {
         };
     }
 
-    /// Assert that the farm_id_str is valid, meaning that the farm is Running
-    fn assert_strategy_not_cleared(&self, farm_id_str: &str) {
-        self.assert_contract_running();
-
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-
-        let strat = self.get_strat(&seed_id);
-        let compounder = strat.get_compounder_ref();
-
-        for farm in compounder.farms.iter() {
-            if farm.id == farm_id {
-                match farm.state {
-                    AutoCompounderState::Running => (),
-                    AutoCompounderState::Ended => (),
-                    _ => env::panic_str("E51: strategy ended"),
-                };
-            }
-        }
-    }
-
     /// Ensures that at least one strategy is running for given token_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
