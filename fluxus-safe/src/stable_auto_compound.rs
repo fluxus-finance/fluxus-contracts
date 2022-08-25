@@ -359,7 +359,7 @@ impl Contract {
 
         min_amount_out = U128(percent.apply_to(min_amount_out.0));
 
-        let amount_in: U128 = U128(farm_info.available_balance[farm_info.token_position as usize]);
+        let amount_in: U128 = U128(farm_info.last_reward_amount);
 
         log!(
             "min amount out: {} for {}",
@@ -369,7 +369,7 @@ impl Contract {
 
         self.call_swap(
             stable_compounder.exchange_contract_id,
-            stable_compounder.pool_id,
+            farm_info.pool_id_token_reward,
             farm_info.reward_token,
             // TODO: what if I want the strategies to stake different token address from the tokens availables?
             stable_compounder.token_address,
