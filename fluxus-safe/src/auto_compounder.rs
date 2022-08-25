@@ -279,7 +279,6 @@ impl AutoCompounder {
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn claim_reward(&self, farm_id_str: String) -> Promise {
-        // self.assert_strategy_not_cleared(&farm_id_str);
         log!("claim_reward");
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -306,7 +305,6 @@ impl AutoCompounder {
         farm_id_str: String,
         treasury_current_amount: u128,
     ) -> Promise {
-        // self.assert_strategy_not_cleared(&farm_id_str);
         log!("withdraw_of_reward");
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -359,7 +357,6 @@ impl AutoCompounder {
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn autocompounds_swap(&self, farm_id_str: String, treasure: AccountFee) -> Promise {
-        // self.assert_strategy_not_cleared(&farm_id_str);
         log!("autocompounds_swap");
 
         let treasury_acc: AccountId = treasure.account_id;
@@ -529,7 +526,6 @@ impl AutoCompounder {
     }
 
     pub fn autocompounds_liquidity_and_stake(&self, farm_id_str: String) -> Promise {
-        // self.assert_strategy_not_cleared(&farm_id_str);
         log!("autocompounds_liquidity_and_stake");
 
         // send reward to contract caller

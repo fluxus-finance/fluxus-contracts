@@ -28,3 +28,12 @@ pub fn unwrap_token_id(token_id: &str) -> String {
 pub fn wrap_mft_token_id(token_id: &str) -> String {
     format!(":{}", token_id)
 }
+
+/// Assert that the farm_id_str is valid, meaning that the farm is Running
+pub fn assert_strategy_not_cleared(state: AutoCompounderState) {
+    match state {
+        AutoCompounderState::Running => (),
+        AutoCompounderState::Ended => (),
+        _ => env::panic_str("E51: strategy ended"),
+    };
+}

@@ -137,8 +137,10 @@ impl VersionedStrategy {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         match self {
             VersionedStrategy::AutoCompounder(compounder) => {
-                // compounder.stake(token_id, seed_id, account_id, shares)
                 let farm_info = compounder.get_farm_info(&farm_id);
+
+                assert_strategy_not_cleared(farm_info.state);
+
                 match farm_info.cycle_stage {
                     AutoCompounderCycle::ClaimReward => compounder.claim_reward(farm_id_str),
                     AutoCompounderCycle::Withdrawal => {
