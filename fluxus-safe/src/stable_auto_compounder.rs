@@ -23,7 +23,7 @@ pub struct StableStratFarmInfo {
     pub last_fee_amount: u128,
 
     /// Pool used to swap the reward received by the token used to add liquidity
-    pub pool_id_token1_reward: u64,
+    pub pool_id_token_reward: u64,
 
     /// Address of the reward token given by the farm
     pub reward_token: AccountId,
@@ -76,7 +76,7 @@ pub struct StableAutoCompounder {
     pub farm_contract_id: AccountId,
 
     /// Address of the first token used by pool
-    pub token1_address: AccountId,
+    pub token_address: AccountId,
 
     /// Pool used to add liquidity and farming
     pub pool_id: u64,
@@ -102,7 +102,7 @@ impl StableAutoCompounder {
         sentry_fee: u128,
         exchange_contract_id: AccountId,
         farm_contract_id: AccountId,
-        token1_address: AccountId,
+        token_address: AccountId,
         pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
@@ -113,7 +113,7 @@ impl StableAutoCompounder {
             admin_fees: admin_fee,
             exchange_contract_id,
             farm_contract_id,
-            token1_address,
+            token_address,
             pool_id,
             seed_min_deposit,
             seed_id,

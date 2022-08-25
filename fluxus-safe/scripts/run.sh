@@ -17,7 +17,10 @@ echo $username
 ./initialize.sh
 
 # #### create strategy from .env
-./add_strategy.sh
+# ./add_strategy.sh
+
+#### create stable strategy
+./add_stable_strategy.sh
 
 # #### storage_deposit + wrap_near + stake   
 ./stake_process.sh
