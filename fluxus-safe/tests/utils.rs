@@ -773,7 +773,7 @@ pub async fn get_user_fft(
     fft_id: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
-    let args = serde_json::json!({ "fft_share": fft_id, "user": account.id().to_string(), })
+    let args = serde_json::json!({ "fft_share": fft_id, "account_id": account.id().to_string(), })
         .to_string()
         .into_bytes();
     let res = contract

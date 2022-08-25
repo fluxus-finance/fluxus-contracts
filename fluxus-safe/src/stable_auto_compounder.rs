@@ -225,6 +225,17 @@ impl StableAutoCompounder {
             Gas(10_000_000_000_000),
         ))
     }
+
+    pub fn unstake(
+        &self,
+        token_id: String,
+        seed_id: String,
+        receiver_id: AccountId,
+        withdraw_amount: u128,
+        user_fft_shares: u128,
+    ) -> Promise {
+        unimplemented!()
+    }
 }
 
 pub enum SupportedExchanges {

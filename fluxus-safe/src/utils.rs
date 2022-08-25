@@ -25,8 +25,8 @@ pub fn unwrap_token_id(token_id: &str) -> String {
 }
 
 /// wrap token_id into correct format in MFT standard
-pub fn wrap_mft_token_id(token_id: &str) -> String {
-    format!(":{}", token_id)
+pub fn wrap_mft_token_id(pool_id: &str) -> String {
+    format!(":{}", pool_id)
 }
 
 /// Assert that the farm_id_str is valid, meaning that the farm is Running

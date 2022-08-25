@@ -133,6 +133,37 @@ impl VersionedStrategy {
         }
     }
 
+    pub fn unstake(
+        &self,
+        seed_id: String,
+        receiver_id: AccountId,
+        withdraw_amount: u128,
+        user_fft_shares: u128,
+    ) -> Promise {
+        log!(
+            "{} is trying to withdrawal {}",
+            receiver_id,
+            withdraw_amount
+        );
+        match self {
+            VersionedStrategy::AutoCompounder(compounder) => compounder.unstake(
+                wrap_mft_token_id(&compounder.pool_id.to_string()),
+                seed_id,
+                receiver_id,
+                withdraw_amount,
+                user_fft_shares,
+            ),
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder
+                .unstake(
+                    wrap_mft_token_id(&stable_compounder.pool_id.to_string()),
+                    seed_id,
+                    receiver_id,
+                    withdraw_amount,
+                    user_fft_shares,
+                ),
+        }
+    }
+
     pub fn harvest_proxy(&self, farm_id_str: String, treasure: AccountFee) -> Promise {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         match self {

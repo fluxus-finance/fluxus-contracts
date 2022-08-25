@@ -274,6 +274,35 @@ impl AutoCompounder {
         ))
     }
 
+    /// Withdraw user lps and send it to the contract.
+    pub fn unstake(
+        &self,
+        token_id: String,
+        seed_id: String,
+        receiver_id: AccountId,
+        withdraw_amount: u128,
+        user_fft_shares: u128,
+    ) -> Promise {
+        // Unstake shares/lps
+        ext_exchange::get_pool_shares(
+            self.pool_id,
+            env::current_account_id(),
+            self.exchange_contract_id.clone(),
+            0,
+            Gas(20_000_000_000_000),
+        )
+        .then(callback_ref_finance::callback_get_pool_shares(
+            token_id,
+            seed_id,
+            receiver_id,
+            withdraw_amount,
+            user_fft_shares,
+            env::current_account_id(),
+            0,
+            Gas(260_000_000_000_000),
+        ))
+    }
+
     /// Step 1
     /// Function to claim the reward from the farm contract
     /// Args:
