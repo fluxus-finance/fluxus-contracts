@@ -94,20 +94,8 @@ impl MFTTokenReceiver for Contract {
         let seed_id: String = format!("{}@{}", caller_id, unwrap_token_id(&token_id));
         self.assert_strategy_is_running(&seed_id);
 
-        let compounder = self.get_strat(&seed_id).get_compounder();
+        let strat = self.get_strat(&seed_id);
 
-        let amount_in_u128: u128 = amount.into();
-
-        //Check: is the amount sent above or equal the minimum deposit?
-        assert!(
-            amount_in_u128 >= compounder.seed_min_deposit.into(),
-            "ERR_BELOW_MIN_DEPOSIT"
-        );
-
-        // initiate stake process
-        compounder.stake(token_id, seed_id, &sender_id, amount_in_u128);
-
-        // TODO: remove this and return promise
-        PromiseOrValue::Value(U128(0))
+        PromiseOrValue::Promise(strat.stake(token_id, seed_id, &sender_id, amount.0))
     }
 }

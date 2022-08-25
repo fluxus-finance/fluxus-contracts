@@ -115,19 +115,20 @@ impl Contract {
             seed_id.clone(),
             caller_id.clone(),
             amount.0,
+            user_fft_shares,
             contract_id.clone(),
             0,
-            Gas(230_000_000_000_000),
+            Gas(260_000_000_000_000),
         ))
-        .then(callback_ref_finance::callback_withdraw_shares(
-            seed_id,
-            caller_id,
-            amount.0,
-            user_fft_shares,
-            contract_id,
-            0,
-            Gas(20_000_000_000_000),
-        ))
+        // .then(callback_ref_finance::callback_withdraw_shares(
+        //     seed_id,
+        //     caller_id,
+        //     amount.0,
+        //     user_fft_shares,
+        //     contract_id,
+        //     0,
+        //     Gas(20_000_000_000_000),
+        // ))
     }
 
     #[private]
@@ -138,6 +139,7 @@ impl Contract {
         seed_id: String,
         receiver_id: AccountId,
         withdraw_amount: u128,
+        user_fft_shares: u128,
     ) -> Promise {
         assert!(shares_result.is_ok(), "ERR");
 
@@ -148,13 +150,22 @@ impl Contract {
         if shares_on_exchange >= withdraw_amount {
             ext_exchange::mft_transfer(
                 token_id,
-                receiver_id,
+                receiver_id.clone(),
                 U128(withdraw_amount),
                 Some("".to_string()),
                 compounder.exchange_contract_id,
                 1,
                 Gas(30_000_000_000_000),
             )
+            .then(callback_ref_finance::callback_withdraw_shares(
+                seed_id,
+                receiver_id,
+                withdraw_amount,
+                user_fft_shares,
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ))
         } else {
             let amount = withdraw_amount - shares_on_exchange;
 
@@ -171,12 +182,21 @@ impl Contract {
             // transfer the total amount required
             .then(ext_exchange::mft_transfer(
                 token_id,
-                receiver_id,
+                receiver_id.clone(),
                 U128(withdraw_amount),
                 Some("".to_string()),
                 compounder.exchange_contract_id,
                 1,
                 Gas(30_000_000_000_000),
+            ))
+            .then(callback_ref_finance::callback_withdraw_shares(
+                seed_id,
+                receiver_id,
+                withdraw_amount,
+                user_fft_shares,
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
             ))
         }
     }
@@ -184,14 +204,19 @@ impl Contract {
     #[private]
     pub fn callback_withdraw_shares(
         &mut self,
+        #[callback_result] mft_transfer_result: Result<(), PromiseError>,
         seed_id: String,
         account_id: AccountId,
         amount: Balance,
         fft_shares: Balance,
     ) {
-        // TODO: remove generic promise check
-        assert!(self.check_promise());
-        // assert!(mft_transfer_result.is_ok());
+        match mft_transfer_result {
+            Ok(_) => log!("Nice!"),
+            Err(err) => {
+                panic!("err")
+            }
+        }
+
         let data = self.data_mut();
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
 

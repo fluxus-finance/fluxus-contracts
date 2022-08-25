@@ -95,6 +95,7 @@ pub trait RefExchangeAutoCompound {
     ) -> String;
     fn callback_withdraw_shares(
         &mut self,
+        #[callback_result] mft_transfer_result: Result<(), PromiseError>,
         seed_id: String,
         account_id: AccountId,
         amount: Balance,
@@ -145,6 +146,7 @@ pub trait RefExchangeAutoCompound {
         seed_id: String,
         receiver_id: AccountId,
         withdraw_amount: u128,
+        user_fft_shares: u128,
     ) -> Promise;
 
     fn callback_post_sentry(

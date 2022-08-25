@@ -273,6 +273,289 @@ impl AutoCompounder {
             Gas(10_000_000_000_000),
         ))
     }
+
+    /// Step 1
+    /// Function to claim the reward from the farm contract
+    /// Args:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    pub fn claim_reward(&self, farm_id_str: String) -> Promise {
+        // self.assert_strategy_not_cleared(&farm_id_str);
+        log!("claim_reward");
+        let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
+
+        ext_farm::list_seed_farms(
+            seed_id,
+            self.farm_contract_id.clone(),
+            0,
+            Gas(40_000_000_000_000),
+        )
+        .then(callback_ref_finance::callback_list_farms_by_seed(
+            farm_id_str,
+            env::current_account_id(),
+            0,
+            Gas(100_000_000_000_000),
+        ))
+    }
+
+    /// Step 2
+    /// Function to claim the reward from the farm contract
+    /// Args:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    pub fn withdraw_of_reward(
+        &self,
+        farm_id_str: String,
+        treasury_current_amount: u128,
+    ) -> Promise {
+        // self.assert_strategy_not_cleared(&farm_id_str);
+        log!("withdraw_of_reward");
+
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
+        // let compounder = self.get_strat(&seed_id).get_compounder();
+        let farm_info = self.get_farm_info(&farm_id);
+
+        // contract_id does not exist on sentries
+        if !self
+            .admin_fees
+            .sentries
+            .contains_key(&env::current_account_id())
+        {
+            let amount_to_withdraw = farm_info.last_reward_amount;
+            ext_farm::withdraw_reward(
+                farm_info.reward_token,
+                U128(amount_to_withdraw),
+                "false".to_string(),
+                self.farm_contract_id.clone(),
+                0,
+                Gas(180_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_post_withdraw(
+                farm_id_str,
+                env::current_account_id(),
+                0,
+                Gas(80_000_000_000_000),
+            ))
+        } else {
+            // the withdraw succeeded but not the transfer
+            ext_reward_token::ft_transfer_call(
+                self.exchange_contract_id.clone(),
+                U128(farm_info.last_reward_amount + treasury_current_amount), //Amount after withdraw the rewards
+                "".to_string(),
+                farm_info.reward_token,
+                1,
+                Gas(40_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_post_ft_transfer(
+                farm_id_str,
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ))
+        }
+    }
+
+    /// Step 3
+    /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
+    /// Args:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    pub fn autocompounds_swap(&self, farm_id_str: String, treasure: AccountFee) -> Promise {
+        // self.assert_strategy_not_cleared(&farm_id_str);
+        log!("autocompounds_swap");
+
+        let treasury_acc: AccountId = treasure.account_id;
+        let treasury_curr_amount: u128 = treasure.current_amount;
+
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
+
+        let farm_info = self.get_farm_info(&farm_id);
+
+        let token1 = self.token1_address.clone();
+        let token2 = self.token2_address.clone();
+        let reward = farm_info.reward_token.clone();
+
+        let mut common_token = 0;
+
+        if token1 == reward {
+            common_token = 1;
+        } else if token2 == reward {
+            common_token = 2;
+        }
+
+        let reward_amount = farm_info.last_reward_amount;
+
+        // This works by increasing gradually the slippage allowed
+        // It will be used only in the cases where the first swaps succeed but not the second
+        if farm_info.available_balance[0] > 0 {
+            common_token = 1;
+
+            return self
+                .get_tokens_return(
+                    farm_id_str.clone(),
+                    U128(farm_info.available_balance[0]),
+                    U128(reward_amount),
+                    common_token,
+                )
+                .then(callback_ref_finance::swap_to_auto(
+                    farm_id_str,
+                    U128(farm_info.available_balance[0]),
+                    U128(reward_amount),
+                    common_token,
+                    env::current_account_id(),
+                    0,
+                    Gas(140_000_000_000_000),
+                ));
+        }
+
+        let amount_in = U128(reward_amount / 2);
+
+        if treasury_curr_amount > 0 {
+            ext_exchange::mft_transfer(
+                farm_info.reward_token.to_string(),
+                treasury_acc,
+                U128(treasury_curr_amount),
+                Some("".to_string()),
+                self.exchange_contract_id.clone(),
+                1,
+                Gas(20_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_post_treasury_mft_transfer(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ));
+        }
+
+        let strat_creator_curr_amount = self.admin_fees.strat_creator.current_amount;
+        if strat_creator_curr_amount > 0 {
+            ext_reward_token::ft_transfer(
+                self.admin_fees.strat_creator.account_id.clone(),
+                U128(strat_creator_curr_amount),
+                Some("".to_string()),
+                farm_info.reward_token,
+                1,
+                Gas(20_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_post_creator_ft_transfer(
+                seed_id,
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ));
+        }
+
+        self.get_tokens_return(farm_id_str.clone(), amount_in, amount_in, common_token)
+            .then(callback_ref_finance::swap_to_auto(
+                farm_id_str,
+                amount_in,
+                amount_in,
+                common_token,
+                env::current_account_id(),
+                0,
+                Gas(140_000_000_000_000),
+            ))
+    }
+
+    pub fn get_tokens_return(
+        &self,
+        farm_id_str: String,
+        amount_token_1: U128,
+        amount_token_2: U128,
+        common_token: u64,
+    ) -> Promise {
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+
+        let farm_info = self.get_farm_info(&farm_id);
+
+        if common_token == 1 {
+            // TODO: can be shortened by call_get_return
+            ext_exchange::get_return(
+                farm_info.pool_id_token2_reward,
+                farm_info.reward_token,
+                amount_token_2,
+                self.token2_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_get_token_return(
+                common_token,
+                amount_token_1,
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+        } else if common_token == 2 {
+            ext_exchange::get_return(
+                farm_info.pool_id_token1_reward,
+                farm_info.reward_token,
+                amount_token_1,
+                self.token1_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_get_token_return(
+                common_token,
+                amount_token_2,
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+        } else {
+            ext_exchange::get_return(
+                farm_info.pool_id_token1_reward,
+                farm_info.reward_token.clone(),
+                amount_token_1,
+                self.token1_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .and(ext_exchange::get_return(
+                farm_info.pool_id_token2_reward,
+                farm_info.reward_token,
+                amount_token_2,
+                self.token2_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+            .then(callback_ref_finance::callback_get_tokens_return(
+                env::current_account_id(),
+                0,
+                Gas(10_000_000_000_000),
+            ))
+        }
+    }
+
+    pub fn autocompounds_liquidity_and_stake(&self, farm_id_str: String) -> Promise {
+        // self.assert_strategy_not_cleared(&farm_id_str);
+        log!("autocompounds_liquidity_and_stake");
+
+        // send reward to contract caller
+        self.send_reward_to_sentry(farm_id_str, env::predecessor_account_id())
+    }
+
+    pub fn send_reward_to_sentry(&self, farm_id_str: String, sentry_acc_id: AccountId) -> Promise {
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
+        let farm_info = self.get_farm_info(&farm_id);
+
+        ext_reward_token::storage_balance_of(
+            sentry_acc_id.clone(),
+            farm_info.reward_token.clone(),
+            0,
+            Gas(10_000_000_000_000),
+        )
+        .then(callback_ref_finance::callback_post_sentry(
+            farm_id_str,
+            sentry_acc_id,
+            farm_info.reward_token,
+            env::current_account_id(),
+            0,
+            Gas(240_000_000_000_000),
+        ))
+    }
 }
 
 pub enum SupportedExchanges {
