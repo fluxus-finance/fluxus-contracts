@@ -185,6 +185,8 @@ impl Contract {
         &mut self,
         seed_id: String,
         pool_id_token_reward: u64,
+        available_balance: Vec<Balance>,
+        token_position: u64,
         reward_token: AccountId,
         farm_id: String,
     ) -> String {
@@ -205,7 +207,8 @@ impl Contract {
             last_fee_amount: 0u128,
             pool_id_token_reward,
             reward_token,
-            available_balance: 0u128,
+            available_balance,
+            token_position,
             id: farm_id.clone(),
         };
 
@@ -236,11 +239,11 @@ impl Contract {
         fft_share_id
     }
 
-    pub fn harvest(&self, farm_id_str: String) -> Promise {
+    pub fn harvest(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
 
         let treasury = self.data().treasury.clone();
-        let strat = self.get_strat(&seed_id);
+        let strat = self.get_strat_mut(&seed_id);
 
         strat.harvest_proxy(farm_id_str, treasury)
     }

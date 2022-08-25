@@ -22,6 +22,7 @@ use percentage::Percentage;
 use crate::account_deposit::{Account, VAccount};
 mod account_deposit;
 mod auto_compound;
+mod stable_auto_compound;
 mod storage_impl;
 mod token_receiver;
 

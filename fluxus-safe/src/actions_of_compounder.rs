@@ -214,9 +214,8 @@ impl Contract {
 impl Contract {
     /// Call the swap function in the exchange. It can be used by itself or as a callback.
     #[private]
-    #[payable]
     pub fn call_swap(
-        &mut self,
+        &self,
         exchange_contract_id: AccountId,
         pool_id: u64,
         token_in: AccountId,

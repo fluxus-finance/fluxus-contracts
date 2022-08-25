@@ -164,8 +164,8 @@ impl VersionedStrategy {
         }
     }
 
-    pub fn harvest_proxy(&self, farm_id_str: String, treasure: AccountFee) -> Promise {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+    pub fn harvest_proxy(&mut self, farm_id_str: String, treasure: AccountFee) -> Promise {
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         match self {
             VersionedStrategy::AutoCompounder(compounder) => {
                 let farm_info = compounder.get_farm_info(&farm_id);
@@ -184,10 +184,25 @@ impl VersionedStrategy {
                         compounder.autocompounds_liquidity_and_stake(farm_id_str)
                     }
                 }
-            } // VersionedStrategy::StableAutoCompounder(stable_compounder) => {
-            //     // stable_compounder.stake(token_id, seed_id, account_id, shares)
-            // }
-            _ => unimplemented!(),
+            }
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => {
+                let farm_info = stable_compounder.get_farm_info(&farm_id);
+
+                assert_strategy_not_cleared(farm_info.state);
+
+                match farm_info.cycle_stage {
+                    AutoCompounderCycle::ClaimReward => stable_compounder.claim_reward(farm_id_str),
+                    AutoCompounderCycle::Withdrawal => {
+                        stable_compounder.withdraw_of_reward(farm_id_str, treasure.current_amount)
+                    }
+                    AutoCompounderCycle::Swap => {
+                        stable_compounder.autocompounds_swap(farm_id_str, treasure)
+                    }
+                    AutoCompounderCycle::Stake => {
+                        stable_compounder.autocompounds_liquidity_and_stake(farm_id_str)
+                    }
+                }
+            }
         }
     }
 }
