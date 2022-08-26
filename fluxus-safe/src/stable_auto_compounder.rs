@@ -240,7 +240,26 @@ impl StableAutoCompounder {
         withdraw_amount: u128,
         user_fft_shares: u128,
     ) -> Promise {
-        unimplemented!()
+        // Unstake shares/lps
+        ext_exchange::get_pool_shares(
+            self.pool_id,
+            env::current_account_id(),
+            self.exchange_contract_id.clone(),
+            0,
+            Gas(20_000_000_000_000),
+        )
+        .then(
+            callback_stable_ref_finance::stable_callback_get_pool_shares(
+                token_id,
+                seed_id,
+                receiver_id,
+                withdraw_amount,
+                user_fft_shares,
+                env::current_account_id(),
+                0,
+                Gas(260_000_000_000_000),
+            ),
+        )
     }
 
     /// Step 1
@@ -419,7 +438,7 @@ impl StableAutoCompounder {
     }
 
     pub fn send_reward_to_sentry(&self, farm_id_str: String, sentry_acc_id: AccountId) -> Promise {
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let farm_info = self.get_farm_info(&farm_id);
 

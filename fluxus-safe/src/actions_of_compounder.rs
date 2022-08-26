@@ -207,6 +207,113 @@ impl Contract {
 
         self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
     }
+
+    #[private]
+    pub fn stable_callback_get_pool_shares(
+        &self,
+        #[callback_result] shares_result: Result<U128, PromiseError>,
+        token_id: String,
+        seed_id: String,
+        receiver_id: AccountId,
+        withdraw_amount: u128,
+        user_fft_shares: u128,
+    ) -> Promise {
+        assert!(shares_result.is_ok(), "ERR");
+
+        let stable_compounder = self.get_strat(&seed_id).get_stable_compounder();
+
+        let shares_on_exchange: u128 = shares_result.unwrap().into();
+
+        if shares_on_exchange >= withdraw_amount {
+            ext_exchange::mft_transfer(
+                token_id,
+                receiver_id.clone(),
+                U128(withdraw_amount),
+                Some("".to_string()),
+                stable_compounder.exchange_contract_id,
+                1,
+                Gas(30_000_000_000_000),
+            )
+            .then(
+                callback_stable_ref_finance::stable_callback_withdraw_shares(
+                    seed_id,
+                    receiver_id,
+                    withdraw_amount,
+                    user_fft_shares,
+                    env::current_account_id(),
+                    0,
+                    Gas(20_000_000_000_000),
+                ),
+            )
+        } else {
+            let amount = withdraw_amount - shares_on_exchange;
+
+            // withdraw missing amount from farm
+            ext_farm::unlock_and_withdraw_seed(
+                stable_compounder.seed_id,
+                U128(0),
+                U128(amount),
+                stable_compounder.farm_contract_id.clone(),
+                1,
+                Gas(180_000_000_000_000),
+            )
+            // TODO: add callback and then call mft_transfer
+            // transfer the total amount required
+            .then(ext_exchange::mft_transfer(
+                token_id,
+                receiver_id.clone(),
+                U128(withdraw_amount),
+                Some("".to_string()),
+                stable_compounder.exchange_contract_id,
+                1,
+                Gas(30_000_000_000_000),
+            ))
+            .then(
+                callback_stable_ref_finance::stable_callback_withdraw_shares(
+                    seed_id,
+                    receiver_id,
+                    withdraw_amount,
+                    user_fft_shares,
+                    env::current_account_id(),
+                    0,
+                    Gas(20_000_000_000_000),
+                ),
+            )
+        }
+    }
+
+    #[private]
+    pub fn stable_callback_withdraw_shares(
+        &mut self,
+        #[callback_result] mft_transfer_result: Result<(), PromiseError>,
+        seed_id: String,
+        account_id: AccountId,
+        amount: Balance,
+        fft_shares: Balance,
+    ) {
+        match mft_transfer_result {
+            Ok(_) => log!("Nice!"),
+            Err(err) => {
+                panic!("err")
+            }
+        }
+
+        let data = self.data_mut();
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(&seed_id, &(total_seed - amount));
+
+        let fft_share_id = self
+            .data()
+            .fft_share_by_seed_id
+            .get(&seed_id)
+            .unwrap()
+            .clone();
+
+        self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
+    }
 }
 
 /// Auto-compounder ref-exchange wrapper

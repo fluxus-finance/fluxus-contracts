@@ -5,6 +5,9 @@ source .env
 echo $username
 echo $reward_token
 
+# view pool
+near view ref-finance-101.testnet get_pool '{ "pool_id": '$pool_id' }'
+
 #### Create first strategy
 near call $CONTRACT_NAME create_stable_strategy '{
     "_strategy": "",
@@ -20,7 +23,9 @@ near call $CONTRACT_NAME create_stable_strategy '{
 
 near call $CONTRACT_NAME add_farm_to_stable_strategy '{
     "seed_id": "'$seed_id'",
-    "pool_id_token_reward": '$pool_id_token1_reward', 
+    "pool_id_token_reward": '$pool_id_token_reward', 
+    "available_balance": [0, 0, 0],
+    "token_position": '$token_position',
     "reward_token": "'$reward_token'",
     "farm_id": "'$farm_id'" 
 }' --accountId $CONTRACT_NAME --gas $total_gas
@@ -34,4 +39,4 @@ near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "reg
 
 # Register reward_token in the exchange in the contracts account whitelisted tokens
 # only necessary for tokens that arent registered in the exchange already
-near call $exchange_contract_id register_tokens '{ "token_ids" : [ "'$reward_token'" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
+near call $exchange_contract_id register_tokens '{ "token_ids" : [ "'$reward_token'", "usdt.fakes.testnet", "usdc.fakes.testnet", "dai.fakes.testnet" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
