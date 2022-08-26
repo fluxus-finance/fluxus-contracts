@@ -341,10 +341,10 @@ impl Contract {
 
     #[private]
     pub fn stable_callback_get_token_return(
-        &self,
+        &mut self,
         #[callback_result] token_out: Result<U128, PromiseError>,
         farm_id_str: String,
-    ) -> Promise {
+    ) -> PromiseOrValue<u128> {
         assert!(token_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_RETURN");
 
         let mut min_amount_out: U128 = token_out.unwrap();
@@ -367,21 +367,32 @@ impl Contract {
             farm_info.token_address,
         );
 
-        self.call_swap(
-            stable_compounder.exchange_contract_id,
-            farm_info.pool_id_token_reward,
-            farm_info.reward_token,
-            // TODO: what if I want the strategies to stake different token address from the tokens availables?
-            farm_info.token_address,
-            Some(amount_in),
-            min_amount_out,
+        if min_amount_out.0 == 0u128 {
+            log!("ERR_COULD_NOT_GET_TOKEN_RETURN");
+            let stable_compounder = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
+            let farm_info_mut = stable_compounder.get_mut_farm_info(&farm_id);
+            farm_info_mut.increase_slippage();
+
+            return PromiseOrValue::Value(0u128);
+        }
+
+        PromiseOrValue::Promise(
+            self.call_swap(
+                stable_compounder.exchange_contract_id,
+                farm_info.pool_id_token_reward,
+                farm_info.reward_token,
+                // TODO: what if I want the strategies to stake different token address from the tokens availables?
+                farm_info.token_address,
+                Some(amount_in),
+                min_amount_out,
+            )
+            .then(callback_stable_ref_finance::stable_callback_post_swap(
+                farm_id_str,
+                env::current_account_id(),
+                0,
+                Gas(80_000_000_000_000),
+            )),
         )
-        .then(callback_stable_ref_finance::stable_callback_post_swap(
-            farm_id_str,
-            env::current_account_id(),
-            0,
-            Gas(80_000_000_000_000),
-        ))
     }
 
     #[private]
