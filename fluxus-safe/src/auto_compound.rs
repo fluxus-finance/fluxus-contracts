@@ -341,6 +341,8 @@ impl Contract {
 
         let amount: U128 = token_out.unwrap();
 
+        assert!(amount.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_RETURN");
+
         if common_token == 1 {
             (amount_token, amount)
         } else {
@@ -359,6 +361,9 @@ impl Contract {
 
         let amount_token1: U128 = token1_out.unwrap();
         let amount_token2: U128 = token2_out.unwrap();
+
+        assert!(amount_token1.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
+        assert!(amount_token2.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
 
         (amount_token1, amount_token2)
     }
@@ -405,6 +410,7 @@ impl Contract {
         if common_token == 1 {
             // use the entire amount for the common token
             farm_info_mut.available_balance[0] = amount_in_1.0;
+
             self.call_swap(
                 exchange_contract_id,
                 pool_id_to_swap2,
