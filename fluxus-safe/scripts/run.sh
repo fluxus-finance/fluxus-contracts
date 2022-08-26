@@ -14,13 +14,19 @@ echo $username
  
 
 #### initializes the contract, create strategy and registers in the necessary contracts
-./initialize.sh
+# ./initialize.sh
+
+# ./pembrock_register.sh
+
+# ./pembrock_add_strategy.sh
+
+./pembrock_stake_process.sh
 
 # #### create strategy from .env
-./add_strategy.sh
+# ./add_strategy.sh
 
 # #### storage_deposit + wrap_near + stake   
-./stake_process.sh
+# ./stake_process.sh
 
 #### unstake_and_remove_liquidity + withdraw_to_contract
 # ./unstake_process.sh

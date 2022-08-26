@@ -36,6 +36,9 @@ use crate::errors::*;
 pub mod auto_compounder;
 pub use auto_compounder::*;
 
+pub mod pembrock_auto_compounder;
+pub use pembrock_auto_compounder::*;
+
 mod actions_of_compounder;
 
 mod views;

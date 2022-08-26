@@ -53,16 +53,36 @@ impl FungibleTokenReceiver for Contract {
         &mut self,
         sender_id: AccountId,
         amount: U128,
-        _msg: String,
+        msg: String,
     ) -> PromiseOrValue<U128> {
         self.assert_contract_running();
-        ext_self::metadata(
-            env::current_account_id(),
-            0,                      // yocto NEAR to attach
-            Gas(5_000_000_000_000), // gas to attach
-        );
+        
         let token_in = env::predecessor_account_id();
-        self.internal_deposit(&sender_id, &token_in, amount.into());
+        log!("token_id is: {}",token_in.clone().to_string());
+
+        //self.internal_deposit(&sender_id, &token_in, amount.into());
+
+    
+        //self.assert_strategy_is_running(&seed_id);
+        let strat_name: String = format!("pembrock@{}", token_in);//leo: Get the right token_in
+
+        let compounder = self.get_strat(&strat_name).pemb_get();
+
+        let amount_in_u128: u128 = amount.into();
+
+        //Check: is the amount sent above or equal the minimum deposit?
+        assert!(
+            amount_in_u128 >= compounder.seed_min_deposit.into(),
+            "ERR_BELOW_MIN_DEPOSIT"
+        );
+
+        // initiate stake process
+        compounder.stake_on_pembrock();
+
+
+
+
+
         PromiseOrValue::Value(U128(0))
     }
 }

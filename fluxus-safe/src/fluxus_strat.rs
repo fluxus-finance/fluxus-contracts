@@ -1,6 +1,8 @@
 use crate::*;
 
 use crate::auto_compounder::AutoCompounder;
+use crate::pembrock_auto_compounder::PembrockAutoCompounder;
+
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -15,6 +17,7 @@ use near_sdk::{
 #[serde(crate = "near_sdk::serde")]
 pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
+    PembrockAutoCompounder(PembrockAutoCompounder)
 }
 
 impl VersionedStrategy {
@@ -22,6 +25,7 @@ impl VersionedStrategy {
     pub fn kind(&self) -> String {
         match self {
             VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::PembrockAutoCompounder(_) => "Pembrock_AUTO_COMPOUNDER".to_string()
         }
     }
 
@@ -40,6 +44,11 @@ impl VersionedStrategy {
                 VersionedStrategy::AutoCompounder(compounder.clone())
             }
             _ => unimplemented!(),
+
+            VersionedStrategy::PembrockAutoCompounder(compounder) => {
+                VersionedStrategy::PembrockAutoCompounder(compounder.clone())
+            }
+            _ => unimplemented!(),
         }
     }
 
@@ -48,6 +57,8 @@ impl VersionedStrategy {
     pub fn need_upgrade(&self) -> bool {
         match self {
             Self::AutoCompounder(_) => false,
+            _ => unimplemented!(),
+            Self::PembrockAutoCompounder(_) => false,
             _ => unimplemented!(),
         }
     }
@@ -82,6 +93,30 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+
+
+    #[allow(unreachable_patterns)]
+    pub fn pemb_get(self) -> PembrockAutoCompounder {
+        match self {
+            VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+    #[allow(unreachable_patterns)]
+    pub fn pemb_get_ref(&self) -> &PembrockAutoCompounder {
+        match self {
+            VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+    #[allow(unreachable_patterns)]
+    pub fn pemb_get_mut(&mut self) -> &mut PembrockAutoCompounder {
+        match self {
+            VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+
 }
 
 impl Contract {
@@ -113,4 +148,35 @@ impl Contract {
             strat
         }
     }
+
+    // pub fn pemb_get_strat(&self, seed_id: &str) -> VersionedStrategy {
+    //     let strat = self
+    //         .data()
+    //         .strategies
+    //         .get(seed_id)
+    //         .expect(ERR21_TOKEN_NOT_REG);
+
+    //     if strat.need_upgrade() {
+    //         strat.upgrade()
+    //     } else {
+    //         strat.clone()
+    //     }
+    // }
+
+    pub fn pemb_get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
+        let strat = self
+            .data_mut()
+            .strategies
+            .get_mut(seed_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        if strat.need_upgrade() {
+            strat.upgrade();
+            strat
+        } else {
+            strat
+        }
+    }
+
+
 }

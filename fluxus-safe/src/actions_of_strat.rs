@@ -1,8 +1,9 @@
 use crate::*;
+//const pembrock_token = "token.pembrock.testnet";
 
 #[near_bindgen]
 impl Contract {
-    // TODO: this method should register in the correct pool/farm
+    // TODO: thi&s method should register in the correct pool/farm
     pub fn create_strategy(
         &mut self,
         _strategy: String,
@@ -156,4 +157,91 @@ impl Contract {
             }
         }
     }
+
+
+
+    pub fn pembrock_create_strategy(
+        &mut self,
+        _strategy: String,
+        strategy_fee: u128,
+        strat_creator: AccountFee,
+        sentry_fee: u128,
+        exchange_contract_id: AccountId,
+        farm_contract_id: AccountId,
+        token_name: String,
+        token1_address: AccountId,
+        seed_min_deposit: U128,
+        pool_id: u64
+    ) -> String {
+        self.is_owner();
+
+        //let token_id = wrap_mft_token_id(&pool_id.to_string());
+
+        let strat_name: String = format!("pembrock@{}", token_name);
+
+        return if self.data().strategies.contains_key(&strat_name) {
+            format!("VersionedStrategy for {} already exist", token_name)
+        } else {
+            let uxu_share_id = self.new_fft_share(strat_name.clone());
+
+            let data_mut = self.data_mut();
+
+            let mut strat: VersionedStrategy = VersionedStrategy::PembrockAutoCompounder(PembrockAutoCompounder::new(
+                strategy_fee,
+                strat_creator,
+                sentry_fee,
+                exchange_contract_id,
+                farm_contract_id,
+                token1_address,
+                token_name.clone(),
+                seed_min_deposit,
+            ));
+
+            if let Some(share_id) = uxu_share_id {
+                log!("Registering {} to {}", share_id, &strat_name);
+                //Registering id for the specific seed
+                data_mut
+                    .fft_share_by_seed_id
+                    .insert(strat_name.clone(), share_id.clone());
+
+                //Registering id in the users balance map
+                let temp = LookupMap::new(StorageKey::Strategy {
+                    fft_share_id: share_id.clone(),
+                });
+
+                data_mut
+                    .users_balance_by_fft_share
+                    .insert(&share_id.clone(), &temp);
+
+                //Registering total_supply
+                data_mut
+                    .total_supply_by_fft_share
+                    .insert(&share_id, &0_u128);
+            }
+
+
+            data_mut.strategies.insert(strat_name.clone(), strat.clone());
+
+    
+            let farm_info: PembStratFarmInfo = PembStratFarmInfo {
+                state: PembAutoCompounderState::Running,
+                cycle_stage: PembAutoCompounderCycle::ClaimReward,
+                slippage: 99u128,
+                last_reward_amount: 0u128,
+                last_fee_amount: 0u128,
+                pool_id_token1_reward:pool_id,
+                reward_token: "token.pembrock.testnet".parse().unwrap(),
+                available_balance: vec![0u128, 0u128],
+            };
+    
+            strat.pemb_get_mut().farms.push(farm_info);
+
+
+
+
+            format!("VersionedStrategy for {} created successfully", token_name)
+        };
+    }
+
+
 }
