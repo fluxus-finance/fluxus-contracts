@@ -364,7 +364,7 @@ impl Contract {
         log!(
             "min amount out: {} for {}",
             min_amount_out.0,
-            stable_compounder.token_address,
+            farm_info.token_address,
         );
 
         self.call_swap(
@@ -372,7 +372,7 @@ impl Contract {
             farm_info.pool_id_token_reward,
             farm_info.reward_token,
             // TODO: what if I want the strategies to stake different token address from the tokens availables?
-            stable_compounder.token_address,
+            farm_info.token_address,
             Some(amount_in),
             min_amount_out,
         )

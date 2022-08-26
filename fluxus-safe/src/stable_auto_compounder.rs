@@ -22,8 +22,17 @@ pub struct StableStratFarmInfo {
     /// This will be used to store owned amount if ft_transfer to treasure fails
     pub last_fee_amount: u128,
 
+    // TODO: need a variable to define which position the add_stable_liquidity will go
+    // can have [usdt, usdc] [usdt, usdc, dai] but only one position will be used
+    /// Address of the token used by pool
+    pub token_address: AccountId,
+
     /// Pool used to swap the reward received by the token used to add liquidity
     pub pool_id_token_reward: u64,
+
+    /// Vector position of the token used to add liquidity to the pool
+    /// [token1, token2, token_to_add] -> indexes: [0, 1, 2] -> use 2
+    pub token_position: u64,
 
     /// Address of the reward token given by the farm
     pub reward_token: AccountId,
@@ -31,10 +40,6 @@ pub struct StableStratFarmInfo {
     /// Store balance of available of tokens
     /// obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
     pub available_balance: Vec<Balance>,
-
-    /// Vector position of the token used to add liquidity to the pool
-    /// [token1, token2, token_to_add] -> indexes: [0, 1, 2] -> use 2
-    pub token_position: u64,
 
     /// Farm used to auto-compound
     pub id: String,
@@ -79,11 +84,6 @@ pub struct StableAutoCompounder {
     // Contract address of the farm used
     pub farm_contract_id: AccountId,
 
-    // TODO: need a variable to define which position the add_stable_liquidity will go
-    // can have [usdt, usdc] [usdt, usdc, dai] but only one position will be used
-    /// Address of the token used by pool
-    pub token_address: AccountId,
-
     /// Pool used to add liquidity and farming
     pub pool_id: u64,
 
@@ -108,7 +108,6 @@ impl StableAutoCompounder {
         sentry_fee: u128,
         exchange_contract_id: AccountId,
         farm_contract_id: AccountId,
-        token_address: AccountId,
         pool_id: u64,
         seed_id: String,
         seed_min_deposit: U128,
@@ -119,7 +118,6 @@ impl StableAutoCompounder {
             admin_fees: admin_fee,
             exchange_contract_id,
             farm_contract_id,
-            token_address,
             pool_id,
             seed_min_deposit,
             seed_id,
@@ -347,8 +345,11 @@ impl StableAutoCompounder {
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
-    pub fn autocompounds_swap(&mut self, farm_id_str: String, treasure: AccountFee) -> Promise /* OrValue<u128> */
-    {
+    pub fn autocompounds_swap(
+        &mut self,
+        farm_id_str: String,
+        treasure: AccountFee,
+    ) -> PromiseOrValue<u128> {
         log!("autocompounds_swap");
 
         let treasury_acc: AccountId = treasure.account_id;
@@ -360,15 +361,14 @@ impl StableAutoCompounder {
         let strat_creator_curr_amount = self.admin_fees.strat_creator.current_amount;
         let strat_creator_account_id = self.admin_fees.strat_creator.account_id.clone();
 
-        let token_id = self.token_address.clone();
+        let farm_info_mut = self.get_mut_farm_info(&farm_id);
+        let token_id = farm_info_mut.token_address.clone();
 
-        let farm_info = self.get_mut_farm_info(&farm_id);
-
-        let reward_amount = farm_info.last_reward_amount;
+        let reward_amount = farm_info_mut.last_reward_amount;
 
         if treasury_curr_amount > 0 {
             ext_exchange::mft_transfer(
-                farm_info.reward_token.to_string(),
+                farm_info_mut.reward_token.to_string(),
                 treasury_acc,
                 U128(treasury_curr_amount),
                 Some("".to_string()),
@@ -390,7 +390,7 @@ impl StableAutoCompounder {
                 strat_creator_account_id,
                 U128(strat_creator_curr_amount),
                 Some("".to_string()),
-                farm_info.reward_token.clone(),
+                farm_info_mut.reward_token.clone(),
                 1,
                 Gas(20_000_000_000_000),
             )
@@ -404,28 +404,36 @@ impl StableAutoCompounder {
             );
         }
 
-        if token_id == farm_info.reward_token {
+        if token_id == farm_info_mut.reward_token {
             // No need to swap tokens
-            farm_info.next_cycle();
-            // return PromiseOrValue::Value(0u128);
+
+            // no more rewards to spend
+            farm_info_mut.last_reward_amount = 0;
+
+            farm_info_mut.available_balance[farm_info_mut.token_position as usize] = reward_amount;
+
+            farm_info_mut.next_cycle();
+            return PromiseOrValue::Value(0u128);
         }
 
-        ext_exchange::get_return(
-            farm_info.pool_id_token_reward,
-            farm_info.reward_token.clone(),
-            U128(reward_amount),
-            self.token_address.clone(),
-            self.exchange_contract_id.clone(),
-            0,
-            Gas(10_000_000_000_000),
-        )
-        .then(
-            callback_stable_ref_finance::stable_callback_get_token_return(
-                farm_id_str,
+        PromiseOrValue::Promise(
+            ext_exchange::get_return(
+                farm_info_mut.pool_id_token_reward,
+                farm_info_mut.reward_token.clone(),
                 U128(reward_amount),
-                env::current_account_id(),
+                token_id,
+                self.exchange_contract_id.clone(),
                 0,
-                Gas(120_000_000_000_000),
+                Gas(10_000_000_000_000),
+            )
+            .then(
+                callback_stable_ref_finance::stable_callback_get_token_return(
+                    farm_id_str,
+                    U128(reward_amount),
+                    env::current_account_id(),
+                    0,
+                    Gas(120_000_000_000_000),
+                ),
             ),
         )
     }

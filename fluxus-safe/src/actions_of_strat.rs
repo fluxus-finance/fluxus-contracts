@@ -119,7 +119,6 @@ impl Contract {
         sentry_fee: u128,
         exchange_contract_id: AccountId,
         farm_contract_id: AccountId,
-        token_address: AccountId,
         pool_id: u64,
         seed_min_deposit: U128,
     ) -> String {
@@ -146,7 +145,6 @@ impl Contract {
                     sentry_fee,
                     exchange_contract_id,
                     farm_contract_id,
-                    token_address,
                     pool_id,
                     seed_id.clone(),
                     seed_min_deposit,
@@ -184,10 +182,11 @@ impl Contract {
     pub fn add_farm_to_stable_strategy(
         &mut self,
         seed_id: String,
+        token_address: AccountId,
         pool_id_token_reward: u64,
-        available_balance: Vec<Balance>,
         token_position: u64,
         reward_token: AccountId,
+        available_balance: Vec<Balance>,
         farm_id: String,
     ) -> String {
         self.is_owner();
@@ -205,10 +204,11 @@ impl Contract {
             slippage: 99u128,
             last_reward_amount: 0u128,
             last_fee_amount: 0u128,
+            token_address,
             pool_id_token_reward,
+            token_position,
             reward_token,
             available_balance,
-            token_position,
             id: farm_id.clone(),
         };
 
@@ -239,7 +239,7 @@ impl Contract {
         fft_share_id
     }
 
-    pub fn harvest(&mut self, farm_id_str: String) -> Promise {
+    pub fn harvest(&mut self, farm_id_str: String) -> PromiseOrValue<u128> {
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
 
         let treasury = self.data().treasury.clone();

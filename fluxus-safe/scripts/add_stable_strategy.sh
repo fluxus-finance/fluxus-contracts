@@ -16,17 +16,17 @@ near call $CONTRACT_NAME create_stable_strategy '{
     "sentry_fee": 10,
     "exchange_contract_id": "'$exchange_contract_id'", 
     "farm_contract_id": "'$farm_contract_id'",
-    "token_address": "'$token_address'", 
     "pool_id": '$pool_id', 
     "seed_min_deposit": "1000000000000000000" 
     }' --accountId $CONTRACT_NAME --gas $total_gas
 
 near call $CONTRACT_NAME add_farm_to_stable_strategy '{
     "seed_id": "'$seed_id'",
+    "token_address": "'$token_address'", 
     "pool_id_token_reward": '$pool_id_token_reward', 
-    "available_balance": [0, 0, 0],
     "token_position": '$token_position',
     "reward_token": "'$reward_token'",
+    "available_balance": [0, 0, 0],
     "farm_id": "'$farm_id'" 
 }' --accountId $CONTRACT_NAME --gas $total_gas
 
