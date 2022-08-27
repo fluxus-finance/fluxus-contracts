@@ -1,4 +1,5 @@
 use near_sdk::PromiseError;
+use substring::Substring;
 use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryInto;
@@ -188,6 +189,21 @@ impl Contract {
             panic!("There is no running strategy for this pool")
         }
     }
+
+    pub fn get_token_id(&self, token_address: String) -> String{
+        let mut token_id: String = "err".to_string();
+        for (i, c) in token_address.chars().enumerate() {
+            if c == '.' { 
+                token_id = token_address.substring(0,i).to_string();  
+                break;;
+            }
+        }
+        if(token_id == *"err"){
+            panic!("Fail trying to get the token id.")
+        }
+        token_id
+    }
+
 }
 
 #[near_bindgen]

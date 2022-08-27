@@ -54,6 +54,53 @@ impl Contract {
         )
     }
 
+    #[private]
+    pub fn callback_pembrock_stake_result(
+        &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        seed_id: String,
+        account_id: AccountId,
+        shares: u128,
+    ) -> String {
+        if let Ok(amount) = transfer_result {
+            assert_ne!(amount.0, 0, "ERR_STAKE_FAILED");
+        } 
+
+        log!("My strat_name is: {}", seed_id);
+
+        //Total fft_share
+        let total_fft = self.total_supply_by_pool_id(seed_id.clone());
+        log!("total fft is = {}", total_fft);
+        let fft_share_id = self.convert_pool_id_in_fft_share(seed_id.clone());
+
+        let data = self.data_mut();
+        //Total seed_id
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(&seed_id, &(total_seed + shares));
+
+        let fft_share_amount = if total_fft == 0 {
+            shares
+        } else {
+            (U256::from(shares) * U256::from(total_fft) / U256::from(total_seed)).as_u128()
+        };
+
+        log!(
+            "{} {} will be minted for {}",
+            fft_share_amount,
+            fft_share_id,
+            account_id.to_string()
+        );
+        self.mft_mint(fft_share_id, fft_share_amount, account_id.to_string());
+
+        format!(
+            "The {} added {} to {}",
+            account_id, fft_share_amount, seed_id
+        )
+    }
+
     /// Withdraw user lps and send it to the contract.
     pub fn unstake(&mut self, seed_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, contract_id) = get_predecessor_and_current_account();

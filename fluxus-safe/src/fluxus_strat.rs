@@ -62,6 +62,15 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+    
+    #[allow(unreachable_patterns)]
+    pub fn pemb_need_upgrade(&self) -> bool {
+        match self {
+            Self::PembrockAutoCompounder(_) => false,
+            _ => unimplemented!(),
+        }
+    }
+
 
     // // Return the farm or liquidity pool or token( other kinds of strategy) this strategy accepts
     // #[allow(unreachable_patterns)]
@@ -149,19 +158,19 @@ impl Contract {
         }
     }
 
-    // pub fn pemb_get_strat(&self, seed_id: &str) -> VersionedStrategy {
-    //     let strat = self
-    //         .data()
-    //         .strategies
-    //         .get(seed_id)
-    //         .expect(ERR21_TOKEN_NOT_REG);
+    pub fn pemb_get_strat(&self, seed_id: &str) -> VersionedStrategy {
+        let strat = self
+            .data()
+            .strategies
+            .get(seed_id)
+            .expect(ERR21_TOKEN_NOT_REG);
 
-    //     if strat.need_upgrade() {
-    //         strat.upgrade()
-    //     } else {
-    //         strat.clone()
-    //     }
-    // }
+        if strat.pemb_need_upgrade() {
+            strat.upgrade()
+        } else {
+            strat.clone()
+        }
+    }
 
     pub fn pemb_get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
         let strat = self

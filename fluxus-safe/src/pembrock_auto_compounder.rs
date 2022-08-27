@@ -1,4 +1,5 @@
 use crate::*;
+use substring::Substring;
 
 const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 
@@ -197,34 +198,33 @@ impl PembrockAutoCompounder {
     pub fn stake_on_jumbo(&self) {}
     pub fn stake_on_pembrock(
         &self,
-        // token_id: String,
-        // seed_id: String,
-        // account_id: &AccountId,
-        // shares: u128,
-    )  {
-        let exchange_contract_id = self.exchange_contract_id.clone();
+        account_id: &AccountId,
+        shares: u128,
+        strat_name: String
+    ) -> Promise {
         let farm_contract_id = self.farm_contract_id.clone();
+        let token_contract = self.token1_address.clone();
+        log!("Farm _contract_id is: {} current account is {} ", farm_contract_id, env::current_account_id());
 
         log!("Inside stake_on_pembrock");
-        // // decide which strategies
-        // ext_exchange::mft_transfer_call(
-        //     farm_contract_id,
-        //     token_id,
-        //     U128(shares),
-        //     "\"Free\"".to_string(),
-        //     exchange_contract_id,
-        //     1,
-        //     Gas(80_000_000_000_000),
-        // )
-        // // substitute for a generic callback, with a match for next step
-        // .then(callback_ref_finance::callback_stake_result(
-        //     seed_id,
-        //     account_id.clone(),
-        //     shares,
-        //     env::current_account_id(),
-        //     0,
-        //     Gas(10_000_000_000_000),
-        // ))
+
+        ext_pembrock::ft_transfer_call(
+            farm_contract_id,
+            U128(shares),
+            "deposit".to_string(),
+            token_contract,
+            1,
+            Gas(80_000_000_000_000),
+        )
+        // substitute for a generic callback, with a match for next step
+        .then(callback_pembrock::callback_pembrock_stake_result(
+            strat_name,
+            account_id.clone(),
+            shares,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
     }
 
     // pub fn internal_stake_resolver(

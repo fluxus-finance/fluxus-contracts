@@ -171,3 +171,13 @@ pub trait ExtRewardToken {
     fn ft_balance_of(&self, account_id: AccountId) -> U128;
     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance>;
 }
+
+#[ext_contract(ext_pembrock)]
+pub trait ExtPembrock {
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
+}

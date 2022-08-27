@@ -16,7 +16,7 @@ log = "0.4"
 console_log = { version = "0.2", optional = true }
 uint = "0.8"
 percentage = "0.1.0"
-
+substring = "1.4.5"
 
 [dev-dependencies]
 workspaces = { git = "https://github.com/near/workspaces-rs", tag = "0.2.1" }
@@ -30,3 +30,4 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["arbitrary_precision"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.5", features = ["env-filter"] }
+substring = "1.4.5"

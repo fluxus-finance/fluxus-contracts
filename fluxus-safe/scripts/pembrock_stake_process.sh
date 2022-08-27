@@ -10,5 +10,5 @@ near call $CONTRACT_NAME storage_deposit '{"account_id": "'$username'", "registr
 
 near call usdt.fakes.testnet ft_transfer_call '{
     "receiver_id": "'$CONTRACT_NAME'",
-    "amount": "1000000",
+    "amount": "1000000000",
     "msg": "deposit"}' --accountId themans.testnet --gas 300000000000000 --depositYocto 1
