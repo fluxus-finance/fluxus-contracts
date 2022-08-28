@@ -59,24 +59,38 @@ async fn jumbo_do_auto_compound_with_fast_forward(
 /// Return the number of shares that the account has in the auto-compound contract
 async fn get_user_shares(
     contract: &Contract,
-    account: &AccountId,
+    account_id: &AccountId,
     seed_id: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
-    // println!("Checking account id {:#?}", account.to_string());
-    // println!("Checking seed_id {:#?}", seed_id);
-    let res = contract
-        .call(worker, "user_share_seed_id")
-        .args_json(serde_json::json!({
-            "seed_id": seed_id,
-            "user": account.to_string(),
-        }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    println!("get user shares {:#?}", res);
-    let account_shares: u128 = res.json()?;
-    Ok(account_shares)
+    let args = serde_json::json!({
+        "seed_id": seed_id,
+        "user": account_id.to_string(),
+    })
+    .to_string()
+    .into_bytes();
+
+    let account_shares = contract.view(worker, "user_share_seed_id", args).await?;
+
+    println!("debug: {:#?}", account_shares.logs);
+
+    Ok(account_shares.json()?)
+}
+
+async fn get_seed_total_amount(
+    contract: &Contract,
+    seed_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<u128> {
+    let args = serde_json::json!({ "seed_id": seed_id })
+        .to_string()
+        .into_bytes();
+
+    let res = contract.view(worker, "seed_total_amount", args).await?;
+    let seed_total_amount: u128 = res.json()?;
+    println!("seed total amount {:#?}\n", seed_total_amount);
+
+    Ok(seed_total_amount)
 }
 
 /// Create new account, register into exchange and deposit into exchange
@@ -459,6 +473,10 @@ async fn test_jumbo() -> anyhow::Result<()> {
     let owner_shares_on_contract =
         get_user_shares(&safe_contract, &owner.id(), &seed_id1, &worker).await?;
 
+    let seed_total: u128 = get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
+
+    assert_eq!(utils::str_to_u128(&initial_owner_shares), seed_total);
+
     println!(
         "initial: {} owner shares: {}",
         initial_owner_shares, owner_shares_on_contract
@@ -610,14 +628,14 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     let _res = owner
         .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?;
 
     let _res = farmer1
         .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
+        .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
         .gas(TOTAL_GAS)
         .transact()
         .await?;
@@ -650,14 +668,7 @@ async fn test_jumbo() -> anyhow::Result<()> {
         account1_initial_shares
     );
 
-    // assert that fft supply is 0
-    let _res = owner
-        .call(&worker, safe_contract.id(), "seed_total_amount")
-        .args_json(serde_json::json!({ "token_id": token_id }))?
-        .gas(TOTAL_GAS)
-        .transact()
-        .await?;
-    let seed_total_amount: u128 = _res.json()?;
+    let seed_total_amount: u128 = get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
 
     assert!(
         seed_total_amount == 0u128,

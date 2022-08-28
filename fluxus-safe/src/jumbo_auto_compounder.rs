@@ -554,12 +554,6 @@ impl Contract {
 
         log!("new seed amount: {}", new_seed_amount);
 
-        self.data_mut()
-            .seed_id_amount
-            .insert(&seed_id, &new_seed_amount);
-
-        assert_eq!(self.seed_total_amount(&seed_id), new_seed_amount);
-
         let fft_share_amount = if total_fft == 0 {
             shares
         } else {
@@ -573,6 +567,10 @@ impl Contract {
             account_id.to_string()
         );
         self.mft_mint(fft_share_id, fft_share_amount, account_id.to_string());
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(&seed_id, &new_seed_amount);
 
         format!(
             "The {} added {} to {}",
@@ -606,7 +604,7 @@ impl Contract {
                 Gas(30_000_000_000_000),
             )
             .then(callback_jumbo_exchange::callback_jumbo_withdraw_shares(
-                token_id,
+                seed_id,
                 receiver_id,
                 withdraw_amount,
                 user_fft_shares,
@@ -636,7 +634,7 @@ impl Contract {
                 Gas(30_000_000_000_000),
             ))
             .then(callback_jumbo_exchange::callback_jumbo_withdraw_shares(
-                token_id,
+                seed_id,
                 receiver_id,
                 withdraw_amount,
                 user_fft_shares,

@@ -569,38 +569,55 @@ impl Contract {
     pub(crate) fn update_shares_and_forward_cycle(
         &mut self,
         farm_id_str: String,
-        accumulated_shares: u128,
-    ) {
+        shares_on_exchange: u128,
+    ) -> u128 {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let total_seed = self.seed_total_amount(&token_id);
+        let total_seed = self.seed_total_amount(&seed_id);
 
-        let compounder = self.get_strat(&seed_id).get_jumbo();
-        let farm_info = compounder.get_jumbo_farm_info(&farm_id);
+        let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
+        let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(farm_id);
+        log!("seed: {}", seed_id);
+
+        // this can happen when there is more than one strat for the same pool
+        // which will move the shares on the exchange to the farm
+        // leaving the value on exchange lower than the shares stored in the contract
+        if farm_info_mut.current_shares_to_stake > shares_on_exchange {
+            let new_seed_amount = shares_on_exchange + total_seed;
+
+            log!(
+            "Inside update shares\ntotal seed: {} accumulated: {} current: {}\nnew seed_amount: {}",
+            total_seed,
+            shares_on_exchange,
+            farm_info_mut.current_shares_to_stake,
+            new_seed_amount
+            );
+
+            farm_info_mut.current_shares_to_stake = shares_on_exchange;
+
+            farm_info_mut.next_cycle();
+
+            return new_seed_amount;
+        }
+
         // update seed total amount
-        let curr_shares = accumulated_shares - farm_info.current_shares_to_stake;
+        let curr_shares = shares_on_exchange - farm_info_mut.current_shares_to_stake;
 
         let new_seed_amount = curr_shares + total_seed;
-
-        log!("seed: {}", seed_id);
 
         log!(
             "Inside update shares\ntotal seed: {} accumulated: {} current: {}\nnew seed_amount: {}",
             total_seed,
-            accumulated_shares,
-            farm_info.current_shares_to_stake,
+            shares_on_exchange,
+            farm_info_mut.current_shares_to_stake,
             new_seed_amount
         );
 
-        self.data_mut()
-            .seed_id_amount
-            .insert(&seed_id, &new_seed_amount);
-
-        let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
-        let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(farm_id);
-        farm_info_mut.current_shares_to_stake = accumulated_shares;
+        farm_info_mut.current_shares_to_stake = shares_on_exchange;
 
         farm_info_mut.next_cycle();
+
+        new_seed_amount
     }
     /// Receives shares from auto-compound and stake it
     /// Change the user_balance and the auto_compounder balance of lps/shares
@@ -612,21 +629,26 @@ impl Contract {
     ) -> PromiseOrValue<u64> {
         assert!(total_shares_result.is_ok(), "ERR");
 
-        let accumulated_shares = total_shares_result.unwrap().0;
+        let shares_on_exchange = total_shares_result.unwrap().0;
 
-        log!("accumulated shares: {}", accumulated_shares);
+        log!("accumulated shares: {}", shares_on_exchange);
 
         let (seed_id, token_id, _) = get_ids_from_farm(farm_id_str.clone());
 
-        self.update_shares_and_forward_cycle(farm_id_str.clone(), accumulated_shares);
+        let new_seed_amount =
+            self.update_shares_and_forward_cycle(farm_id_str.clone(), shares_on_exchange);
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(&seed_id, &new_seed_amount);
 
         let compounder = self.get_strat(&seed_id).get_jumbo();
 
         // Prevents failing on stake if below minimum deposit
-        if accumulated_shares < compounder.seed_min_deposit.into() {
+        if shares_on_exchange < compounder.seed_min_deposit.into() {
             log!(
                 "The current number of shares {} is below minimum deposit",
-                accumulated_shares
+                shares_on_exchange
             );
             return PromiseOrValue::Value(0u64);
         }
@@ -638,7 +660,7 @@ impl Contract {
                 compounder.exchange_contract_id.clone(),
                 compounder.farm_contract_id,
                 token_id,
-                U128(accumulated_shares),
+                U128(shares_on_exchange),
                 "".to_string(),
             )
             .then(
