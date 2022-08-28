@@ -56,33 +56,20 @@ impl FungibleTokenReceiver for Contract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         self.assert_contract_running();
-        
+
         let token_in = env::predecessor_account_id();
-        let token_in_id = self.get_token_id(token_in.to_string());
-        log!("token_id is: {}",token_in_id.to_string());
+        let token_in_id = get_token_id(token_in.to_string());
+        log!("token_id is: {}", token_in_id.to_string());
 
-        //self.internal_deposit(&sender_id, &token_in, amount.into());
-
-    
+        // TODO: assert pembrock strat is running
         //self.assert_strategy_is_running(&seed_id);
         let strat_name: String = format!("pembrock@{}", token_in_id);
 
         let compounder = self.pemb_get_strat(&strat_name).pemb_get();
 
-        // let amount_in_u128: u128 = amount.into();
-        //Check: is the amount sent above or equal the minimum deposit?
-        // assert!(
-        //     amount_in_u128 >= compounder.seed_min_deposit.into(),
-        //     "ERR_BELOW_MIN_DEPOSIT"
-        // );
-
         // initiate stake process
         let amount_in_u128: u128 = amount.into();
         compounder.stake_on_pembrock(&sender_id, amount_in_u128, strat_name);
-
-
-
-
 
         PromiseOrValue::Value(U128(0))
     }
@@ -115,20 +102,8 @@ impl MFTTokenReceiver for Contract {
         let seed_id: String = format!("{}@{}", caller_id, unwrap_token_id(&token_id));
         self.assert_strategy_is_running(&seed_id);
 
-        let compounder = self.get_strat(&seed_id).get();
+        let strat = self.get_strat(&seed_id);
 
-        let amount_in_u128: u128 = amount.into();
-
-        //Check: is the amount sent above or equal the minimum deposit?
-        assert!(
-            amount_in_u128 >= compounder.seed_min_deposit.into(),
-            "ERR_BELOW_MIN_DEPOSIT"
-        );
-
-        // initiate stake process
-        compounder.stake(token_id, seed_id, &sender_id, amount_in_u128);
-
-        // TODO: remove this and return promise
-        PromiseOrValue::Value(U128(0))
+        PromiseOrValue::Promise(strat.stake(token_id, seed_id, &sender_id, amount.0))
     }
 }

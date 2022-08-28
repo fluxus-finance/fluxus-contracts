@@ -17,7 +17,8 @@ use near_sdk::{
 #[serde(crate = "near_sdk::serde")]
 pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
-    PembrockAutoCompounder(PembrockAutoCompounder)
+    StableAutoCompounder(StableAutoCompounder),
+    PembrockAutoCompounder(PembrockAutoCompounder),
 }
 
 impl VersionedStrategy {
@@ -25,7 +26,8 @@ impl VersionedStrategy {
     pub fn kind(&self) -> String {
         match self {
             VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::PembrockAutoCompounder(_) => "Pembrock_AUTO_COMPOUNDER".to_string()
+            VersionedStrategy::StableAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::PembrockAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
         }
     }
 
@@ -43,7 +45,9 @@ impl VersionedStrategy {
             VersionedStrategy::AutoCompounder(compounder) => {
                 VersionedStrategy::AutoCompounder(compounder.clone())
             }
-            _ => unimplemented!(),
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => {
+                VersionedStrategy::StableAutoCompounder(stable_compounder.clone())
+            }
 
             VersionedStrategy::PembrockAutoCompounder(compounder) => {
                 VersionedStrategy::PembrockAutoCompounder(compounder.clone())
@@ -57,20 +61,11 @@ impl VersionedStrategy {
     pub fn need_upgrade(&self) -> bool {
         match self {
             Self::AutoCompounder(_) => false,
-            _ => unimplemented!(),
+            Self::StableAutoCompounder(_) => false,
             Self::PembrockAutoCompounder(_) => false,
             _ => unimplemented!(),
         }
     }
-    
-    #[allow(unreachable_patterns)]
-    pub fn pemb_need_upgrade(&self) -> bool {
-        match self {
-            Self::PembrockAutoCompounder(_) => false,
-            _ => unimplemented!(),
-        }
-    }
-
 
     // // Return the farm or liquidity pool or token( other kinds of strategy) this strategy accepts
     // #[allow(unreachable_patterns)]
@@ -82,27 +77,161 @@ impl VersionedStrategy {
     // }
 
     #[allow(unreachable_patterns)]
-    pub fn get(self) -> AutoCompounder {
-        match self {
-            VersionedStrategy::AutoCompounder(compounder) => compounder,
-            _ => unimplemented!(),
-        }
-    }
-    #[allow(unreachable_patterns)]
-    pub fn get_ref(&self) -> &AutoCompounder {
-        match self {
-            VersionedStrategy::AutoCompounder(compounder) => compounder,
-            _ => unimplemented!(),
-        }
-    }
-    #[allow(unreachable_patterns)]
-    pub fn get_mut(&mut self) -> &mut AutoCompounder {
+    pub fn get_compounder(self) -> AutoCompounder {
         match self {
             VersionedStrategy::AutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }
 
+    #[allow(unreachable_patterns)]
+    pub fn get_compounder_ref(&self) -> &AutoCompounder {
+        match self {
+            VersionedStrategy::AutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_compounder_mut(&mut self) -> &mut AutoCompounder {
+        match self {
+            VersionedStrategy::AutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_stable_compounder(self) -> StableAutoCompounder {
+        match self {
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_stable_compounder_ref(&self) -> &StableAutoCompounder {
+        match self {
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder,
+            _ => unimplemented!(),
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_stable_compounder_mut(&mut self) -> &mut StableAutoCompounder {
+        match self {
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl VersionedStrategy {
+    pub fn stake(
+        &self,
+        token_id: String,
+        seed_id: String,
+        account_id: &AccountId,
+        shares: u128,
+    ) -> Promise {
+        match self {
+            VersionedStrategy::AutoCompounder(compounder) => {
+                compounder.stake(token_id, seed_id, account_id, shares)
+            }
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => {
+                stable_compounder.stake(token_id, seed_id, account_id, shares)
+            }
+            VersionedStrategy::PembrockAutoCompounder(pemb_compounder) => {
+                // pemb_compounder.stake_on_pembrock(account_id, shares, account_id, shares)
+                unimplemented!()
+            }
+        }
+    }
+
+    pub fn unstake(
+        &self,
+        seed_id: String,
+        receiver_id: AccountId,
+        withdraw_amount: u128,
+        user_fft_shares: u128,
+    ) -> Promise {
+        log!(
+            "{} is trying to withdrawal {}",
+            receiver_id,
+            withdraw_amount
+        );
+        match self {
+            VersionedStrategy::AutoCompounder(compounder) => compounder.unstake(
+                wrap_mft_token_id(&compounder.pool_id.to_string()),
+                seed_id,
+                receiver_id,
+                withdraw_amount,
+                user_fft_shares,
+            ),
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => stable_compounder
+                .unstake(
+                    wrap_mft_token_id(&stable_compounder.pool_id.to_string()),
+                    seed_id,
+                    receiver_id,
+                    withdraw_amount,
+                    user_fft_shares,
+                ),
+            VersionedStrategy::PembrockAutoCompounder(stable_compounder) => unimplemented!(),
+        }
+    }
+
+    pub fn harvest_proxy(
+        &mut self,
+        farm_id_str: String,
+        treasure: AccountFee,
+    ) -> PromiseOrValue<u128> {
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        match self {
+            VersionedStrategy::AutoCompounder(compounder) => {
+                let farm_info = compounder.get_farm_info(&farm_id);
+
+                assert_strategy_not_cleared(farm_info.state);
+
+                match farm_info.cycle_stage {
+                    AutoCompounderCycle::ClaimReward => {
+                        PromiseOrValue::Promise(compounder.claim_reward(farm_id_str))
+                    }
+                    AutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
+                        compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
+                    ),
+                    AutoCompounderCycle::Swap => PromiseOrValue::Promise(
+                        compounder.autocompounds_swap(farm_id_str, treasure),
+                    ),
+                    AutoCompounderCycle::Stake => PromiseOrValue::Promise(
+                        compounder.autocompounds_liquidity_and_stake(farm_id_str),
+                    ),
+                }
+            }
+            VersionedStrategy::StableAutoCompounder(stable_compounder) => {
+                let farm_info = stable_compounder.get_farm_info(&farm_id);
+
+                assert_strategy_not_cleared(farm_info.state);
+
+                match farm_info.cycle_stage {
+                    AutoCompounderCycle::ClaimReward => {
+                        PromiseOrValue::Promise(stable_compounder.claim_reward(farm_id_str))
+                    }
+                    AutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
+                        stable_compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
+                    ),
+                    AutoCompounderCycle::Swap => {
+                        stable_compounder.autocompounds_swap(farm_id_str, treasure)
+                    }
+                    AutoCompounderCycle::Stake => PromiseOrValue::Promise(
+                        stable_compounder.autocompounds_liquidity_and_stake(farm_id_str),
+                    ),
+                }
+            }
+            VersionedStrategy::PembrockAutoCompounder(pemb_compounder) => {
+                // let farm_info = pemb_compounder.
+                unimplemented!()
+            }
+        }
+    }
 
     #[allow(unreachable_patterns)]
     pub fn pemb_get(self) -> PembrockAutoCompounder {
@@ -125,7 +254,6 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
-
 }
 
 impl Contract {
@@ -165,7 +293,7 @@ impl Contract {
             .get(seed_id)
             .expect(ERR21_TOKEN_NOT_REG);
 
-        if strat.pemb_need_upgrade() {
+        if strat.need_upgrade() {
             strat.upgrade()
         } else {
             strat.clone()
@@ -186,6 +314,4 @@ impl Contract {
             strat
         }
     }
-
-
 }

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use fluxus_safe::{self, get_ids_from_farm};
 mod utils;
 
 use near_sdk::json_types::U128;
@@ -95,12 +94,11 @@ async fn get_user_shares(
     .to_string()
     .into_bytes();
 
-    let account_shares = contract
-        .view(worker, "user_share_seed_id", args)
-        .await?
-        .json()?;
+    let account_shares = contract.view(worker, "user_share_seed_id", args).await?;
 
-    Ok(account_shares)
+    println!("debug: {:#?}", account_shares.logs);
+
+    Ok(account_shares.json()?)
 }
 
 /// Create new account, register into exchange and deposit into exchange
@@ -473,7 +471,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
-    // println!("mft_transfer_call {:#?}\n", res);
+    println!("mft_transfer_call {:#?}\n", res);
 
     let owner_shares_on_contract =
         get_user_shares(&safe_contract, &owner.id(), &seed_id1, &worker).await?;
@@ -781,7 +779,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     //Calling unstake with a half of the user's total available seed
     let res = farmer1
         .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "seed_id": seed_id1 , "amount_withdrawal":withdraw1 }))?
+        .args_json(serde_json::json!({ "seed_id": seed_id1 , "amount_withdrawal": withdraw1 }))?
         .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
@@ -810,6 +808,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .gas(utils::TOTAL_GAS)
         .transact()
         .await?;
+
     println!(
         "farmer1 unstaked successfully for the second time{:#?}",
         res

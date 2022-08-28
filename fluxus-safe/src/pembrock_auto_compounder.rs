@@ -32,16 +32,19 @@ pub struct PembStratFarmInfo {
     /// Store balance of available token1 and token2
     /// obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
     pub available_balance: Vec<Balance>,
-
 }
 
 impl PembStratFarmInfo {
     pub(crate) fn next_cycle(&mut self) {
         match self.cycle_stage {
-            PembAutoCompounderCycle::ClaimReward => self.cycle_stage = PembAutoCompounderCycle::Withdrawal,
+            PembAutoCompounderCycle::ClaimReward => {
+                self.cycle_stage = PembAutoCompounderCycle::Withdrawal
+            }
             PembAutoCompounderCycle::Withdrawal => self.cycle_stage = PembAutoCompounderCycle::Swap,
             PembAutoCompounderCycle::Swap => self.cycle_stage = PembAutoCompounderCycle::Stake,
-            PembAutoCompounderCycle::Stake => self.cycle_stage = PembAutoCompounderCycle::ClaimReward,
+            PembAutoCompounderCycle::Stake => {
+                self.cycle_stage = PembAutoCompounderCycle::ClaimReward
+            }
         }
     }
 
@@ -179,7 +182,6 @@ impl PembrockAutoCompounder {
         )
     }
 
-
     /// Iterate through farms inside a compounder
     /// if `rewards_map` contains the same token than the strat, an reward > 0,
     /// then updates the strat to the next cycle, to avoid claiming the seed multiple times
@@ -194,17 +196,19 @@ impl PembrockAutoCompounder {
         }
     }
 
-    pub fn stake_on_ref_finance(&self) {}
-    pub fn stake_on_jumbo(&self) {}
     pub fn stake_on_pembrock(
         &self,
         account_id: &AccountId,
         shares: u128,
-        strat_name: String
+        strat_name: String,
     ) -> Promise {
         let farm_contract_id = self.farm_contract_id.clone();
         let token_contract = self.token1_address.clone();
-        log!("Farm _contract_id is: {} current account is {} ", farm_contract_id, env::current_account_id());
+        log!(
+            "Farm _contract_id is: {} current account is {} ",
+            farm_contract_id,
+            env::current_account_id()
+        );
 
         log!("Inside stake_on_pembrock");
 
@@ -277,7 +281,7 @@ impl PembrockAutoCompounder {
 pub enum SupportedExchanges {
     RefFinance,
     Jumbo,
-    Pembrock
+    Pembrock,
 }
 
 /// Versioned Farmer, used for lazy upgrade.
@@ -288,7 +292,6 @@ pub enum SupportedExchanges {
 pub enum VersionedCompounder {
     V101(AutoCompounder),
 }
-
 
 // impl VersionedCompounder {
 //     #[allow(dead_code)]

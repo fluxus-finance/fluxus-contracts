@@ -38,10 +38,10 @@ impl Contract {
         fft_name
     }
     ///Return the u128 amount of an user for an specific fft_share (ref lp token).
-    pub fn users_fft_share_amount(&self, fft_share: String, user: String) -> u128 {
+    pub fn users_fft_share_amount(&self, fft_share: String, account_id: String) -> u128 {
         let map = self.data().users_balance_by_fft_share.get(&fft_share);
         if let Some(shares) = map {
-            if let Some(user_balance) = shares.get(&user) {
+            if let Some(user_balance) = shares.get(&account_id) {
                 return user_balance;
             }
         }
@@ -89,13 +89,10 @@ impl Contract {
 
     ///Return the total_supply of an specific fft_share (ref lp token).
     pub fn total_supply_amount(&self, fft_share: String) -> u128 {
-        let result = self.data().total_supply_by_fft_share.get(&fft_share);
-
-        if let Some(res) = result {
-            res
-        } else {
-            0
-        }
+        self.data()
+            .total_supply_by_fft_share
+            .get(&fft_share)
+            .unwrap_or(0u128)
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
@@ -115,14 +112,16 @@ impl Contract {
             0u128
         }
     }
-    pub fn convert_pool_id_in_fft_share(&mut self, seed_id: String) -> String {
+    pub fn get_fft_share_id_from_seed(&self, seed_id: String) -> String {
         let fft_share_id = self
-            .data_mut()
+            .data()
             .fft_share_by_seed_id
             .get(&seed_id)
             .unwrap()
             .clone();
+
         log!("fft id is: {}", fft_share_id);
+
         fft_share_id
     }
 

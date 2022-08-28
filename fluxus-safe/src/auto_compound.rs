@@ -6,33 +6,6 @@ const MIN_SLIPPAGE_ALLOWED: u128 = 1;
 
 #[near_bindgen]
 impl Contract {
-    /// Step 1
-    /// Function to claim the reward from the farm contract
-    /// Args:
-    ///   farm_id_str: exchange@pool_id#farm_id
-    #[private]
-    pub fn claim_reward(&mut self, farm_id_str: String) -> Promise {
-        self.assert_strategy_not_cleared(&farm_id_str);
-        log!("claim_reward");
-
-        let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
-
-        let compounder = self.get_strat(&seed_id).get();
-
-        ext_farm::list_seed_farms(
-            seed_id,
-            compounder.farm_contract_id,
-            0,
-            Gas(40_000_000_000_000),
-        )
-        .then(callback_ref_finance::callback_list_farms_by_seed(
-            farm_id_str,
-            env::current_account_id(),
-            0,
-            Gas(100_000_000_000_000),
-        ))
-    }
-
     /// Check if farm still have rewards to distribute (status == Running)
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
@@ -50,7 +23,7 @@ impl Contract {
         // Try to unclaim before change to Ended
         for farm in farms.iter() {
             if farm.farm_id == farm_id && farm.status != *"Running" {
-                let compounder = self.get_strat_mut(&seed_id).get_mut();
+                let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
                 for strat_farm in compounder.farms.iter_mut() {
                     if strat_farm.id == farm_id {
@@ -60,7 +33,7 @@ impl Contract {
             }
         }
 
-        let compounder = self.get_strat(&seed_id).get();
+        let compounder = self.get_strat(&seed_id).get_compounder();
 
         PromiseOrValue::Promise(
             ext_farm::get_unclaimed_rewards(
@@ -91,7 +64,7 @@ impl Contract {
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
-        let compounder = self.get_strat_mut(&seed_id).get_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         let farm_info = compounder.get_mut_farm_info(farm_id);
 
@@ -149,7 +122,7 @@ impl Contract {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         // update strategies with the same seed
-        let compounder = self.get_strat_mut(&seed_id).get_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
         compounder.update_strats_by_seed(rewards_map);
 
         // store the amount of reward earned
@@ -159,60 +132,6 @@ impl Contract {
         farm_info.next_cycle();
 
         reward_amount.0
-    }
-
-    /// Step 2
-    /// Function to claim the reward from the farm contract
-    /// Args:
-    ///   farm_id_str: exchange@pool_id#farm_id
-    #[private]
-    pub fn withdraw_of_reward(&mut self, farm_id_str: String) -> Promise {
-        self.assert_strategy_not_cleared(&farm_id_str);
-        log!("withdraw_of_reward");
-
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-
-        let compounder = self.get_strat(&seed_id).get();
-        let farm_info = compounder.get_farm_info(&farm_id);
-
-        // contract_id does not exist on sentries
-        if !compounder
-            .admin_fees
-            .sentries
-            .contains_key(&env::current_account_id())
-        {
-            let amount_to_withdraw = farm_info.last_reward_amount;
-            ext_farm::withdraw_reward(
-                farm_info.reward_token,
-                U128(amount_to_withdraw),
-                "false".to_string(),
-                compounder.farm_contract_id,
-                0,
-                Gas(180_000_000_000_000),
-            )
-            .then(callback_ref_finance::callback_post_withdraw(
-                farm_id_str,
-                env::current_account_id(),
-                0,
-                Gas(80_000_000_000_000),
-            ))
-        } else {
-            // the withdraw succeeded but not the transfer
-            ext_reward_token::ft_transfer_call(
-                compounder.exchange_contract_id,
-                U128(farm_info.last_reward_amount + self.data().treasury.current_amount), //Amount after withdraw the rewards
-                "".to_string(),
-                farm_info.reward_token,
-                1,
-                Gas(40_000_000_000_000),
-            )
-            .then(callback_ref_finance::callback_post_ft_transfer(
-                farm_id_str,
-                env::current_account_id(),
-                0,
-                Gas(20_000_000_000_000),
-            ))
-        }
     }
 
     #[private]
@@ -231,7 +150,7 @@ impl Contract {
             .strategies
             .get_mut(&seed_id)
             .expect(ERR21_TOKEN_NOT_REG)
-            .get_mut();
+            .get_compounder_mut();
 
         let last_reward_amount = compounder
             .get_mut_farm_info(farm_id.clone())
@@ -291,112 +210,10 @@ impl Contract {
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let compounder = self.get_strat_mut(&seed_id).get_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
         let farm_info_mut = compounder.get_mut_farm_info(farm_id);
 
         farm_info_mut.next_cycle();
-    }
-
-    /// Step 3
-    /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
-    /// Args:
-    ///   farm_id_str: exchange@pool_id#farm_id
-    #[private]
-    pub fn autocompounds_swap(&self, farm_id_str: String) -> Promise {
-        self.assert_strategy_not_cleared(&farm_id_str);
-        log!("autocompounds_swap");
-
-        let treasury_acc: AccountId = self.treasure_acc();
-        let treasury_curr_amount: u128 = self.data().treasury.current_amount;
-
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
-        let compounder = self.get_strat(&seed_id).get();
-        let farm_info = compounder.get_farm_info(&farm_id);
-
-        let token1 = compounder.token1_address.clone();
-        let token2 = compounder.token2_address.clone();
-        let reward = farm_info.reward_token.clone();
-
-        let mut common_token = 0;
-
-        if token1 == reward {
-            common_token = 1;
-        } else if token2 == reward {
-            common_token = 2;
-        }
-
-        let reward_amount = farm_info.last_reward_amount;
-
-        // This works by increasing gradually the slippage allowed
-        // It will be used only in the cases where the first swaps succeed but not the second
-        if farm_info.available_balance[0] > 0 {
-            common_token = 1;
-
-            return self
-                .get_tokens_return(
-                    farm_id_str.clone(),
-                    U128(farm_info.available_balance[0]),
-                    U128(reward_amount),
-                    common_token,
-                )
-                .then(callback_ref_finance::swap_to_auto(
-                    farm_id_str,
-                    U128(farm_info.available_balance[0]),
-                    U128(reward_amount),
-                    common_token,
-                    env::current_account_id(),
-                    0,
-                    Gas(140_000_000_000_000),
-                ));
-        }
-
-        let amount_in = U128(reward_amount / 2);
-
-        if treasury_curr_amount > 0 {
-            ext_exchange::mft_transfer(
-                farm_info.reward_token.to_string(),
-                treasury_acc,
-                U128(treasury_curr_amount),
-                Some("".to_string()),
-                compounder.exchange_contract_id.clone(),
-                1,
-                Gas(20_000_000_000_000),
-            )
-            .then(callback_ref_finance::callback_post_treasury_mft_transfer(
-                env::current_account_id(),
-                0,
-                Gas(20_000_000_000_000),
-            ));
-        }
-
-        let strat_creator_curr_amount = compounder.admin_fees.strat_creator.current_amount;
-        if strat_creator_curr_amount > 0 {
-            ext_reward_token::ft_transfer(
-                compounder.admin_fees.strat_creator.account_id,
-                U128(strat_creator_curr_amount),
-                Some("".to_string()),
-                farm_info.reward_token,
-                1,
-                Gas(20_000_000_000_000),
-            )
-            .then(callback_ref_finance::callback_post_creator_ft_transfer(
-                seed_id,
-                env::current_account_id(),
-                0,
-                Gas(10_000_000_000_000),
-            ));
-        }
-
-        self.get_tokens_return(farm_id_str.clone(), amount_in, amount_in, common_token)
-            .then(callback_ref_finance::swap_to_auto(
-                farm_id_str,
-                amount_in,
-                amount_in,
-                common_token,
-                env::current_account_id(),
-                0,
-                Gas(140_000_000_000_000),
-            ))
     }
 
     /// Callback to verify that transfer to treasure succeeded
@@ -431,7 +248,7 @@ impl Contract {
             return;
         }
 
-        let compounder = self.get_strat_mut(&seed_id).get_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         compounder.admin_fees.strat_creator.current_amount = 0;
 
@@ -448,8 +265,7 @@ impl Contract {
     ) -> Promise {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let strat = self.get_strat(&seed_id);
-        let compounder = strat.get_ref();
+        let compounder = self.get_strat(&seed_id).get_compounder();
         let farm_info = compounder.get_farm_info(&farm_id);
 
         if common_token == 1 {
@@ -459,7 +275,7 @@ impl Contract {
                 farm_info.reward_token,
                 amount_token_2,
                 compounder.token2_address.clone(),
-                compounder.exchange_contract_id.clone(),
+                compounder.exchange_contract_id,
                 0,
                 Gas(10_000_000_000_000),
             )
@@ -525,6 +341,8 @@ impl Contract {
 
         let amount: U128 = token_out.unwrap();
 
+        assert!(amount.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_RETURN");
+
         if common_token == 1 {
             (amount_token, amount)
         } else {
@@ -544,6 +362,9 @@ impl Contract {
         let amount_token1: U128 = token1_out.unwrap();
         let amount_token2: U128 = token2_out.unwrap();
 
+        assert!(amount_token1.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
+        assert!(amount_token2.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
+
         (amount_token1, amount_token2)
     }
 
@@ -558,7 +379,7 @@ impl Contract {
         common_token: u64,
     ) -> Promise {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
         let token_out1 = compounder_mut.token1_address.clone();
         let token_out2 = compounder_mut.token2_address.clone();
 
@@ -589,6 +410,7 @@ impl Contract {
         if common_token == 1 {
             // use the entire amount for the common token
             farm_info_mut.available_balance[0] = amount_in_1.0;
+
             self.call_swap(
                 exchange_contract_id,
                 pool_id_to_swap2,
@@ -653,7 +475,7 @@ impl Contract {
         token_min_out: U128,
     ) -> PromiseOrValue<u64> {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
 
@@ -707,7 +529,7 @@ impl Contract {
         common_token: u64,
     ) {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
@@ -736,43 +558,6 @@ impl Contract {
 
         // after both swaps succeeded, it's ready to stake
         farm_info_mut.next_cycle();
-    }
-
-    /// Step 4
-    /// Get amount of tokens available then stake it
-    /// Args:
-    ///   farm_id_str: exchange@pool_id#farm_id
-    #[private]
-    pub fn autocompounds_liquidity_and_stake(&mut self, farm_id_str: String) -> Promise {
-        self.assert_strategy_not_cleared(&farm_id_str);
-        log!("autocompounds_liquidity_and_stake");
-
-        // send reward to contract caller
-        self.send_reward_to_sentry(farm_id_str, env::predecessor_account_id())
-    }
-
-    #[private]
-    pub fn send_reward_to_sentry(&self, farm_id_str: String, sentry_acc_id: AccountId) -> Promise {
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-
-        let strat = self.get_strat(&seed_id);
-        let compounder = strat.get_ref();
-        let farm_info = compounder.get_farm_info(&farm_id);
-
-        ext_reward_token::storage_balance_of(
-            sentry_acc_id.clone(),
-            farm_info.reward_token.clone(),
-            0,
-            Gas(10_000_000_000_000),
-        )
-        .then(callback_ref_finance::callback_post_sentry(
-            farm_id_str,
-            sentry_acc_id,
-            farm_info.reward_token,
-            env::current_account_id(),
-            0,
-            Gas(240_000_000_000_000),
-        ))
     }
 
     pub fn callback_post_sentry(
@@ -806,7 +591,7 @@ impl Contract {
         }
 
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.clone());
-        let compounder = self.get_strat_mut(&seed_id).get_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         // reset default sentry address and get last earned amount
         let amount = compounder
@@ -850,7 +635,7 @@ impl Contract {
         if ft_transfer_result.is_err() {
             log!("Transfer to sentry failed".to_string());
 
-            let compounder = self.get_strat_mut(&seed_id).get_mut();
+            let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
             // store amount earned by sentry to be redeemed
             compounder
@@ -861,12 +646,12 @@ impl Contract {
             log!("Transfer to sentry succeeded".to_string());
         }
 
-        let compounder = self.get_strat(&seed_id).get();
+        let compounder = self.get_strat(&seed_id).get_compounder();
         let farm_info = compounder.get_farm_info(&farm_id);
 
         // if farm is ended, there is no more actions to do
         if farm_info.state == AutoCompounderState::Ended {
-            let compounder = self.get_strat_mut(&seed_id).get_mut();
+            let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
             let farm_info = compounder.get_mut_farm_info(farm_id);
             farm_info.state = AutoCompounderState::Cleared;
 
@@ -922,7 +707,7 @@ impl Contract {
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
         let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
 
         // ensure that in the next run we won't have a balance unless previous steps succeeds
@@ -951,14 +736,14 @@ impl Contract {
         &mut self,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
-    ) {
+    ) -> PromiseOrValue<u128> {
         assert!(total_shares_result.is_ok(), "ERR");
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
-        let compounder_mut = self.get_strat_mut(&seed_id).get_mut();
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
-        let farm_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
+        let farm_contract_id: AccountId = compounder_mut.farm_contract_id.clone();
 
         compounder_mut.harvest_timestamp = env::block_timestamp_ms();
 
@@ -980,15 +765,15 @@ impl Contract {
                 "The current number of shares {} is below minimum deposit",
                 accumulated_shares
             );
-            return;
+            return PromiseOrValue::Value(0u128);
         }
 
-        self.call_stake(
+        PromiseOrValue::Promise(self.call_stake(
             exchange_contract_id,
             farm_contract_id,
             token_id,
             U128(accumulated_shares),
             "\"Free\"".to_string(),
-        );
+        ))
     }
 }

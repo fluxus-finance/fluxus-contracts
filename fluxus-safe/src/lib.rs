@@ -1,9 +1,9 @@
 use near_sdk::PromiseError;
-use substring::Substring;
 use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
+use substring::Substring;
 use uint::construct_uint;
 
 use near_contract_standards::storage_management::{
@@ -23,19 +23,24 @@ use percentage::Percentage;
 use crate::account_deposit::{Account, VAccount};
 mod account_deposit;
 mod auto_compound;
+mod stable_auto_compound;
 mod storage_impl;
 mod token_receiver;
 
 mod external_contracts;
 pub use external_contracts::*;
 
-mod utils;
+pub mod utils;
+use utils::*;
 
 mod errors;
 use crate::errors::*;
 
 pub mod auto_compounder;
 pub use auto_compounder::*;
+
+pub mod stable_auto_compounder;
+pub use stable_auto_compounder::*;
 
 pub mod pembrock_auto_compounder;
 pub use pembrock_auto_compounder::*;
@@ -150,60 +155,56 @@ impl Contract {
         };
     }
 
-    /// Assert that the farm_id_str is valid, meaning that the farm is Running
-    fn assert_strategy_not_cleared(&self, farm_id_str: &str) {
-        self.assert_contract_running();
-
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
-
-        let strat = self.get_strat(&seed_id);
-        let compounder = strat.get_ref();
-
-        for farm in compounder.farms.iter() {
-            if farm.id == farm_id {
-                match farm.state {
-                    AutoCompounderState::Running => (),
-                    AutoCompounderState::Ended => (),
-                    _ => env::panic_str("E51: strategy ended"),
-                };
-            }
-        }
-    }
-
-    // TODO: rename this method
     /// Ensures that at least one strategy is running for given token_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
-        let compounder = strat.get_ref();
 
-        let mut has_running_strategy = false;
+        match strat {
+            VersionedStrategy::AutoCompounder(_) => {
+                let compounder = strat.get_compounder_ref();
 
-        for farm in compounder.farms.iter() {
-            if farm.state == AutoCompounderState::Running {
-                has_running_strategy = true;
-                break;
+                for farm in compounder.farms.iter() {
+                    if farm.state == AutoCompounderState::Running {
+                        return;
+                    }
+                }
+            }
+            VersionedStrategy::StableAutoCompounder(_) => {
+                let compounder = strat.get_stable_compounder_ref();
+
+                for farm in compounder.farms.iter() {
+                    if farm.state == AutoCompounderState::Running {
+                        return;
+                    }
+                }
+            }
+            VersionedStrategy::PembrockAutoCompounder(_) => {
+                let compounder = strat.pemb_get_ref();
+
+                for farm in compounder.farms.iter() {
+                    if farm.state == PembAutoCompounderState::Running {
+                        return;
+                    }
+                }
             }
         }
 
-        if !has_running_strategy {
-            panic!("There is no running strategy for this pool")
+        panic!("There is no running strategy for this pool")
+    }
+}
+
+pub fn get_token_id(token_address: String) -> String {
+    let mut token_id: String = "err".to_string();
+    for (i, c) in token_address.chars().enumerate() {
+        if c == '.' {
+            token_id = token_address.substring(0, i).to_string();
+            break;
         }
     }
-
-    pub fn get_token_id(&self, token_address: String) -> String{
-        let mut token_id: String = "err".to_string();
-        for (i, c) in token_address.chars().enumerate() {
-            if c == '.' { 
-                token_id = token_address.substring(0,i).to_string();  
-                break;;
-            }
-        }
-        if(token_id == *"err"){
-            panic!("Fail trying to get the token id.")
-        }
-        token_id
+    if (token_id == *"err") {
+        panic!("Fail trying to get the token id.")
     }
-
+    token_id
 }
 
 #[near_bindgen]
@@ -254,35 +255,6 @@ impl Contract {
             }),
         }
     }
-}
-
-/// Splits farm_id_str
-/// Returns seed_id, token_id, farm_id
-/// (exchange@pool_id, :pool_id, farm_id) => ref-finance@10, :10, 0
-// TODO: can it be a &str?
-pub fn get_ids_from_farm(farm_id_str: String) -> (String, String, String) {
-    let ids: Vec<&str> = farm_id_str.split('#').collect();
-    let token_id: Vec<&str> = ids[0].split('@').collect();
-
-    let token_id_wrapped = format!(":{}", token_id[1]);
-
-    (ids[0].to_owned(), token_id_wrapped, ids[1].to_owned())
-}
-
-pub fn get_predecessor_and_current_account() -> (AccountId, AccountId) {
-    (env::predecessor_account_id(), env::current_account_id())
-}
-
-pub fn unwrap_token_id(token_id: &str) -> String {
-    let mut chars = token_id.chars();
-    chars.next();
-
-    chars.collect()
-}
-
-/// wrap token_id into correct format in MFT standard
-pub fn wrap_mft_token_id(token_id: &str) -> String {
-    format!(":{}", token_id)
 }
 
 impl Contract {
