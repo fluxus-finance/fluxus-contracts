@@ -306,7 +306,7 @@ pub async fn create_farm(
 pub async fn deploy_farm(owner: &Account, worker: &Worker<Sandbox>) -> anyhow::Result<Contract> {
     let testnet = workspaces::testnet().await?;
 
-    let farm_acc: AccountId = "".parse().unwrap();
+    let farm_acc: AccountId = "boostfarm.ref-finance.testnet".parse().unwrap();
 
     let farm = worker
         .import_contract(&farm_acc, &testnet)
