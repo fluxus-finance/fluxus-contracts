@@ -36,7 +36,7 @@ impl Contract {
         let compounder = self.get_strat(&seed_id).get_compounder();
 
         PromiseOrValue::Promise(
-            ext_farm::get_unclaimed_rewards(
+            ext_ref_farming::get_unclaimed_rewards(
                 env::current_account_id(),
                 seed_id,
                 compounder.farm_contract_id,
@@ -92,7 +92,7 @@ impl Contract {
         }
 
         PromiseOrValue::Promise(
-            ext_farm::claim_reward_by_seed(
+            ext_ref_farming::claim_reward_by_seed(
                 seed_id,
                 compounder.farm_contract_id.clone(),
                 0,
@@ -270,7 +270,7 @@ impl Contract {
 
         if common_token == 1 {
             // TODO: can be shortened by call_get_return
-            ext_exchange::get_return(
+            ext_ref_exchange::get_return(
                 farm_info.pool_id_token2_reward,
                 farm_info.reward_token,
                 amount_token_2,
@@ -287,7 +287,7 @@ impl Contract {
                 Gas(10_000_000_000_000),
             ))
         } else if common_token == 2 {
-            ext_exchange::get_return(
+            ext_ref_exchange::get_return(
                 farm_info.pool_id_token1_reward,
                 farm_info.reward_token,
                 amount_token_1,
@@ -304,7 +304,7 @@ impl Contract {
                 Gas(10_000_000_000_000),
             ))
         } else {
-            ext_exchange::get_return(
+            ext_ref_exchange::get_return(
                 farm_info.pool_id_token1_reward,
                 farm_info.reward_token.clone(),
                 amount_token_1,
@@ -313,7 +313,7 @@ impl Contract {
                 0,
                 Gas(10_000_000_000_000),
             )
-            .and(ext_exchange::get_return(
+            .and(ext_ref_exchange::get_return(
                 farm_info.pool_id_token2_reward,
                 farm_info.reward_token,
                 amount_token_2,
@@ -665,7 +665,7 @@ impl Contract {
         let token2_amount = farm_info.available_balance[1];
 
         PromiseOrValue::Promise(
-            ext_exchange::add_liquidity(
+            ext_ref_exchange::add_liquidity(
                 pool_id,
                 vec![U128(token1_amount), U128(token2_amount)],
                 None,
@@ -680,7 +680,7 @@ impl Contract {
                 Gas(10_000_000_000_000),
             ))
             // Get the shares
-            .then(ext_exchange::get_pool_shares(
+            .then(ext_ref_exchange::get_pool_shares(
                 pool_id,
                 env::current_account_id(),
                 compounder.exchange_contract_id,

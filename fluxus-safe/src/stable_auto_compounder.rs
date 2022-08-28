@@ -210,7 +210,7 @@ impl StableAutoCompounder {
         let farm_contract_id = self.farm_contract_id.clone();
 
         // decide which strategies
-        ext_exchange::mft_transfer_call(
+        ext_ref_exchange::mft_transfer_call(
             farm_contract_id,
             token_id,
             U128(shares),
@@ -239,7 +239,7 @@ impl StableAutoCompounder {
         user_fft_shares: u128,
     ) -> Promise {
         // Unstake shares/lps
-        ext_exchange::get_pool_shares(
+        ext_ref_exchange::get_pool_shares(
             self.pool_id,
             env::current_account_id(),
             self.exchange_contract_id.clone(),
@@ -268,7 +268,7 @@ impl StableAutoCompounder {
         log!("claim_reward");
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
 
-        ext_farm::list_seed_farms(
+        ext_ref_farming::list_seed_farms(
             seed_id,
             self.farm_contract_id.clone(),
             0,
@@ -306,7 +306,7 @@ impl StableAutoCompounder {
             .contains_key(&env::current_account_id())
         {
             let amount_to_withdraw = farm_info.last_reward_amount;
-            ext_farm::withdraw_reward(
+            ext_ref_farming::withdraw_reward(
                 farm_info.reward_token,
                 U128(amount_to_withdraw),
                 "false".to_string(),
@@ -367,7 +367,7 @@ impl StableAutoCompounder {
         let reward_amount = farm_info_mut.last_reward_amount;
 
         if treasury_curr_amount > 0 {
-            ext_exchange::mft_transfer(
+            ext_ref_exchange::mft_transfer(
                 farm_info_mut.reward_token.to_string(),
                 treasury_acc,
                 U128(treasury_curr_amount),
@@ -417,7 +417,7 @@ impl StableAutoCompounder {
         }
 
         PromiseOrValue::Promise(
-            ext_exchange::get_return(
+            ext_ref_exchange::get_return(
                 farm_info_mut.pool_id_token_reward,
                 farm_info_mut.reward_token.clone(),
                 U128(reward_amount),
