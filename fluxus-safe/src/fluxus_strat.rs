@@ -1,7 +1,8 @@
 use crate::*;
 
 use crate::auto_compounder::AutoCompounder;
-// use crate::sable
+use crate::jumbo_auto_compounder::JumboAutoCompounder;
+
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -17,6 +18,7 @@ use near_sdk::{
 pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
     StableAutoCompounder(StableAutoCompounder),
+    JumboAutoCompounder(JumboAutoCompounder),
 }
 
 impl VersionedStrategy {
@@ -25,6 +27,7 @@ impl VersionedStrategy {
         match self {
             VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
             VersionedStrategy::StableAutoCompounder(_) => "STABLE_AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::JumboAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
         }
     }
 
@@ -45,6 +48,9 @@ impl VersionedStrategy {
             VersionedStrategy::StableAutoCompounder(stable_compounder) => {
                 VersionedStrategy::StableAutoCompounder(stable_compounder.clone())
             }
+            VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => {
+                VersionedStrategy::JumboAutoCompounder(jumbo_compounder.clone())
+            }
         }
     }
 
@@ -54,6 +60,7 @@ impl VersionedStrategy {
         match self {
             Self::AutoCompounder(_) => false,
             Self::StableAutoCompounder(_) => false,
+            Self::JumboAutoCompounder(_) => false,
         }
     }
 
@@ -113,6 +120,28 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+
+    #[allow(unreachable_patterns)]
+    pub fn get_jumbo(self) -> JumboAutoCompounder {
+        match self {
+            VersionedStrategy::JumboAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+    #[allow(unreachable_patterns)]
+    pub fn get_jumbo_ref(&self) -> &JumboAutoCompounder {
+        match self {
+            VersionedStrategy::JumboAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+    #[allow(unreachable_patterns)]
+    pub fn get_jumbo_mut(&mut self) -> &mut JumboAutoCompounder {
+        match self {
+            VersionedStrategy::JumboAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
 }
 
 impl VersionedStrategy {
@@ -129,6 +158,9 @@ impl VersionedStrategy {
             }
             VersionedStrategy::StableAutoCompounder(stable_compounder) => {
                 stable_compounder.stake(token_id, seed_id, account_id, shares)
+            }
+            VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => {
+                jumbo_compounder.stake(token_id, seed_id, account_id, shares)
             }
         }
     }
@@ -161,6 +193,13 @@ impl VersionedStrategy {
                     withdraw_amount,
                     user_fft_shares,
                 ),
+            VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => jumbo_compounder.unstake(
+                wrap_mft_token_id(&jumbo_compounder.pool_id.to_string()),
+                seed_id,
+                receiver_id,
+                withdraw_amount,
+                user_fft_shares,
+            ),
         }
     }
 
@@ -208,6 +247,26 @@ impl VersionedStrategy {
                     }
                     AutoCompounderCycle::Stake => PromiseOrValue::Promise(
                         stable_compounder.autocompounds_liquidity_and_stake(farm_id_str),
+                    ),
+                }
+            }
+            VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => {
+                let farm_info = jumbo_compounder.get_jumbo_farm_info(&farm_id);
+                match farm_info.cycle_stage {
+                    JumboAutoCompounderCycle::ClaimReward => {
+                        PromiseOrValue::Promise(jumbo_compounder.claim_reward(farm_id_str))
+                    }
+                    JumboAutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
+                        jumbo_compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
+                    ),
+                    JumboAutoCompounderCycle::SwapToken1 => PromiseOrValue::Promise(
+                        jumbo_compounder.autocompounds_swap(farm_id_str, treasure),
+                    ),
+                    JumboAutoCompounderCycle::SwapToken2 => PromiseOrValue::Promise(
+                        jumbo_compounder.autocompounds_swap_second_token(farm_id_str),
+                    ),
+                    JumboAutoCompounderCycle::Stake => PromiseOrValue::Promise(
+                        jumbo_compounder.autocompounds_liquidity_and_stake(farm_id_str),
                     ),
                 }
             }

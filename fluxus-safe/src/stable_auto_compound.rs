@@ -40,7 +40,7 @@ impl Contract {
             .clone();
 
         PromiseOrValue::Promise(
-            ext_farm::get_unclaimed_rewards(
+            ext_ref_farming::get_unclaimed_rewards(
                 env::current_account_id(),
                 seed_id,
                 farm_contract_id,
@@ -98,7 +98,7 @@ impl Contract {
         }
 
         PromiseOrValue::Promise(
-            ext_farm::claim_reward_by_seed(
+            ext_ref_farming::claim_reward_by_seed(
                 seed_id,
                 compounder.farm_contract_id.clone(),
                 0,
@@ -279,7 +279,7 @@ impl Contract {
 
     //     if common_token == 1 {
     //         // TODO: can be shortened by call_get_return
-    //         ext_exchange::get_return(
+    //         ext_ref_exchange::get_return(
     //             farm_info.pool_id_token2_reward,
     //             farm_info.reward_token,
     //             amount_token_2,
@@ -296,7 +296,7 @@ impl Contract {
     //             Gas(10_000_000_000_000),
     //         ))
     //     } else if common_token == 2 {
-    //         ext_exchange::get_return(
+    //         ext_ref_exchange::get_return(
     //             farm_info.pool_id_token1_reward,
     //             farm_info.reward_token,
     //             amount_token_1,
@@ -313,7 +313,7 @@ impl Contract {
     //             Gas(10_000_000_000_000),
     //         ))
     //     } else {
-    //         ext_exchange::get_return(
+    //         ext_ref_exchange::get_return(
     //             farm_info.pool_id_token1_reward,
     //             farm_info.reward_token.clone(),
     //             amount_token_1,
@@ -322,7 +322,7 @@ impl Contract {
     //             0,
     //             Gas(10_000_000_000_000),
     //         )
-    //         .and(ext_exchange::get_return(
+    //         .and(ext_ref_exchange::get_return(
     //             farm_info.pool_id_token2_reward,
     //             farm_info.reward_token,
     //             amount_token_2,
@@ -534,7 +534,7 @@ impl Contract {
         }
 
         PromiseOrValue::Promise(
-            ext_exchange::add_stable_liquidity(
+            ext_ref_exchange::add_stable_liquidity(
                 compounder.pool_id,
                 amounts_to_add,
                 U128(0u128),
@@ -581,7 +581,7 @@ impl Contract {
         // ensure that in the next run we won't have a balance unless previous steps succeeds
         farm_info_mut.available_balance[farm_info_mut.token_position as usize] = 0u128;
 
-        ext_exchange::get_pool_shares(
+        ext_ref_exchange::get_pool_shares(
             compounder_mut.pool_id,
             env::current_account_id(),
             compounder_mut.exchange_contract_id.clone(),
