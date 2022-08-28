@@ -302,14 +302,8 @@ pub trait RefExchangeStableAutoCompound {
     );
 }
 
-// pub trait RefExchangeAutoCompound {
-//     fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise;
-//     fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise;
-// }
-
-
 #[ext_contract(callback_pembrock)]
-pub trait RefExchangeAutoCompound {
+pub trait PembrockAutoCompound {
     fn callback_pembrock_stake_result(
         &mut self,
         #[callback_result] transfer_result: Result<U128, PromiseError>,
@@ -317,4 +311,10 @@ pub trait RefExchangeAutoCompound {
         account_id: AccountId,
         shares: u128,
     ) -> Promise;
+    fn callback_pembrock_rewards(
+        &self,
+        #[callback_result] account_details_result: Result<PembrockAccount, PromiseError>,
+        #[callback_result] claimed_rewards_result: Result<U128, PromiseError>,
+        strat_name: String,
+    ) -> PromiseOrValue<u128>;
 }

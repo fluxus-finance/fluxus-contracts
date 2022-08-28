@@ -240,22 +240,19 @@ impl Contract {
         fft_share_id
     }
 
-    pub fn harvest(
-        &mut self,
-        farm_id_str: String,
-        strat_name: Option<String>,
-    ) -> PromiseOrValue<u128> {
-        let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
-
+    pub fn harvest(&mut self, farm_id_str: String, strat_name: String) -> PromiseOrValue<u128> {
         let treasury = self.data().treasury.clone();
 
-        let strat = if strat_name.is_some() {
-            self.pemb_get_strat_mut(&strat_name.unwrap())
+        let strat = if !strat_name.is_empty() {
+            log!("hello pembrock");
+            self.pemb_get_strat_mut(&strat_name)
         } else {
+            log!("hello old");
+            let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
             self.get_strat_mut(&seed_id)
         };
 
-        strat.harvest_proxy(farm_id_str, treasury)
+        strat.harvest_proxy(farm_id_str, strat_name, treasury)
     }
 
     // TODO: stable version
@@ -275,21 +272,20 @@ impl Contract {
 
     pub fn pembrock_create_strategy(
         &mut self,
-        _strategy: String,
         strategy_fee: u128,
         strat_creator: AccountFee,
         sentry_fee: u128,
         exchange_contract_id: AccountId,
-        farm_contract_id: AccountId,
+        pembrock_contract_id: AccountId,
+        pembrock_reward_id: AccountId,
         token_name: String,
         token1_address: AccountId,
-        seed_min_deposit: U128,
         pool_id: u64,
+        reward_token: AccountId,
     ) -> String {
         self.is_owner();
 
-        //let token_id = wrap_mft_token_id(&pool_id.to_string());
-
+        // pembrock@usdt
         let strat_name: String = format!("pembrock@{}", token_name);
 
         return if self.data().strategies.contains_key(&strat_name) {
@@ -299,16 +295,18 @@ impl Contract {
 
             let data_mut = self.data_mut();
 
-            let mut strat: VersionedStrategy =
+            let strat: VersionedStrategy =
                 VersionedStrategy::PembrockAutoCompounder(PembrockAutoCompounder::new(
                     strategy_fee,
                     strat_creator,
                     sentry_fee,
                     exchange_contract_id,
-                    farm_contract_id,
+                    pembrock_contract_id,
+                    pembrock_reward_id,
                     token1_address,
                     token_name.clone(),
-                    seed_min_deposit,
+                    pool_id,
+                    reward_token,
                 ));
 
             if let Some(share_id) = uxu_share_id {
@@ -337,18 +335,19 @@ impl Contract {
                 .strategies
                 .insert(strat_name.clone(), strat.clone());
 
-            let farm_info: PembStratFarmInfo = PembStratFarmInfo {
-                state: PembAutoCompounderState::Running,
-                cycle_stage: PembAutoCompounderCycle::ClaimReward,
-                slippage: 99u128,
-                last_reward_amount: 0u128,
-                last_fee_amount: 0u128,
-                pool_id_token1_reward: pool_id,
-                reward_token: "token.pembrock.testnet".parse().unwrap(),
-                available_balance: vec![0u128, 0u128],
-            };
+            // let farm_info: PembStratFarmInfo = PembStratFarmInfo {
+            //     state: PembAutoCompounderState::Running,
+            //     cycle_stage: PembAutoCompounderCycle::ClaimReward,
+            //     slippage: 99u128,
+            //     last_reward_amount: 0u128,
+            //     last_fee_amount: 0u128,
+            //     pool_id_token1_reward: pool_id,
+            //     // TODO: pass as parameter
+            //     reward_token: "token.pembrock.testnet".parse().unwrap(),
+            //     available_balance: vec![0u128, 0u128],
+            // };
 
-            strat.pemb_get_mut().farms.push(farm_info);
+            // strat.pemb_get_mut().farms.push(farm_info);
 
             format!("VersionedStrategy for {} created successfully", token_name)
         };

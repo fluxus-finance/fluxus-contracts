@@ -180,11 +180,8 @@ impl Contract {
             }
             VersionedStrategy::PembrockAutoCompounder(_) => {
                 let compounder = strat.pemb_get_ref();
-
-                for farm in compounder.farms.iter() {
-                    if farm.state == PembAutoCompounderState::Running {
-                        return;
-                    }
+                if compounder.state == PembAutoCompounderState::Running {
+                    return;
                 }
             }
         }

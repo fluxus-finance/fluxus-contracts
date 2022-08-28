@@ -31,7 +31,7 @@ pub struct PembStratFarmInfo {
 
     /// Store balance of available token1 and token2
     /// obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
-    pub available_balance: Vec<Balance>,
+    pub available_balance: Balance,
 }
 
 impl PembStratFarmInfo {
@@ -71,11 +71,14 @@ pub struct PembrockAutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
-    // Contract address of the exchange used
+    /// Contract address of the exchange used to swap
     pub exchange_contract_id: AccountId,
 
-    // Contract address of the farm used
-    pub farm_contract_id: AccountId,
+    /// Contract address of pembrock
+    pub pembrock_contract_id: AccountId,
+
+    /// Contract of the reward token middleware
+    pub pembrock_reward_id: AccountId,
 
     /// Address of the first token used by pool
     pub token1_address: AccountId,
@@ -84,10 +87,37 @@ pub struct PembrockAutoCompounder {
     pub token_name: String,
 
     /// Min LP amount accepted by the farm for stake
-    pub seed_min_deposit: U128,
+    // pub seed_min_deposit: U128,
 
     /// Store all farms that were used to compound by some token_id
-    pub farms: Vec<PembStratFarmInfo>,
+    // pub farms: Vec<PembStratFarmInfo>,
+
+    /// State is used to update the contract to a Paused/Running state
+    pub state: PembAutoCompounderState,
+
+    /// Used to keep track of the current stage of the auto-compound cycle
+    pub cycle_stage: PembAutoCompounderCycle,
+
+    /// Slippage applied to swaps, range from 0 to 100.
+    /// Defaults to 5%. The value will be computed as 100 - slippage
+    pub slippage: u128,
+
+    /// Used to keep track of the rewards received from the farm during auto-compound cycle
+    pub last_reward_amount: u128,
+
+    /// Used to keep track of the owned amount from fee of the token reward
+    /// This will be used to store owned amount if ft_transfer to treasure fails
+    pub last_fee_amount: u128,
+
+    /// Pool used to swap the reward received by the token used to add liquidity
+    pub pool_id_token1_reward: u64,
+
+    /// Address of the reward token given by the farm
+    pub reward_token: AccountId,
+
+    /// Store balance of available token1 and token2
+    /// obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
+    pub available_balance: Balance,
 
     /// Latest harvest timestamp
     pub harvest_timestamp: u64,
@@ -140,21 +170,31 @@ impl PembrockAutoCompounder {
         strat_creator: AccountFee,
         sentry_fee: u128,
         exchange_contract_id: AccountId,
-        farm_contract_id: AccountId,
+        pembrock_contract_id: AccountId,
+        pembrock_reward_id: AccountId,
         token1_address: AccountId,
         token_name: String,
-        seed_min_deposit: U128,
+        pool_id: u64,
+        reward_token: AccountId,
     ) -> Self {
         let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
 
         Self {
             admin_fees: admin_fee,
             exchange_contract_id,
-            farm_contract_id,
+            pembrock_contract_id,
+            pembrock_reward_id,
             token1_address,
-            seed_min_deposit,
             token_name,
-            farms: Vec::new(),
+            state: PembAutoCompounderState::Running,
+            cycle_stage: PembAutoCompounderCycle::ClaimReward,
+            slippage: 99u128,
+            last_reward_amount: 0u128,
+            last_fee_amount: 0u128,
+            pool_id_token1_reward: pool_id,
+            // TODO: pass as parameter
+            reward_token,
+            available_balance: 0u128,
             harvest_timestamp: 0u64,
         }
     }
@@ -182,19 +222,39 @@ impl PembrockAutoCompounder {
         )
     }
 
-    /// Iterate through farms inside a compounder
-    /// if `rewards_map` contains the same token than the strat, an reward > 0,
-    /// then updates the strat to the next cycle, to avoid claiming the seed multiple times
-    /// TODO: what if there are multiple farms with the same token_reward?
-    pub fn update_strats_by_seed(&mut self, rewards_map: HashMap<String, U128>) {
-        for farm in self.farms.iter_mut() {
-            if let Some(reward_earned) = rewards_map.get(&farm.reward_token.to_string()) {
-                if reward_earned.0 > 0 {
-                    farm.last_reward_amount += reward_earned.0;
-                }
-            }
-        }
-    }
+    // pub fn get_farm_info(&self, pool_id: u64) -> PembStratFarmInfo {
+    //     for farm in self.farms.iter() {
+    //         if farm.pool_id_token1_reward == pool_id {
+    //             return farm.clone();
+    //         }
+    //     }
+
+    //     panic!("Farm does not exist")
+    // }
+
+    // pub fn get_mut_farm_info(&mut self, pool_id: u64) -> &mut PembStratFarmInfo {
+    //     for farm in self.farms.iter_mut() {
+    //         if farm.pool_id_token1_reward == pool_id {
+    //             return farm;
+    //         }
+    //     }
+
+    //     panic!("Farm does not exist")
+    // }
+
+    // /// Iterate through farms inside a compounder
+    // /// if `rewards_map` contains the same token than the strat, an reward > 0,
+    // /// then updates the strat to the next cycle, to avoid claiming the seed multiple times
+    // /// TODO: no farms
+    // pub fn update_strats_by_seed(&mut self, rewards_map: HashMap<String, U128>) {
+    //     for farm in self.farms.iter_mut() {
+    //         if let Some(reward_earned) = rewards_map.get(&farm.reward_token.to_string()) {
+    //             if reward_earned.0 > 0 {
+    //                 farm.last_reward_amount += reward_earned.0;
+    //             }
+    //         }
+    //     }
+    // }
 
     pub fn stake_on_pembrock(
         &self,
@@ -202,7 +262,7 @@ impl PembrockAutoCompounder {
         shares: u128,
         strat_name: String,
     ) -> Promise {
-        let farm_contract_id = self.farm_contract_id.clone();
+        let farm_contract_id = self.pembrock_contract_id.clone();
         let token_contract = self.token1_address.clone();
         log!(
             "Farm _contract_id is: {} current account is {} ",
@@ -231,6 +291,27 @@ impl PembrockAutoCompounder {
         ))
     }
 
+    pub fn claim_reward(&mut self, strat_name: String) -> Promise {
+        ext_pembrock::get_account(
+            env::current_account_id(),
+            self.pembrock_contract_id.clone(),
+            0,
+            Gas(20_000_000_000_000),
+        )
+        .and(ext_pembrock_reward::get_claimed_rewards(
+            env::current_account_id(),
+            self.pembrock_reward_id.clone(),
+            0,
+            Gas(20_000_000_000_000),
+        ))
+        .then(callback_pembrock::callback_pembrock_rewards(
+            strat_name,
+            env::current_account_id(),
+            0,
+            Gas(20_000_000_000_000),
+        ))
+    }
+
     // pub fn internal_stake_resolver(
     //     &self,
     //     exchange_account_id: SupportedExchanges,
@@ -246,81 +327,34 @@ impl PembrockAutoCompounder {
     //     }
     // }
 
-    pub fn stake(
-        &self,
-        token_id: String,
-        seed_id: String,
-        account_id: &AccountId,
-        shares: u128,
-    ) -> Promise {
-        let exchange_contract_id = self.exchange_contract_id.clone();
-        let farm_contract_id = self.farm_contract_id.clone();
+    // pub fn stake(
+    //     &self,
+    //     token_id: String,
+    //     seed_id: String,
+    //     account_id: &AccountId,
+    //     shares: u128,
+    // ) -> Promise {
+    //     let exchange_contract_id = self.exchange_contract_id.clone();
+    //     let farm_contract_id = self.farm_contract_id.clone();
 
-        // decide which strategies
-        ext_exchange::mft_transfer_call(
-            farm_contract_id,
-            token_id,
-            U128(shares),
-            "\"Free\"".to_string(),
-            exchange_contract_id,
-            1,
-            Gas(80_000_000_000_000),
-        )
-        // substitute for a generic callback, with a match for next step
-        .then(callback_ref_finance::callback_stake_result(
-            seed_id,
-            account_id.clone(),
-            shares,
-            env::current_account_id(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
-    }
+    //     // decide which strategies
+    //     ext_exchange::mft_transfer_call(
+    //         farm_contract_id,
+    //         token_id,
+    //         U128(shares),
+    //         "\"Free\"".to_string(),
+    //         exchange_contract_id,
+    //         1,
+    //         Gas(80_000_000_000_000),
+    //     )
+    //     // substitute for a generic callback, with a match for next step
+    //     .then(callback_ref_finance::callback_stake_result(
+    //         seed_id,
+    //         account_id.clone(),
+    //         shares,
+    //         env::current_account_id(),
+    //         0,
+    //         Gas(10_000_000_000_000),
+    //     ))
+    // }
 }
-
-pub enum SupportedExchanges {
-    RefFinance,
-    Jumbo,
-    Pembrock,
-}
-
-/// Versioned Farmer, used for lazy upgrade.
-/// Which means this structure would upgrade automatically when used.
-/// To achieve that, each time the new version comes in,
-/// each function of this enum should be carefully re-code!
-#[derive(BorshSerialize, BorshDeserialize)]
-pub enum VersionedCompounder {
-    V101(AutoCompounder),
-}
-
-// impl VersionedCompounder {
-//     #[allow(dead_code)]
-//     pub fn new(
-//         strategy_fee: u128,
-//         treasury: AccountFee,
-//         strat_creator: AccountFee,
-//         sentry_fee: u128,
-//         exchange_contract_id: AccountId,
-//         farm_contract_id: AccountId,
-//         token1_address: AccountId,
-//         token2_address: AccountId,
-//         pool_id: u64,
-//         seed_id: String,
-//         seed_min_deposit: U128,
-//     ) -> Self {
-//         let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
-
-//         VersionedCompounder::V101(AutoCompounder {
-//             admin_fees: admin_fee,
-//             exchange_contract_id,
-//             farm_contract_id,
-//             token1_address,
-//             token2_address,
-//             pool_id,
-//             seed_min_deposit,
-//             seed_id,
-//             farms: Vec::new(),
-//             harvest_timestamp: 0u64,
-//         })
-//     }
-// }

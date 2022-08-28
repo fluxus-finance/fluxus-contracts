@@ -172,7 +172,16 @@ pub trait ExtRewardToken {
     fn ft_balance_of(&self, account_id: AccountId) -> U128;
     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance>;
 }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct PembrockAccount {
+    lend_shares: HashMap<AccountId, U128>,
+    debt_shares: HashMap<AccountId, U128>,
+    total_rewards: U128,
+    storage_stake: U128,
+}
 
+// dev-v1.slovko.testnet get_account '{"account_id":"mesto-pem.testnet"}'
 #[ext_contract(ext_pembrock)]
 pub trait ExtPembrock {
     fn ft_transfer_call(
@@ -182,9 +191,12 @@ pub trait ExtPembrock {
         msg: String,
     ) -> PromiseOrValue<U128>;
 
-    fn withdraw(
-        &mut self,
-        token_id: AccountId,
-        amount: U128,
-    ) -> PromiseOrValue<U128>;
+    fn withdraw(&mut self, token_id: AccountId, amount: U128) -> PromiseOrValue<U128>;
+    fn get_account(&self, account_id: AccountId) -> PembrockAccount;
+}
+
+// reward-v1.slovko.testnet get_claimed_rewards
+#[ext_contract(ext_pembrock_reward)]
+pub trait ExtPembrockReward {
+    fn get_claimed_rewards(&self, account_id: AccountId) -> U128;
 }

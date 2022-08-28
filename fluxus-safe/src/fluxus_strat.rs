@@ -182,6 +182,7 @@ impl VersionedStrategy {
     pub fn harvest_proxy(
         &mut self,
         farm_id_str: String,
+        strat_name: String,
         treasure: AccountFee,
     ) -> PromiseOrValue<u128> {
         let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -227,8 +228,21 @@ impl VersionedStrategy {
                 }
             }
             VersionedStrategy::PembrockAutoCompounder(pemb_compounder) => {
-                // let farm_info = pemb_compounder.
-                unimplemented!()
+                match pemb_compounder.cycle_stage {
+                    PembAutoCompounderCycle::ClaimReward => {
+                        PromiseOrValue::Promise(pemb_compounder.claim_reward(strat_name))
+                    },
+                    _ => unimplemented!()
+                    // PembAutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
+                    //     pemb_compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
+                    // ),
+                    // PembAutoCompounderCycle::Swap => {
+                    //     pemb_compounder.autocompounds_swap(farm_id_str, treasure)
+                    // }
+                    // PembAutoCompounderCycle::Stake => PromiseOrValue::Promise(
+                    //     pemb_compounder.autocompounds_liquidity_and_stake(farm_id_str),
+                    // ),
+                }
             }
         }
     }

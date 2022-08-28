@@ -54,6 +54,7 @@ impl Contract {
         )
     }
 
+    // TODO: move to actions_of_pembrock
     #[private]
     pub fn callback_pembrock_stake_result(
         &mut self,
@@ -99,6 +100,31 @@ impl Contract {
             "The {} added {} to {}",
             account_id, fft_share_amount, seed_id
         )
+    }
+
+    #[private]
+    pub fn callback_pembrock_rewards(
+        &self,
+        #[callback_result] account_details_result: Result<PembrockAccount, PromiseError>,
+        #[callback_result] claimed_rewards_result: Result<U128, PromiseError>,
+        strat_name: String,
+    ) -> PromiseOrValue<u128> {
+        assert!(
+            account_details_result.is_ok(),
+            "failed to get account details"
+        );
+        assert!(
+            claimed_rewards_result.is_ok(),
+            "failed to get claimed rewards"
+        );
+
+        let account: PembrockAccount = account_details_result.unwrap();
+        let claimed_rewards: U128 = claimed_rewards_result.unwrap();
+
+        log!("debug account: {:#?}", account);
+        log!("debug claimed: {:#?}", claimed_rewards);
+
+        return PromiseOrValue::Value(0u128);
     }
 
     /// Withdraw user lps and send it to the contract.
@@ -420,7 +446,7 @@ impl Contract {
         ext_pembrock::withdraw(
             compounder.token1_address.clone(),
             amount,
-            compounder.farm_contract_id,
+            compounder.pembrock_contract_id,
             1,
             Gas(100_000_000_000_000),
         )

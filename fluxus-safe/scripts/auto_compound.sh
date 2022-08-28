@@ -4,9 +4,8 @@ echo $CONTRACT_NAME
 source .env
 
 
-
 #### Functions managed by auto-compound
-near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'"}' --accountId $username --gas $total_gas
-near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'"}' --accountId $username --gas $total_gas
-near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'"}' --accountId $username --gas $total_gas
-near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'"}' --accountId $username --gas $total_gas
+near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'", "strat_name": "pembrock@usdt"}' --accountId $username --gas $total_gas
+# near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'"}' --accountId $username --gas $total_gas
+# near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'"}' --accountId $username --gas $total_gas
+# near call $CONTRACT_NAME harvest '{"farm_id_str": "'$farm_id_str'"}' --accountId $username --gas $total_gas

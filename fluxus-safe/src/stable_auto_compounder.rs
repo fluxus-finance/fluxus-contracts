@@ -186,19 +186,6 @@ impl StableAutoCompounder {
     pub fn stake_on_ref_finance(&self) {}
     pub fn stake_on_jumbo(&self) {}
 
-    pub fn internal_stake_resolver(
-        &self,
-        exchange_account_id: SupportedExchanges,
-        token_id: String,
-        account_id: &AccountId,
-        shares: u128,
-    ) {
-        match exchange_account_id {
-            SupportedExchanges::RefFinance => self.stake_on_ref_finance(),
-            SupportedExchanges::Jumbo => self.stake_on_jumbo(),
-        }
-    }
-
     pub fn stake(
         &self,
         token_id: String,
@@ -465,11 +452,6 @@ impl StableAutoCompounder {
             Gas(250_000_000_000_000),
         ))
     }
-}
-
-pub enum SupportedExchanges {
-    RefFinance,
-    Jumbo,
 }
 
 // Versioned Farmer, used for lazy upgrade.
