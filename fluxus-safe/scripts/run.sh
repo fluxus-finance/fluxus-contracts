@@ -20,7 +20,9 @@ echo $username
 
 # ./pembrock_add_strategy.sh
 
-./pembrock_stake_process.sh
+# ./pembrock_stake_process.sh
+
+./pembrock_unstake_process.sh
 
 # #### create strategy from .env
 # ./add_strategy.sh

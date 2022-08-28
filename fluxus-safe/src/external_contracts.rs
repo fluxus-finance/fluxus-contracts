@@ -180,4 +180,10 @@ pub trait ExtPembrock {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128>;
+
+    fn withdraw(
+        &mut self,
+        token_id: AccountId,
+        amount: U128,
+    ) -> PromiseOrValue<U128>;
 }

@@ -255,6 +255,90 @@ impl Contract {
 
         self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
     }
+
+
+
+    pub fn pembrock_unstake(&mut self, token_name: String, amount_withdrawal: Option<U128>) -> Promise {
+        let (caller_id, contract_id) = get_predecessor_and_current_account();
+
+        let seed_id: String = format!("pembrock@{}", token_name);
+
+
+        let fft_share_id = self.convert_pool_id_in_fft_share(seed_id.clone());
+        let mut user_fft_shares =
+            self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
+
+        //Total fft_share
+        let total_fft = self.total_supply_amount(fft_share_id);
+
+        //Total seed_id
+        let total_seed = self.seed_total_amount(&seed_id);
+
+        //Converting user total fft_shares in seed_id:
+        let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
+            / U256::from(total_fft))
+        .as_u128();
+
+        let strat = self
+            .data()
+            .strategies
+            .get(&seed_id)
+            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+        let compounder = strat.clone().pemb_get();
+
+        let amount: U128;
+        if let Some(amount_withdrawal) = amount_withdrawal {
+            amount = amount_withdrawal;
+            user_fft_shares = (U256::from(amount_withdrawal.0) * U256::from(total_fft)
+                / U256::from(total_seed))
+            .as_u128();
+        } else {
+            amount = U128(user_shares);
+        }
+        assert!(
+            user_shares >= amount.0,
+            "{} is trying to withdrawal {} and only has {}",
+            caller_id,
+            amount.0,
+            user_shares
+        );
+
+        log!("{} is trying to withdrawal {}", caller_id, amount.0);
+
+        //let token_id: String = wrap_mft_token_id(&compounder.pool_id.to_string());
+
+        // Unstake shares/lps
+
+        ext_pembrock::withdraw(
+            compounder.token1_address.clone(),
+            amount,
+            compounder.farm_contract_id,
+            1,
+            Gas(100_000_000_000_000),
+        )
+        .then(
+        ext_reward_token::ft_transfer(
+            caller_id.clone(),
+            amount,
+            Some("".to_string()),
+            compounder.token1_address,
+            1,
+            Gas(100_000_000_000_000),
+        )
+        )
+        .then(callback_ref_finance::callback_withdraw_shares(
+            seed_id,
+            caller_id,
+            amount.0,
+            user_fft_shares,
+            contract_id,
+            0,
+            Gas(20_000_000_000_000),
+        ))
+    }
+
+
 }
 
 /// Auto-compounder ref-exchange wrapper
