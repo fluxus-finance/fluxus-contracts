@@ -19,14 +19,13 @@ impl Contract {
             panic!("ERR_STAKE_FAILED");
         }
 
-        log!("my seed {}", seed_id);
-
         //Total fft_share
         let total_fft = self.total_supply_by_pool_id(seed_id.clone());
-        log!("total fft is = {}", total_fft);
+
         let fft_share_id = self.get_fft_share_id_from_seed(seed_id.clone());
 
         let data = self.data_mut();
+
         //Total seed_id
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
 
@@ -67,14 +66,13 @@ impl Contract {
             assert_ne!(amount.0, 0, "ERR_STAKE_FAILED");
         }
 
-        log!("My strat_name is: {}", seed_id);
-
         //Total fft_share
         let total_fft = self.total_supply_by_pool_id(seed_id.clone());
-        log!("total fft is = {}", total_fft);
+
         let fft_share_id = self.get_fft_share_id_from_seed(seed_id.clone());
 
         let data = self.data_mut();
+
         //Total seed_id
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
 
@@ -442,10 +440,6 @@ impl Contract {
         );
 
         log!("{} is trying to withdrawal {}", caller_id, amount.0);
-
-        //let token_id: String = wrap_mft_token_id(&compounder.pool_id.to_string());
-
-        // Unstake shares/lps
 
         ext_pembrock::withdraw(
             compounder.token1_address.clone(),

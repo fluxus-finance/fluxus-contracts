@@ -244,10 +244,8 @@ impl Contract {
         let treasury = self.data().treasury.clone();
 
         let strat = if !strat_name.is_empty() {
-            log!("hello pembrock");
             self.pemb_get_strat_mut(&strat_name)
         } else {
-            log!("hello old");
             let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
             self.get_strat_mut(&seed_id)
         };

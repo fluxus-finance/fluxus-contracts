@@ -719,7 +719,11 @@ impl Contract {
 
         let total_seed = self.seed_total_amount(&seed_id);
 
-        log!("shares received {}. total {}", shares_received, total_seed);
+        log!(
+            "Received {} shares. The current number of shares is {}",
+            shares_received,
+            total_seed
+        );
 
         let data = self.data_mut();
 
