@@ -16,13 +16,13 @@ impl Contract {
 
     /// Returns allowed_accounts
     pub fn get_allowed_accounts(&self) -> Vec<AccountId> {
-        self.is_owner();
+        self.is_owner_or_guardians();
         self.data().allowed_accounts.clone()
     }
 
     /// Returns all strategies without filtering
     pub fn get_strats_info(self) -> Vec<VersionedStrategy> {
-        self.is_owner();
+        self.is_owner_or_guardians();
 
         let mut info: Vec<VersionedStrategy> = Vec::new();
 
@@ -42,7 +42,7 @@ impl Contract {
         farm_id_str: String,
         state: AutoCompounderState,
     ) -> String {
-        self.is_owner();
+        self.is_owner_or_guardians();
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
         // TODO: stable version
