@@ -390,6 +390,7 @@ impl Contract {
     }
 
     /// Ref function to add liquidity in the pool.
+    #[private]
     pub fn call_add_liquidity(
         &self,
         exchange_contract_id: AccountId,
@@ -407,22 +408,8 @@ impl Contract {
         )
     }
 
-    /// Call the ref user_register function.
-    /// TODO: remove this if not necessary
-    pub fn call_user_register(
-        &self,
-        exchange_contract_id: AccountId,
-        account_id: AccountId,
-    ) -> Promise {
-        ext_ref_exchange::storage_deposit(
-            account_id,
-            exchange_contract_id,
-            10000000000000000000000,
-            Gas(3_000_000_000_000),
-        )
-    }
-
     /// Ref function to stake the lps/shares.
+    #[private]
     pub fn call_stake(
         &self,
         exchange_contract_id: AccountId,
@@ -475,43 +462,6 @@ impl Contract {
     //         Gas(20_000_000_000_000),
     //     ))
     // }
-
-    /// Returns the amount of unclaimed reward given token_id has
-    pub fn get_unclaimed_rewards(&self, farm_id_str: String) -> Promise {
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-
-        let compounder = self.get_strat(&seed_id).get_compounder();
-        let farm_info = compounder.get_farm_info(&farm_id);
-
-        ext_ref_farming::get_unclaimed_rewards(
-            env::current_account_id(),
-            seed_id,
-            compounder.farm_contract_id,
-            1,
-            Gas(3_000_000_000_000),
-        )
-        .then(callback_ref_finance::callback_post_unclaimed_rewards(
-            farm_info.reward_token,
-            env::current_account_id(),
-            0,
-            Gas(10_000_000_000_000),
-        ))
-    }
-
-    #[private]
-    pub fn callback_post_unclaimed_rewards(
-        &self,
-        #[callback_result] rewards_result: Result<HashMap<String, U128>, PromiseError>,
-        reward_token: AccountId,
-    ) -> U128 {
-        if let Ok(tokens) = rewards_result {
-            if tokens.contains_key(&reward_token.to_string()) {
-                return *tokens.get(&reward_token.to_string()).unwrap();
-            }
-        }
-
-        U128(0)
-    }
 }
 
 // Auto-compounder functionality methods

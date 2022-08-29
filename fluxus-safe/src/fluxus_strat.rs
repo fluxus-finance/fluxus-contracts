@@ -15,6 +15,7 @@ use near_sdk::{
 /// without needing to migrate the storage.
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
+#[allow(clippy::enum_variant_names)]
 pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
     StableAutoCompounder(StableAutoCompounder),
@@ -276,6 +277,7 @@ impl VersionedStrategy {
 
 impl Contract {
     pub fn get_strat(&self, seed_id: &str) -> VersionedStrategy {
+        self.is_owner();
         let strat = self
             .data()
             .strategies
@@ -290,6 +292,7 @@ impl Contract {
     }
 
     pub fn get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
+        self.is_owner();
         let strat = self
             .data_mut()
             .strategies

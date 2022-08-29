@@ -578,6 +578,7 @@ impl Contract {
         )
     }
 
+    #[private]
     pub fn callback_jumbo_get_pool_shares(
         &self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
@@ -645,6 +646,7 @@ impl Contract {
         }
     }
 
+    #[private]
     pub fn callback_jumbo_withdraw_shares(
         &mut self,
         #[callback_result] mft_transfer_result: Result<(), PromiseError>,

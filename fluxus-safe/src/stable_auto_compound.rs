@@ -9,6 +9,7 @@ impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
+    #[private]
     pub fn stable_callback_list_farms_by_seed(
         &mut self,
         #[callback_result] farms_result: Result<Vec<FarmInfoBoost>, PromiseError>,
@@ -264,81 +265,6 @@ impl Contract {
         log!("Transfer fees to the creator of the strategy succeeded");
     }
 
-    // #[private]
-    // pub fn stable_get_tokens_return(
-    //     &self,
-    //     farm_id_str: String,
-    //     amount_token_1: U128,
-    //     amount_token_2: U128,
-    //     common_token: u64,
-    // ) -> Promise {
-    //     let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-
-    //     let compounder = self.get_strat(&seed_id).get_stable_compounder();
-    //     let farm_info = compounder.get_farm_info(&farm_id);
-
-    //     if common_token == 1 {
-    //         // TODO: can be shortened by call_get_return
-    //         ext_ref_exchange::get_return(
-    //             farm_info.pool_id_token2_reward,
-    //             farm_info.reward_token,
-    //             amount_token_2,
-    //             compounder.token2_address.clone(),
-    //             compounder.exchange_contract_id,
-    //             0,
-    //             Gas(10_000_000_000_000),
-    //         )
-    //         .then(callback_ref_finance::callback_get_token_return(
-    //             common_token,
-    //             amount_token_1,
-    //             env::current_account_id(),
-    //             0,
-    //             Gas(10_000_000_000_000),
-    //         ))
-    //     } else if common_token == 2 {
-    //         ext_ref_exchange::get_return(
-    //             farm_info.pool_id_token1_reward,
-    //             farm_info.reward_token,
-    //             amount_token_1,
-    //             compounder.token1_address.clone(),
-    //             compounder.exchange_contract_id,
-    //             0,
-    //             Gas(10_000_000_000_000),
-    //         )
-    //         .then(callback_ref_finance::callback_get_token_return(
-    //             common_token,
-    //             amount_token_2,
-    //             env::current_account_id(),
-    //             0,
-    //             Gas(10_000_000_000_000),
-    //         ))
-    //     } else {
-    //         ext_ref_exchange::get_return(
-    //             farm_info.pool_id_token1_reward,
-    //             farm_info.reward_token.clone(),
-    //             amount_token_1,
-    //             compounder.token1_address.clone(),
-    //             compounder.exchange_contract_id.clone(),
-    //             0,
-    //             Gas(10_000_000_000_000),
-    //         )
-    //         .and(ext_ref_exchange::get_return(
-    //             farm_info.pool_id_token2_reward,
-    //             farm_info.reward_token,
-    //             amount_token_2,
-    //             compounder.token2_address.clone(),
-    //             compounder.exchange_contract_id,
-    //             0,
-    //             Gas(10_000_000_000_000),
-    //         ))
-    //         .then(callback_ref_finance::callback_get_tokens_return(
-    //             env::current_account_id(),
-    //             0,
-    //             Gas(10_000_000_000_000),
-    //         ))
-    //     }
-    // }
-
     #[private]
     pub fn stable_callback_get_token_return(
         &mut self,
@@ -426,6 +352,7 @@ impl Contract {
         farm_info_mut.next_cycle();
     }
 
+    #[private]
     pub fn stable_callback_post_sentry(
         &mut self,
         #[callback_result] result: Result<Option<StorageBalance>, PromiseError>,

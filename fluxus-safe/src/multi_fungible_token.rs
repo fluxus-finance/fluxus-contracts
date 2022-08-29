@@ -28,6 +28,7 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 #[near_bindgen]
 impl Contract {
     //Return the FFT token to a seed_id TODO: enhance name of fft tokens they should be named fft_seed_{seed_id}
+    #[private]
     pub fn fft_token_seed_id(&self, seed_id: String) -> String {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
@@ -37,6 +38,7 @@ impl Contract {
         };
         fft_name
     }
+
     ///Return the u128 amount of an user for an specific fft_share (ref lp token).
     pub fn users_fft_share_amount(&self, fft_share: String, account_id: String) -> u128 {
         let map = self.data().users_balance_by_fft_share.get(&fft_share);
@@ -48,7 +50,9 @@ impl Contract {
 
         0
     }
+
     /// Return the u128 amount a user has in seed_id.
+    #[private]
     pub fn user_share_seed_id(&self, seed_id: String, user: String) -> u128 {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
@@ -74,6 +78,7 @@ impl Contract {
     }
 
     ///Register a seed into the users_balance_by_fft_share
+    #[private]
     pub fn register_seed(&mut self, fft_share: String) {
         let temp = LookupMap::new(StorageKey::SeedRegister {
             fft_share: fft_share.clone(),
@@ -96,6 +101,7 @@ impl Contract {
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
+    #[private]
     pub fn total_supply_by_pool_id(&mut self, seed_id: String) -> u128 {
         log!("Total supply of: {}", seed_id);
         let fft_share_id = self
@@ -112,6 +118,7 @@ impl Contract {
             0u128
         }
     }
+
     pub fn get_fft_share_id_from_seed(&self, seed_id: String) -> String {
         let fft_share_id = self
             .data()
@@ -128,6 +135,7 @@ impl Contract {
     ///Assigns a fft_share value to an user for a specific fft_share (ref lp token)
     /// and increment the total_supply of this seed's fft_share.
     /// It returns the user's new balance.
+    #[private]
     pub fn mft_mint(&mut self, fft_share: String, balance: u128, user: String) -> u128 {
         //Add balance to the user for this seed
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), user.clone());
@@ -160,6 +168,7 @@ impl Contract {
     ///Burn fft_share value for an user in a specific fft_share (ref lp token)
     /// and decrement the total_supply of this seed's fft_share.
     /// It returns the user's new balance.
+    #[private]
     pub fn mft_burn(&mut self, fft_share: String, balance: u128, user: String) -> u128 {
         //Sub balance to the user for this seed
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), user.clone());

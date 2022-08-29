@@ -326,6 +326,7 @@ impl Contract {
         )
     }
 
+    #[private]
     fn new_fft_share(&mut self, seed_id: String) -> Option<String> {
         let already_has = self.data_mut().fft_share_by_seed_id.get(&seed_id).is_some();
         let fft_share_id;

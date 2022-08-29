@@ -76,6 +76,7 @@ impl Contract {
         }
     }
 
+    #[private]
     pub fn is_owner_or_guardians(&self) -> bool {
         env::predecessor_account_id() == self.data().owner_id
             || self

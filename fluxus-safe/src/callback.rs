@@ -465,8 +465,3 @@ pub trait JumboCallbacks {
         farm_id_str: String,
     );
 }
-
-// pub trait RefExchangeAutoCompound {
-//     fn stake(&self, token_id: String, account_id: &AccountId, shares: u128) -> Promise;
-//     fn unstake(&mut self, token_id: String, amount_withdrawal: Option<U128>) -> Promise;
-// }
