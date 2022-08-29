@@ -1,8 +1,13 @@
 # e2e test
-test:
+ref:
 	export RUST_BACKTRACE=full
 	./build.sh
-	cargo test --test '*' -- --nocapture
+	cargo test --test general -- --nocapture
+
+jumbo:
+	export RUST_BACKTRACE=full
+	./build.sh
+	cargo test --test jumbo_general -- --nocapture
 
 unit_test:
 	export RUST_BACKTRACE=full

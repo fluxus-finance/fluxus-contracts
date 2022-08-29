@@ -238,7 +238,7 @@ impl AutoCompounder {
         let farm_contract_id = self.farm_contract_id.clone();
 
         // decide which strategies
-        ext_exchange::mft_transfer_call(
+        ext_ref_exchange::mft_transfer_call(
             farm_contract_id,
             token_id,
             U128(shares),
@@ -268,7 +268,7 @@ impl AutoCompounder {
         user_fft_shares: u128,
     ) -> Promise {
         // Unstake shares/lps
-        ext_exchange::get_pool_shares(
+        ext_ref_exchange::get_pool_shares(
             self.pool_id,
             env::current_account_id(),
             self.exchange_contract_id.clone(),
@@ -295,7 +295,7 @@ impl AutoCompounder {
         log!("claim_reward");
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
 
-        ext_farm::list_seed_farms(
+        ext_ref_farming::list_seed_farms(
             seed_id,
             self.farm_contract_id.clone(),
             0,
@@ -331,7 +331,7 @@ impl AutoCompounder {
             .contains_key(&env::current_account_id())
         {
             let amount_to_withdraw = farm_info.last_reward_amount;
-            ext_farm::withdraw_reward(
+            ext_ref_farming::withdraw_reward(
                 farm_info.reward_token,
                 U128(amount_to_withdraw),
                 "false".to_string(),
@@ -418,7 +418,7 @@ impl AutoCompounder {
         let amount_in = U128(reward_amount / 2);
 
         if treasury_curr_amount > 0 {
-            ext_exchange::mft_transfer(
+            ext_ref_exchange::mft_transfer(
                 farm_info.reward_token.to_string(),
                 treasury_acc,
                 U128(treasury_curr_amount),
@@ -477,7 +477,7 @@ impl AutoCompounder {
 
         if common_token == 1 {
             // TODO: can be shortened by call_get_return
-            ext_exchange::get_return(
+            ext_ref_exchange::get_return(
                 farm_info.pool_id_token2_reward,
                 farm_info.reward_token,
                 amount_token_2,
@@ -494,7 +494,7 @@ impl AutoCompounder {
                 Gas(10_000_000_000_000),
             ))
         } else if common_token == 2 {
-            ext_exchange::get_return(
+            ext_ref_exchange::get_return(
                 farm_info.pool_id_token1_reward,
                 farm_info.reward_token,
                 amount_token_1,
@@ -511,7 +511,7 @@ impl AutoCompounder {
                 Gas(10_000_000_000_000),
             ))
         } else {
-            ext_exchange::get_return(
+            ext_ref_exchange::get_return(
                 farm_info.pool_id_token1_reward,
                 farm_info.reward_token.clone(),
                 amount_token_1,
@@ -520,7 +520,7 @@ impl AutoCompounder {
                 0,
                 Gas(10_000_000_000_000),
             )
-            .and(ext_exchange::get_return(
+            .and(ext_ref_exchange::get_return(
                 farm_info.pool_id_token2_reward,
                 farm_info.reward_token,
                 amount_token_2,

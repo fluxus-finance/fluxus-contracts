@@ -196,7 +196,7 @@ impl Contract {
         let shares_on_exchange: u128 = shares_result.unwrap().into();
 
         if shares_on_exchange >= withdraw_amount {
-            ext_exchange::mft_transfer(
+            ext_ref_exchange::mft_transfer(
                 token_id,
                 receiver_id.clone(),
                 U128(withdraw_amount),
@@ -218,7 +218,7 @@ impl Contract {
             let amount = withdraw_amount - shares_on_exchange;
 
             // withdraw missing amount from farm
-            ext_farm::unlock_and_withdraw_seed(
+            ext_ref_farming::unlock_and_withdraw_seed(
                 compounder.seed_id,
                 U128(0),
                 U128(amount),
@@ -228,7 +228,7 @@ impl Contract {
             )
             // TODO: add callback and then call mft_transfer
             // transfer the total amount required
-            .then(ext_exchange::mft_transfer(
+            .then(ext_ref_exchange::mft_transfer(
                 token_id,
                 receiver_id.clone(),
                 U128(withdraw_amount),
@@ -301,7 +301,7 @@ impl Contract {
         let shares_on_exchange: u128 = shares_result.unwrap().into();
 
         if shares_on_exchange >= withdraw_amount {
-            ext_exchange::mft_transfer(
+            ext_ref_exchange::mft_transfer(
                 token_id,
                 receiver_id.clone(),
                 U128(withdraw_amount),
@@ -325,7 +325,7 @@ impl Contract {
             let amount = withdraw_amount - shares_on_exchange;
 
             // withdraw missing amount from farm
-            ext_farm::unlock_and_withdraw_seed(
+            ext_ref_farming::unlock_and_withdraw_seed(
                 stable_compounder.seed_id,
                 U128(0),
                 U128(amount),
@@ -335,7 +335,7 @@ impl Contract {
             )
             // TODO: add callback and then call mft_transfer
             // transfer the total amount required
-            .then(ext_exchange::mft_transfer(
+            .then(ext_ref_exchange::mft_transfer(
                 token_id,
                 receiver_id.clone(),
                 U128(withdraw_amount),
@@ -482,7 +482,7 @@ impl Contract {
         amount_in: Option<U128>,
         min_amount_out: U128,
     ) -> Promise {
-        ext_exchange::swap(
+        ext_ref_exchange::swap(
             vec![SwapAction {
                 pool_id,
                 token_in,
@@ -497,6 +497,49 @@ impl Contract {
         )
     }
 
+    #[private]
+    pub fn jumbo_call_swap(
+        &self,
+        exchange_contract_id: AccountId,
+        pool_id: u64,
+        token_in: AccountId,
+        token_out: AccountId,
+        amount_in: Option<U128>,
+        min_amount_out: U128,
+    ) -> Promise {
+        ext_ref_exchange::swap(
+            vec![SwapAction {
+                pool_id,
+                token_in,
+                token_out,
+                amount_in,
+                min_amount_out,
+            }],
+            None,
+            exchange_contract_id,
+            1,
+            Gas(80_000_000_000_000),
+        )
+    }
+
+    /// Call the ref get_pool_shares function.
+    #[private]
+    pub fn call_get_pool_shares(
+        &self,
+        exchange_contract_id: AccountId,
+        pool_id: u64,
+        account_id: AccountId,
+    ) -> Promise {
+        assert!(self.check_promise(), "Previous tx failed.");
+        ext_ref_exchange::get_pool_shares(
+            pool_id,
+            account_id,
+            exchange_contract_id,
+            0,
+            Gas(10_000_000_000_000),
+        )
+    }
+
     /// Ref function to add liquidity in the pool.
     pub fn call_add_liquidity(
         &self,
@@ -505,7 +548,7 @@ impl Contract {
         amounts: Vec<U128>,
         min_amounts: Option<Vec<U128>>,
     ) -> Promise {
-        ext_exchange::add_liquidity(
+        ext_ref_exchange::add_liquidity(
             pool_id,
             amounts,
             min_amounts,
@@ -522,7 +565,7 @@ impl Contract {
         exchange_contract_id: AccountId,
         account_id: AccountId,
     ) -> Promise {
-        ext_exchange::storage_deposit(
+        ext_ref_exchange::storage_deposit(
             account_id,
             exchange_contract_id,
             10000000000000000000000,
@@ -539,14 +582,14 @@ impl Contract {
         amount: U128,
         msg: String,
     ) -> Promise {
-        ext_exchange::mft_transfer_call(
+        ext_ref_exchange::mft_transfer_call(
             receiver_id,
             token_id,
             amount,
             msg,
             exchange_contract_id,
             1,
-            Gas(80_000_000_000_000),
+            Gas(70_000_000_000_000),
         )
     }
 
@@ -565,7 +608,7 @@ impl Contract {
     //     assert!(compounder.admin_fees.sentries.contains_key(&sentry_acc_id));
 
     //     let amount = *compounder.admin_fees.sentries.get(&sentry_acc_id).unwrap();
-    //     ext_exchange::mft_transfer(
+    //     ext_ref_exchange::mft_transfer(
     //         compounder.reward_token.to_string(),
     //         sentry_acc_id.clone(),
     //         U128(amount),
@@ -591,7 +634,7 @@ impl Contract {
         let compounder = self.get_strat(&seed_id).get_compounder();
         let farm_info = compounder.get_farm_info(&farm_id);
 
-        ext_farm::get_unclaimed_rewards(
+        ext_ref_farming::get_unclaimed_rewards(
             env::current_account_id(),
             seed_id,
             compounder.farm_contract_id,

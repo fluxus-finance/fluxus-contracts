@@ -22,8 +22,6 @@ use percentage::Percentage;
 
 use crate::account_deposit::{Account, VAccount};
 mod account_deposit;
-mod auto_compound;
-mod stable_auto_compound;
 mod storage_impl;
 mod token_receiver;
 
@@ -38,9 +36,15 @@ use crate::errors::*;
 
 pub mod auto_compounder;
 pub use auto_compounder::*;
+mod auto_compound;
 
 pub mod stable_auto_compounder;
 pub use stable_auto_compounder::*;
+mod stable_auto_compound;
+
+pub mod jumbo_auto_compounder;
+pub use jumbo_auto_compounder::*;
+mod jumbo_auto_compound;
 
 pub mod pembrock_auto_compounder;
 pub use pembrock_auto_compounder::*;
@@ -182,6 +186,15 @@ impl Contract {
                 let compounder = strat.pemb_get_ref();
                 if compounder.state == PembAutoCompounderState::Running {
                     return;
+                }
+            }
+            VersionedStrategy::JumboAutoCompounder(_) => {
+                let compounder = strat.get_jumbo();
+
+                for farm in compounder.farms.iter() {
+                    if farm.state == JumboAutoCompounderState::Running {
+                        return;
+                    }
                 }
             }
         }

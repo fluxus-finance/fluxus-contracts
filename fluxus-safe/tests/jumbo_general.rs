@@ -1,10 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
-use serde_json::json;
-
+use fluxus_safe::{self};
 mod utils;
 
-use near_sdk::json_types::U128;
 use near_units::parse_near;
 use percentage::Percentage;
 use workspaces::{
@@ -12,85 +10,60 @@ use workspaces::{
     Account, AccountId, Contract, Network, Worker,
 };
 
-pub const CONTRACT_ID_REF_EXC: &str = "ref-finance-101.testnet";
-pub const CONTRACT_ID_FARM: &str = "boostfarm.ref-finance.testnet";
+const TOTAL_GAS: u64 = 300_000_000_000_000;
 
-async fn fast_forward(
-    blocks_to_forward: u64,
-    fast_forward_counter: &mut u64,
-    worker: &Worker<Sandbox>,
-) -> anyhow::Result<u128> {
-    let block_info = worker.view_latest_block().await?;
-    println!(
-        "BlockInfo {fast_forward_counter} pre-fast_forward {:?}",
-        block_info
-    );
-
-    worker.fast_forward(blocks_to_forward).await?;
-
-    let block_info = worker.view_latest_block().await?;
-    println!(
-        "BlockInfo {fast_forward_counter} post-fast_forward {:?}",
-        block_info
-    );
-
-    *fast_forward_counter += 1;
-
-    Ok(0)
-}
-
-async fn do_harvest(
-    sentry_acc: &Account,
-    safe_contract: &Contract,
-    farm_id_str: &String,
-    worker: &Worker<Sandbox>,
-) -> anyhow::Result<u128> {
-    //Check amount of unclaimed rewards the Strategy has
-    let mut unclaimed_amount = 0u128;
-
-    for i in 0..4 {
-        let _res = sentry_acc
-            .call(worker, safe_contract.id(), "harvest")
-            .args_json(serde_json::json!({ "farm_id_str": farm_id_str }))?
-            .gas(utils::TOTAL_GAS)
-            .transact()
-            .await?;
-        println!("harvest step {}: {:#?}\n", i + 1, _res);
-
-        if i == 0 {
-            unclaimed_amount = _res.json()?;
-        }
-    }
-
-    Ok(unclaimed_amount)
-}
-
+const TOTAL_PROTOCOL_FEE: u128 = 10;
+const SENTRY_FEES_PERCENT: u128 = 10;
+const STRAT_FEES_PERCENT: u128 = 10;
+const TREASURY_FEES_PERCENT: u128 = 80;
 /// Runs the full cycle of auto-compound and fast forward
-async fn do_auto_compound_with_fast_forward(
+async fn jumbo_do_auto_compound_with_fast_forward(
     sentry_acc: &Account,
     contract: &Contract,
     farm_id_str: &String,
     blocks_to_forward: u64,
-    fast_forward_counter: &mut u64,
+    fast_forward_token: &mut u64,
     worker: &Worker<Sandbox>,
 ) -> anyhow::Result<u128> {
     if blocks_to_forward > 0 {
-        fast_forward(blocks_to_forward, fast_forward_counter, worker).await?;
+        let block_info = worker.view_latest_block().await?;
+        println!(
+            "BlockInfo {fast_forward_token} pre-fast_forward {:?}",
+            block_info
+        );
+
+        worker.fast_forward(blocks_to_forward).await?;
+
+        let block_info = worker.view_latest_block().await?;
+        println!(
+            "BlockInfo {fast_forward_token} post-fast_forward {:?}",
+            block_info
+        );
+
+        *fast_forward_token += 1;
     }
 
-    let unclaimed_amount = do_harvest(sentry_acc, contract, farm_id_str, worker).await?;
+    for i in 0..5 {
+        let _res = sentry_acc
+            .call(worker, contract.id(), "harvest")
+            .args_json(serde_json::json!({ "farm_id_str": farm_id_str }))?
+            .gas(TOTAL_GAS)
+            .transact()
+            .await?;
+        println!("harvest step {}: {:#?}\n", i + 1, _res);
+    }
 
-    Ok(unclaimed_amount)
+    Ok(0)
 }
 
-/// Return the number of shares that the account has in the auto-compound contract for given seed
+/// Return the number of shares that the account has in the auto-compound contract
 async fn get_user_shares(
     contract: &Contract,
     account_id: &AccountId,
     seed_id: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
-    let args = json!({
+    let args = serde_json::json!({
         "seed_id": seed_id,
         "user": account_id.to_string(),
     })
@@ -102,6 +75,22 @@ async fn get_user_shares(
     println!("debug: {:#?}", account_shares.logs);
 
     Ok(account_shares.json()?)
+}
+
+async fn get_seed_total_amount(
+    contract: &Contract,
+    seed_id: &String,
+    worker: &Worker<impl Network>,
+) -> anyhow::Result<u128> {
+    let args = serde_json::json!({ "seed_id": seed_id })
+        .to_string()
+        .into_bytes();
+
+    let res = contract.view(worker, "seed_total_amount", args).await?;
+    let seed_total_amount: u128 = res.json()?;
+    println!("seed total amount {:#?}\n", seed_total_amount);
+
+    Ok(seed_total_amount)
 }
 
 /// Create new account, register into exchange and deposit into exchange
@@ -146,7 +135,7 @@ async fn stake_into_safe(
     exchange: &Contract,
     account: &Account,
     pool_id: u64,
-    seed_id1: &String,
+    seed_id: &String,
     worker: &Worker<impl Network>,
 ) -> anyhow::Result<u128> {
     // add liquidity to pool
@@ -156,6 +145,7 @@ async fn stake_into_safe(
             "pool_id": pool_id.clone(),
             "amounts": vec![parse_near!("20 N").to_string(), parse_near!("20 N").to_string()],
         }))?
+        .gas(TOTAL_GAS)
         .deposit(parse_near!("1 N"))
         .transact()
         .await?;
@@ -174,13 +164,13 @@ async fn stake_into_safe(
             "amount": initial_shares,
             "msg": ""
         }))?
-        .gas(utils::TOTAL_GAS)
+        .gas(TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
     // println!("mft_transfer_call {:#?}\n", res);//
 
-    let deposited_shares = get_user_shares(safe_contract, account.id(), seed_id1, worker).await?;
+    let deposited_shares = get_user_shares(safe_contract, account.id(), seed_id, worker).await?;
 
     // assert that contract received the correct number of shares, due to precision issues derived of recurring tithe we must not accept aboslute errors bigger than 9
     // TODO: validates with fuzzing and way more testing to ensure absolute error is not bigger than 9
@@ -197,7 +187,7 @@ async fn stake_into_safe(
 
 async fn deploy_aux_contracts(
     owner: &Account,
-    exchange_id: &AccountId,
+    proxy_contract: &Contract,
     worker: &Worker<Sandbox>,
 ) -> (Contract, Contract, Contract, Contract, Contract, Contract) {
     let token_1 = (utils::create_custom_ft(owner, worker).await).unwrap();
@@ -205,9 +195,9 @@ async fn deploy_aux_contracts(
     let token_reward_1 = (utils::create_custom_ft(owner, worker).await).unwrap();
     let token_reward_2 = (utils::create_custom_ft(owner, worker).await).unwrap();
 
-    let exchange = (utils::deploy_exchange(
+    let exchange = (utils::jumbo_deploy_exchange(
         owner,
-        exchange_id,
+        proxy_contract,
         vec![
             token_1.id(),
             token_2.id(),
@@ -219,7 +209,7 @@ async fn deploy_aux_contracts(
     .await)
         .unwrap();
 
-    let treasury = (utils::deploy_treasure(owner, &token_1, &exchange, worker).await).unwrap();
+    let treasury = (utils::deploy_treasure(owner, &exchange, &token_1, worker).await).unwrap();
     (
         token_1,
         token_2,
@@ -231,18 +221,17 @@ async fn deploy_aux_contracts(
 }
 
 #[tokio::test]
-async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
+async fn test_jumbo() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
     let owner = worker.root_account();
-
-    let exchange_id: AccountId = CONTRACT_ID_REF_EXC.parse().unwrap();
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 1: Deploy relevant contracts
     ///////////////////////////////////////////////////////////////////////////
+    let proxy_contract = utils::deploy_proxy_contract(&owner, &worker).await?;
 
     let (token_1, token_2, token_reward_1, token_reward_2, exchange, treasury) =
-        deploy_aux_contracts(&owner, &exchange_id, &worker).await;
+        deploy_aux_contracts(&owner, &proxy_contract, &worker).await;
 
     println!(
         "token1 {} token2 {} reward1 {} reward2 {} exchange {} treasury {}",
@@ -355,7 +344,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     let base_liquidity = parse_near!("1 N");
 
     // Create farms
-    let farm = utils::deploy_farm(&owner, &worker).await?;
+    let farm = utils::jumbo_deploy_farm(&owner, &worker).await?;
     println!("farm contract: {}", farm.id());
 
     let (
@@ -378,12 +367,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
-    let seed_id1: String = format! {"{}@{}", CONTRACT_ID_REF_EXC, pool_token1_token2};
+    let seed_id1: String = format! {"{}@{}", exchange.id(), pool_token1_token2};
+
+    println!("seed_id1: {}", seed_id1);
 
     let (farm_str0, farm_id0) =
-        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_1, true, &worker).await?;
-
-    println!("Created simple farm!");
+        utils::jumbo_create_farm(&owner, &farm, &seed_id1, &token_reward_1, &worker).await?;
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 3: Deploy Safe contract
@@ -400,7 +389,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         &token_1,
         &token_2,
         pool_token1_token2,
-        "create_strategy",
+        "create_jumbo_strategy",
         &worker,
     )
     .await?;
@@ -412,7 +401,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         pool_token1_reward1,
         pool_token2_reward1,
         farm_id0,
-        "add_farm_to_strategy",
+        "add_farm_to_jumbo_strategy",
         &worker,
     )
     .await?;
@@ -430,12 +419,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .transact()
         .await?;
 
+    println!("storage deposit: {:#?}", _res);
+
     /* Register contract into tokens */
     utils::register_into_contracts(
         &worker,
         safe_contract.as_account(),
         vec![
-            &exchange_id,
+            exchange.id(),
             token_1.id(),
             token_2.id(),
             token_reward_1.id(),
@@ -446,7 +437,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     let token_id: String = format!(":{}", pool_token1_token2);
 
-    let res = safe_contract
+    let _res = safe_contract
         .as_account()
         .call(&worker, exchange.id(), "mft_register")
         .args_json(serde_json::json!({
@@ -455,7 +446,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .deposit(parse_near!("1 N"))
         .transact()
         .await?;
-    // println!("mft_register {:#?}", res);
+    println!("mft_register {:#?}", _res);
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 5: Start interacting with Safe
@@ -463,9 +454,6 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     let initial_owner_shares: String =
         utils::get_pool_shares(&owner, &exchange, pool_token1_token2, &worker).await?;
-
-    let fft_token: String =
-        utils::get_fft_token_by_seed(&safe_contract, &seed_id1, &worker).await?;
 
     /* Stake */
     let res = owner
@@ -476,7 +464,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             "amount": initial_owner_shares.clone(),
             "msg": ""
         }))?
-        .gas(utils::TOTAL_GAS)
+        .gas(TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
@@ -484,6 +472,16 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     let owner_shares_on_contract =
         get_user_shares(&safe_contract, &owner.id(), &seed_id1, &worker).await?;
+
+    let seed_total: u128 = get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
+
+    assert_eq!(utils::str_to_u128(&initial_owner_shares), seed_total);
+
+    println!(
+        "initial: {} owner shares: {}",
+        initial_owner_shares, owner_shares_on_contract
+    );
+
     // assert that contract received the correct number of shares
     assert_eq!(
         owner_shares_on_contract,
@@ -493,48 +491,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         initial_owner_shares
     );
 
-    let owner_fft_shares = utils::get_user_fft(&safe_contract, &owner, &fft_token, &worker).await?;
-    assert_eq!(
-        owner_fft_shares, owner_shares_on_contract,
-        "ERR: First user should receive the same amount of fft as seed_id1 deposited"
-    );
-
     ///////////////////////////////////////////////////////////////////////////
     // Stage 6: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
     let mut fast_forward_counter: u64 = 0;
-    println!("Checking fees balance");
 
-    let balance_before_sentry = i128::try_from(
-        utils::get_balance_of(&sentry_acc, &token_reward_1, true, &worker, None)
-            .await?
-            .0,
-    )
-    .unwrap();
-
-    let balance_before_treasury = i128::try_from(
-        utils::get_balance_of(
-            treasury.as_account(),
-            &exchange,
-            false,
-            &worker,
-            Some(token_reward_1.id().to_string()),
-        )
-        .await?
-        .0,
-    )
-    .unwrap();
-
-    let balance_before_strat_creator = i128::try_from(
-        utils::get_balance_of(&strat_creator_acc, &token_reward_1, true, &worker, None)
-            .await?
-            .0,
-    )
-    .unwrap();
-
-    let amount_claimed = do_auto_compound_with_fast_forward(
-        &sentry_acc,
+    jumbo_do_auto_compound_with_fast_forward(
+        &owner,
         &safe_contract,
         &farm_str0,
         700,
@@ -548,76 +512,21 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     // Get owner shares from auto-compound contract
     let round1_owner_shares: u128 =
         get_user_shares(&safe_contract, owner.id(), &seed_id1, &worker).await?;
+
+    println!(
+        "owner deposit: {} round1 owner shares: {}",
+        owner_deposited_shares, round1_owner_shares
+    );
+
     // Assert the current value is higher than the initial value deposited
     assert!(
         round1_owner_shares > owner_deposited_shares,
-        "ERR_AUTO_COMPOUND_DOES_NOT_WORK. Expected {} and received {}",
+        "ERR_AUTO_COMPOUND_DOES_NOT_WORK. Expected {} < {}",
         owner_deposited_shares,
         round1_owner_shares
     );
 
-    let all_fees_amount = Percentage::from(utils::TOTAL_PROTOCOL_FEE).apply_to(amount_claimed);
-
-    println!("Amount claimed: {}", amount_claimed);
-
-    let sentry_due_fees =
-        i128::try_from(Percentage::from(utils::SENTRY_FEES_PERCENT).apply_to(all_fees_amount))
-            .unwrap();
-    let strat_creator_due_fees = i128::try_from(
-        Percentage::from(utils::STRAT_CREATOR_FEES_PERCENT).apply_to(all_fees_amount),
-    )
-    .unwrap();
-    let treasury_due_fees =
-        i128::try_from(Percentage::from(utils::TREASURY_FEES_PERCENT).apply_to(all_fees_amount))
-            .unwrap();
-    let balance_after_sentry = i128::try_from(
-        utils::get_balance_of(&sentry_acc, &token_reward_1, true, &worker, None)
-            .await?
-            .0,
-    )
-    .unwrap();
-    let balance_after_treasury = i128::try_from(
-        utils::get_balance_of(
-            treasury.as_account(),
-            &exchange,
-            false,
-            &worker,
-            Some(token_reward_1.id().to_string()),
-        )
-        .await?
-        .0,
-    )
-    .unwrap();
-    let balance_after_strat_creator = i128::try_from(
-        utils::get_balance_of(&strat_creator_acc, &token_reward_1, true, &worker, None)
-            .await?
-            .0,
-    )
-    .unwrap();
-    assert!(
-        (balance_after_sentry - (sentry_due_fees + balance_before_sentry)).abs() < 9,
-        "ERR: Sentry did not receive his due fees. there is: {} should be: {}",
-        balance_after_sentry,
-        (sentry_due_fees + balance_before_sentry)
-    );
-
-    assert!(
-        (balance_after_strat_creator - (strat_creator_due_fees + balance_before_strat_creator))
-            .abs()
-            < 9,
-        "ERR: Strat Creator did not receive his due fees. there is: {} should be: {}",
-        balance_before_strat_creator,
-        (strat_creator_due_fees + balance_before_strat_creator)
-    );
-
-    assert!(
-        (balance_after_treasury - (treasury_due_fees + balance_before_treasury)).abs() < 9,
-        "ERR: Treasury did not receive his due fees. there is: {} should be: {}",
-        balance_after_treasury,
-        (strat_creator_due_fees + balance_before_strat_creator)
-    );
-
-    println!("First round of auto-compound succeeded! Fees distributed correctly!");
+    println!("First round of auto-compound succeeded!");
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 7: Stake with another account
@@ -630,6 +539,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             "pool_id": pool_token1_token2.clone(),
             "amounts": vec![parse_near!("20 N").to_string(), parse_near!("20 N").to_string()],
         }))?
+        .gas(TOTAL_GAS)
         .deposit(parse_near!("1 N"))
         .transact()
         .await?;
@@ -651,14 +561,14 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             "amount": account1_initial_shares,
             "msg": ""
         }))?
-        .gas(utils::TOTAL_GAS)
+        .gas(TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
         .await?;
     // println!("mft_transfer_call {:#?}\n", res);//
 
     let account1_shares_on_contract =
-        get_user_shares(&safe_contract, &farmer1.id(), &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, farmer1.id(), &seed_id1, &worker).await?;
 
     // assert that contract received the correct number of shares, due to precision issues derived of recurring tithe we must not accept aboslute errors bigger than 9
     // TODO: validates with fuzzing and way more testing to ensure absolute error is not bigger than 9
@@ -669,15 +579,11 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         account1_shares_on_contract,
         account1_initial_shares
     );
-
-    println!("Stage 7 succeeded!");
     ///////////////////////////////////////////////////////////////////////////
     // Stage 8: Fast forward in the future and auto-compound
     ///////////////////////////////////////////////////////////////////////////
 
-    // utils::log_farm_info(&farm, &seed_id1, &worker).await;
-
-    do_auto_compound_with_fast_forward(
+    jumbo_do_auto_compound_with_fast_forward(
         &sentry_acc,
         &safe_contract,
         &farm_str0,
@@ -687,15 +593,13 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
     )
     .await?;
 
-    println!("Stage 8 succeeded!");
-
     ///////////////////////////////////////////////////////////////////////////
     // Stage 9: Assert owner and farmer1 earned shares from auto-compounder strategy
     ///////////////////////////////////////////////////////////////////////////
 
     // owner shares
     let round2_owner_shares: u128 =
-        get_user_shares(&safe_contract, owner.id(), &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, &owner.id(), &seed_id1, &worker).await?;
 
     assert!(
         round2_owner_shares > round1_owner_shares,
@@ -706,7 +610,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // get account 1 shares from auto-compounder contract
     let round2_account1_shares: u128 =
-        get_user_shares(&safe_contract, farmer1.id(), &seed_id1, &worker).await?;
+        get_user_shares(&safe_contract, &farmer1.id(), &seed_id1, &worker).await?;
 
     // parse String to u128
     let account1_initial_shares: u128 = utils::str_to_u128(&account1_initial_shares);
@@ -718,134 +622,23 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         round2_account1_shares
     );
 
-    println!("Stage 9 succeeded!");
-
     ///////////////////////////////////////////////////////////////////////////
     // Stage 10: Withdraw from Safe and assert received shares are correct
     ///////////////////////////////////////////////////////////////////////////
 
-    println!("Starting unstake and checking received shares");
-
-    //Total seed in the contract
-    let seed_before_withdraw: u128 =
-        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
-    println!(
-        "Total seed before the withdraw is =  {}",
-        seed_before_withdraw
-    );
-
-    println!("1");
-    //Total user's amount of fft_shares
-    //Available to unstake
-    let unstaked: u128 = get_user_shares(&safe_contract, owner.id(), &seed_id1, &worker).await?;
-
-    println!("2");
-    //Calling unstake
-    let res = owner
+    let _res = owner
         .call(&worker, safe_contract.id(), "unstake")
         .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
-        .gas(utils::TOTAL_GAS)
+        .gas(TOTAL_GAS)
         .transact()
         .await?;
 
-    //Getting user's amount of shares
-    println!("3");
-    let user_amount_of_seed: u128 =
-        get_user_shares(&safe_contract, owner.id(), &seed_id1, &worker).await?;
-
-    println!("4");
-    //Checking that the user has no balance after unstake all available.
-    assert_eq!(
-        user_amount_of_seed, 0_u128,
-        "User amount need to be 0 after unstake, but it is {}.",
-        user_amount_of_seed
-    );
-
-    println!("5");
-    //Getting the total seed available in the contract
-    let seed_after_withdraw: u128 =
-        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
-    println!("Total seed is =  {}", seed_after_withdraw);
-
-    println!("6");
-    //Checking if the new amount of seed is correct
-    assert_eq!(
-        seed_after_withdraw,
-        seed_before_withdraw - unstaked,
-        "New amount of seed is incorrect: {} =! {} - {}",
-        seed_after_withdraw,
-        seed_before_withdraw,
-        unstaked
-    );
-
-    println!("7");
-    //Getting the seed amount available for the user farmer1
-    let unstaked: u128 = get_user_shares(&safe_contract, farmer1.id(), &seed_id1, &worker).await?;
-    let mut seed_total = unstaked;
-    let withdraw1: U128 = U128::from(unstaked / 2_u128);
-
-    println!("8");
-    //Calling unstake with a half of the user's total available seed
-    let res = farmer1
+    let _res = farmer1
         .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "seed_id": seed_id1 , "amount_withdrawal": withdraw1 }))?
-        .gas(utils::TOTAL_GAS)
+        .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
+        .gas(TOTAL_GAS)
         .transact()
         .await?;
-    println!("farmer1 unstaked successfully {:#?}", res);
-
-    //New amount in the contract needs to be:
-    seed_total -= withdraw1.0;
-
-    let user_amount_of_seed: u128 =
-        get_user_shares(&safe_contract, farmer1.id(), &seed_id1, &worker).await?;
-
-    //Checking if the user amount of shares
-    assert!(
-        user_amount_of_seed - (withdraw1.0) < 10,
-        "User amount need to be {} after unstake, but it is {}.",
-        (withdraw1.0),
-        user_amount_of_seed
-    );
-
-    let withdraw2: U128 = U128(user_amount_of_seed);
-
-    //Calling unstake to withdraw the rest
-    let res = farmer1
-        .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "seed_id": seed_id1 , "amount_withdrawal": withdraw2}))?
-        .gas(utils::TOTAL_GAS)
-        .transact()
-        .await?;
-
-    println!(
-        "farmer1 unstaked successfully for the second time{:#?}",
-        res
-    );
-
-    let seed_after_withdraw: u128 =
-        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
-
-    //Testing the contract total amount after unstake
-    assert_eq!(
-        seed_after_withdraw,
-        seed_total - user_amount_of_seed,
-        "New amount of seed is incorrect: {} =! {} - {}",
-        seed_after_withdraw,
-        seed_total,
-        unstaked
-    );
-
-    //Getting the user's amount of seed
-    let user_amount_of_seed: u128 =
-        get_user_shares(&safe_contract, farmer1.id(), &seed_id1, &worker).await?;
-
-    //Testing the user new amount after unstake
-    assert_eq!(
-        user_amount_of_seed, 0_u128,
-        "User amount need to be 0 after unstake, but it is {}.",
-        user_amount_of_seed
-    );
 
     // Get owner shares from exchange
     let owner_shares_on_exchange: String =
@@ -875,9 +668,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         account1_initial_shares
     );
 
-    // assert that fft supply is 0
-    let seed_total_amount: u128 =
-        utils::get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
+    let seed_total_amount: u128 = get_seed_total_amount(&safe_contract, &seed_id1, &worker).await?;
 
     assert!(
         seed_total_amount == 0u128,
@@ -893,24 +684,12 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     // create another farm with different reward token from the same seed
     let (farm_str1, farm_id1) =
-        utils::create_farm(&owner, &farm, &seed_id1, &token_reward_2, false, &worker).await?;
-
-    // common tokens 1
-    // create farm with (token1, token2) pair and token1 as reward
-    let (farm_str2, farm_id2) =
-        utils::create_farm(&owner, &farm, &seed_id1, &token_1, false, &worker).await?;
-
-    // common tokens 2
-    // create farm with (token1, token2) pair and token2 as reward
-    let (farm_str3, farm_id3) =
-        utils::create_farm(&owner, &farm, &seed_id1, &token_2, false, &worker).await?;
+        utils::jumbo_create_farm(&owner, &farm, &seed_id1, &token_reward_2, &worker).await?;
 
     // create farms map to iterate over
     let mut farms: HashMap<String, u64> = HashMap::new();
     farms.insert(farm_str0, farm_id0);
     farms.insert(farm_str1, farm_id1);
-    farms.insert(farm_str2, farm_id2);
-    farms.insert(farm_str3, farm_id3);
 
     // Adds new strategy to safe
     utils::add_strategy(
@@ -920,33 +699,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         pool_token1_reward2,
         pool_token2_reward2,
         farm_id1,
-        "add_farm_to_strategy",
-        &worker,
-    )
-    .await?;
-
-    // (token1, token2) -> token1
-    utils::add_strategy(
-        &safe_contract,
-        &token_1,
-        seed_id1.clone(),
-        utils::POOL_ID_PLACEHOLDER,
-        pool_token1_token2,
-        farm_id2,
-        "add_farm_to_strategy",
-        &worker,
-    )
-    .await?;
-
-    // (token1, token2) -> token2
-    utils::add_strategy(
-        &safe_contract,
-        &token_2,
-        seed_id1.clone(),
-        pool_token1_token2,
-        utils::POOL_ID_PLACEHOLDER,
-        farm_id3,
-        "add_farm_to_strategy",
+        "add_farm_to_jumbo_strategy",
         &worker,
     )
     .await?;
@@ -955,10 +708,8 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     let blocks_to_forward = 300;
 
-    println!("Starting harvest test with multiple strategies");
+    println!("Starting auto-compound test with multiple strategies");
     for i in 0..2u64 {
-        println!("Starting harvest test round {}", i);
-
         // creates new farmer
         let new_farmer =
             create_ready_account(&owner, &exchange, &token_1, &token_2, &worker).await?;
@@ -982,15 +733,17 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             staked_shares
         );
 
-        fast_forward(blocks_to_forward, &mut fast_forward_counter, &worker).await?;
-
         // auto-compound from seed1, farmX
         for (farm_str, _) in farms.iter() {
-            // utils::log_farm_info(&farm, &seed_id1, &worker).await;
-
-            println!("farm_str {}", farm_str);
-
-            do_harvest(&sentry_acc, &safe_contract, farm_str, &worker).await?;
+            jumbo_do_auto_compound_with_fast_forward(
+                &sentry_acc,
+                &safe_contract,
+                farm_str,
+                blocks_to_forward,
+                &mut fast_forward_counter,
+                &worker,
+            )
+            .await?;
 
             // checks farmers earnings
             for mut farmer in farmers_map.iter_mut() {
@@ -1002,7 +755,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
                 assert!(
                     latest_shares > *current_shares,
-                    "Harvest failed. In loop {} with farm {} from account {} expected {} to be greater than {}",
+                    "Auto-compound failed. In loop {} with farm {} from account {} expected {} to be greater than {}",
                     i,
                     farm_str,
                     farmer_id,
@@ -1020,7 +773,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
             }
         }
 
-        println!("Harvest test round {} succeed", i);
+        println!("Auto-compound test round {} succeed", i);
     }
 
     Ok(())
