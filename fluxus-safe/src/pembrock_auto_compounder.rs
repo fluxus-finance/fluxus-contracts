@@ -222,40 +222,6 @@ impl PembrockAutoCompounder {
         )
     }
 
-    // pub fn get_farm_info(&self, pool_id: u64) -> PembStratFarmInfo {
-    //     for farm in self.farms.iter() {
-    //         if farm.pool_id_token1_reward == pool_id {
-    //             return farm.clone();
-    //         }
-    //     }
-
-    //     panic!("Farm does not exist")
-    // }
-
-    // pub fn get_mut_farm_info(&mut self, pool_id: u64) -> &mut PembStratFarmInfo {
-    //     for farm in self.farms.iter_mut() {
-    //         if farm.pool_id_token1_reward == pool_id {
-    //             return farm;
-    //         }
-    //     }
-
-    //     panic!("Farm does not exist")
-    // }
-
-    // /// Iterate through farms inside a compounder
-    // /// if `rewards_map` contains the same token than the strat, an reward > 0,
-    // /// then updates the strat to the next cycle, to avoid claiming the seed multiple times
-    // /// TODO: no farms
-    // pub fn update_strats_by_seed(&mut self, rewards_map: HashMap<String, U128>) {
-    //     for farm in self.farms.iter_mut() {
-    //         if let Some(reward_earned) = rewards_map.get(&farm.reward_token.to_string()) {
-    //             if reward_earned.0 > 0 {
-    //                 farm.last_reward_amount += reward_earned.0;
-    //             }
-    //         }
-    //     }
-    // }
-
     pub fn stake_on_pembrock(
         &self,
         account_id: &AccountId,
@@ -311,50 +277,4 @@ impl PembrockAutoCompounder {
             Gas(20_000_000_000_000),
         ))
     }
-
-    // pub fn internal_stake_resolver(
-    //     &self,
-    //     exchange_account_id: SupportedExchanges,
-    //     token_id: String,
-    //     account_id: &AccountId,
-    //     shares: u128,
-    // ) {
-    //     match exchange_account_id {
-    //         SupportedExchanges::RefFinance => self.stake_on_ref_finance(),
-    //         SupportedExchanges::Jumbo => self.stake_on_jumbo(),
-    //         SupportedExchanges::Pembrock => self.stake_on_pembrock(),
-
-    //     }
-    // }
-
-    // pub fn stake(
-    //     &self,
-    //     token_id: String,
-    //     seed_id: String,
-    //     account_id: &AccountId,
-    //     shares: u128,
-    // ) -> Promise {
-    //     let exchange_contract_id = self.exchange_contract_id.clone();
-    //     let farm_contract_id = self.farm_contract_id.clone();
-
-    //     // decide which strategies
-    //     ext_exchange::mft_transfer_call(
-    //         farm_contract_id,
-    //         token_id,
-    //         U128(shares),
-    //         "\"Free\"".to_string(),
-    //         exchange_contract_id,
-    //         1,
-    //         Gas(80_000_000_000_000),
-    //     )
-    //     // substitute for a generic callback, with a match for next step
-    //     .then(callback_ref_finance::callback_stake_result(
-    //         seed_id,
-    //         account_id.clone(),
-    //         shares,
-    //         env::current_account_id(),
-    //         0,
-    //         Gas(10_000_000_000_000),
-    //     ))
-    // }
 }

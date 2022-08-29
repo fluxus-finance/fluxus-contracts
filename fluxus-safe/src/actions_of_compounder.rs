@@ -140,7 +140,7 @@ impl Contract {
 
         assert!(
             user_fft_shares > 0,
-            "err: {} has {} shares",
+            "err: {} does not have enough shares. Only has {} shares",
             caller_id,
             user_fft_shares
         );
@@ -188,7 +188,10 @@ impl Contract {
         withdraw_amount: u128,
         user_fft_shares: u128,
     ) -> Promise {
-        assert!(shares_result.is_ok(), "ERR");
+        assert!(
+            shares_result.is_ok(),
+            "ERR: failed to get shares from exchange"
+        );
 
         let compounder = self.get_strat(&seed_id).get_compounder();
 
@@ -257,12 +260,11 @@ impl Contract {
         amount: Balance,
         fft_shares: Balance,
     ) {
-        match mft_transfer_result {
-            Ok(_) => log!("Nice!"),
-            Err(err) => {
-                panic!("err")
-            }
-        }
+        assert!(
+            mft_transfer_result.is_ok(),
+            "ERR: failed to transfer shares to {}",
+            account_id
+        );
 
         let data = self.data_mut();
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
@@ -291,7 +293,10 @@ impl Contract {
         withdraw_amount: u128,
         user_fft_shares: u128,
     ) -> Promise {
-        assert!(shares_result.is_ok(), "ERR");
+        assert!(
+            shares_result.is_ok(),
+            "ERR: failed to get shares from exchange"
+        );
 
         let stable_compounder = self.get_strat(&seed_id).get_stable_compounder();
 
@@ -364,12 +369,11 @@ impl Contract {
         amount: Balance,
         fft_shares: Balance,
     ) {
-        match mft_transfer_result {
-            Ok(_) => log!("Nice!"),
-            Err(err) => {
-                panic!("err")
-            }
-        }
+        assert!(
+            mft_transfer_result.is_ok(),
+            "ERR: failed to transfer shares to {}",
+            account_id
+        );
 
         let data = self.data_mut();
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
@@ -496,24 +500,6 @@ impl Contract {
             exchange_contract_id,
             1,
             Gas(20_000_000_000_000),
-        )
-    }
-
-    /// Call the ref get_pool_shares function.
-    #[private]
-    pub fn call_get_pool_shares(
-        &self,
-        exchange_contract_id: AccountId,
-        pool_id: u64,
-        account_id: AccountId,
-    ) -> Promise {
-        assert!(self.check_promise(), "Previous tx failed.");
-        ext_exchange::get_pool_shares(
-            pool_id,
-            account_id,
-            exchange_contract_id,
-            0,
-            Gas(10_000_000_000_000),
         )
     }
 

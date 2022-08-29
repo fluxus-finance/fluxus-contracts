@@ -89,7 +89,7 @@ impl Contract {
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   new_slippage: value between 80-100
     pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {
-        assert!(self.is_owner_or_guardians(), "ERR_");
+        assert!(self.is_owner_or_guardians(), "ERR: not allowed");
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
