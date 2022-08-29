@@ -7,6 +7,7 @@ impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
+    #[private]
     pub fn callback_jumbo_list_farms_by_seed(
         &mut self,
         #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
@@ -505,6 +506,7 @@ impl Contract {
         PromiseOrValue::Promise(self.jumbo_harvest_add_liquidity(farm_id_str))
     }
 
+    #[private]
     pub fn jumbo_harvest_add_liquidity(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -532,6 +534,7 @@ impl Contract {
         ))
     }
 
+    #[private]
     pub fn callback_jumbo_post_add_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<(), PromiseError>,
@@ -566,7 +569,8 @@ impl Contract {
         )
     }
 
-    pub(crate) fn update_shares_and_forward_cycle(
+    #[private]
+    pub fn update_shares_and_forward_cycle(
         &mut self,
         farm_id_str: String,
         shares_on_exchange: u128,
@@ -619,6 +623,7 @@ impl Contract {
 
         new_seed_amount
     }
+
     /// Receives shares from auto-compound and stake it
     /// Change the user_balance and the auto_compounder balance of lps/shares
     #[private]

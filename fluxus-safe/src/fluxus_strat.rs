@@ -15,6 +15,7 @@ use near_sdk::{
 /// without needing to migrate the storage.
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
+#[allow(clippy::enum_variant_names)]
 pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
     StableAutoCompounder(StableAutoCompounder),
