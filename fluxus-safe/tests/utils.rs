@@ -696,6 +696,8 @@ pub async fn get_pool_shares(
     let res = exchange.view(worker, "get_pool_shares", args).await?;
     let shares: String = res.json()?;
 
+    println!("debug pool shares: {:#?}", shares);
+
     Ok(shares)
 }
 

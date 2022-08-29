@@ -28,7 +28,6 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 #[near_bindgen]
 impl Contract {
     //Return the FFT token to a seed_id TODO: enhance name of fft tokens they should be named fft_seed_{seed_id}
-    #[private]
     pub fn fft_token_seed_id(&self, seed_id: String) -> String {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
@@ -52,7 +51,6 @@ impl Contract {
     }
 
     /// Return the u128 amount a user has in seed_id.
-    #[private]
     pub fn user_share_seed_id(&self, seed_id: String, user: String) -> u128 {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {

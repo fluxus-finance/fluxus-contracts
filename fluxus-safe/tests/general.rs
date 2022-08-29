@@ -455,7 +455,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
         .deposit(parse_near!("1 N"))
         .transact()
         .await?;
-    // println!("mft_register {:#?}", res);
+    println!("mft_register {:#?}", res);
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 5: Start interacting with Safe
