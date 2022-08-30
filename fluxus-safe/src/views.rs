@@ -60,6 +60,7 @@ impl Contract {
     }
 
     /// Returns all token ids
+    // TODO: refactor, should be get seeds
     pub fn get_allowed_tokens(&self) -> Vec<String> {
         let mut seeds: Vec<String> = Vec::new();
 
@@ -158,6 +159,7 @@ impl Contract {
 
     /// Only get guardians info
     pub fn get_guardians(&self) -> Vec<AccountId> {
+        self.is_owner();
         self.data().guardians.to_vec()
     }
 

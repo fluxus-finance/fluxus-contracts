@@ -17,7 +17,7 @@ impl Contract {
         pool_id: u64,
         seed_min_deposit: U128,
     ) -> String {
-        self.is_owner();
+        self.is_owner_or_guardians();
 
         let token_id = wrap_mft_token_id(&pool_id.to_string());
 
@@ -82,7 +82,7 @@ impl Contract {
         reward_token: AccountId,
         farm_id: String,
     ) -> String {
-        self.is_owner();
+        self.is_owner_or_guardians();
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         for farm in compounder.farms.clone() {
@@ -125,7 +125,7 @@ impl Contract {
     ) -> String {
         // TODO: is stable available on jumbo?
 
-        self.is_owner();
+        self.is_owner_or_guardians();
 
         let token_id = wrap_mft_token_id(&pool_id.to_string());
 
@@ -190,7 +190,7 @@ impl Contract {
         available_balance: Vec<Balance>,
         farm_id: String,
     ) -> String {
-        self.is_owner();
+        self.is_owner_or_guardians();
         let stable_compounder = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
 
         for farm in stable_compounder.farms.clone() {
@@ -234,7 +234,7 @@ impl Contract {
         pool_id: u64,
         seed_min_deposit: U128,
     ) -> String {
-        self.is_owner();
+        self.is_owner_or_guardians();
 
         let token_id = wrap_mft_token_id(&pool_id.to_string());
 
@@ -296,7 +296,7 @@ impl Contract {
         reward_token: AccountId,
         farm_id: String,
     ) -> String {
-        self.is_owner();
+        self.is_owner_or_guardians();
         let compounder = self.get_strat_mut(&seed_id).get_jumbo_mut();
 
         for farm in compounder.farms.clone() {
@@ -327,6 +327,7 @@ impl Contract {
         )
     }
 
+    #[private]
     fn new_fft_share(&mut self, seed_id: String) -> Option<String> {
         let already_has = self.data_mut().fft_share_by_seed_id.get(&seed_id).is_some();
         let fft_share_id;
@@ -361,7 +362,7 @@ impl Contract {
 
     // TODO: stable version
     pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
-        self.is_owner();
+        self.is_owner_or_guardians();
         let (seed_id, token_id, _) = get_ids_from_farm(farm_id_str.clone());
         let strat = self.get_strat_mut(&seed_id);
         let compounder = strat.get_compounder_mut();

@@ -183,9 +183,6 @@ impl StableAutoCompounder {
         }
     }
 
-    pub fn stake_on_ref_finance(&self) {}
-    pub fn stake_on_jumbo(&self) {}
-
     pub fn stake(
         &self,
         token_id: String,
@@ -453,44 +450,3 @@ impl StableAutoCompounder {
         ))
     }
 }
-
-// Versioned Farmer, used for lazy upgrade.
-// Which means this structure would upgrade automatically when used.
-// To achieve that, each time the new version comes in,
-// each function of this enum should be carefully re-code!
-// #[derive(BorshSerialize, BorshDeserialize)]
-// pub enum VersionedCompounder {
-//     V101(AutoCompounder),
-// }
-
-// impl VersionedCompounder {
-//     #[allow(dead_code)]
-//     pub fn new(
-//         strategy_fee: u128,
-//         treasury: AccountFee,
-//         strat_creator: AccountFee,
-//         sentry_fee: u128,
-//         exchange_contract_id: AccountId,
-//         farm_contract_id: AccountId,
-//         token1_address: AccountId,
-//         token2_address: AccountId,
-//         pool_id: u64,
-//         seed_id: String,
-//         seed_min_deposit: U128,
-//     ) -> Self {
-//         let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
-
-//         VersionedCompounder::V101(AutoCompounder {
-//             admin_fees: admin_fee,
-//             exchange_contract_id,
-//             farm_contract_id,
-//             token1_address,
-//             token2_address,
-//             pool_id,
-//             seed_min_deposit,
-//             seed_id,
-//             farms: Vec::new(),
-//             harvest_timestamp: 0u64,
-//         })
-//     }
-// }

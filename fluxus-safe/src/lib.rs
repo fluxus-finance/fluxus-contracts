@@ -150,73 +150,6 @@ construct_uint! {
     pub struct U256(4);
 }
 
-/// Internal methods that do not rely on blockchain interaction
-impl Contract {
-    fn assert_contract_running(&self) {
-        match self.data().state {
-            RunningState::Running => (),
-            _ => env::panic_str("E51: contract paused"),
-        };
-    }
-
-    /// Ensures that at least one strategy is running for given token_id
-    fn assert_strategy_is_running(&self, seed_id: &str) {
-        let strat = self.get_strat(seed_id);
-
-        match strat {
-            VersionedStrategy::AutoCompounder(_) => {
-                let compounder = strat.get_compounder_ref();
-
-                for farm in compounder.farms.iter() {
-                    if farm.state == AutoCompounderState::Running {
-                        return;
-                    }
-                }
-            }
-            VersionedStrategy::StableAutoCompounder(_) => {
-                let compounder = strat.get_stable_compounder_ref();
-
-                for farm in compounder.farms.iter() {
-                    if farm.state == AutoCompounderState::Running {
-                        return;
-                    }
-                }
-            }
-            VersionedStrategy::PembrockAutoCompounder(_) => {
-                let compounder = strat.pemb_get_ref();
-                if compounder.state == PembAutoCompounderState::Running {
-                    return;
-                }
-            }
-            VersionedStrategy::JumboAutoCompounder(_) => {
-                let compounder = strat.get_jumbo();
-
-                for farm in compounder.farms.iter() {
-                    if farm.state == JumboAutoCompounderState::Running {
-                        return;
-                    }
-                }
-            }
-        }
-
-        panic!("There is no running strategy for this pool")
-    }
-}
-
-pub fn get_token_id(token_address: String) -> String {
-    let mut token_id: String = "err".to_string();
-    for (i, c) in token_address.chars().enumerate() {
-        if c == '.' {
-            token_id = token_address.substring(0, i).to_string();
-            break;
-        }
-    }
-    if (token_id == *"err") {
-        panic!("Fail trying to get the token id.")
-    }
-    token_id
-}
-
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct Contract {
@@ -283,15 +216,67 @@ impl Contract {
         }
     }
 
-    // fn exchange_acc(&self) -> AccountId {
-    //     self.data().exchange_contract_id.clone()
-    // }
-
-    // fn farm_acc(&self) -> AccountId {
-    //     self.data().farm_contract_id.clone()
-    // }
-
-    fn treasure_acc(&self) -> AccountId {
-        self.data().treasury.account_id.clone()
+    fn assert_contract_running(&self) {
+        match self.data().state {
+            RunningState::Running => (),
+            _ => env::panic_str("E51: contract paused"),
+        };
     }
+
+    /// Ensures that at least one strategy is running for given token_id
+    fn assert_strategy_is_running(&self, seed_id: &str) {
+        let strat = self.get_strat(seed_id);
+
+        match strat {
+            VersionedStrategy::AutoCompounder(_) => {
+                let compounder = strat.get_compounder_ref();
+
+                for farm in compounder.farms.iter() {
+                    if farm.state == AutoCompounderState::Running {
+                        return;
+                    }
+                }
+            }
+            VersionedStrategy::StableAutoCompounder(_) => {
+                let compounder = strat.get_stable_compounder_ref();
+
+                for farm in compounder.farms.iter() {
+                    if farm.state == AutoCompounderState::Running {
+                        return;
+                    }
+                }
+            }
+            VersionedStrategy::JumboAutoCompounder(_) => {
+                let compounder = strat.get_jumbo();
+
+                for farm in compounder.farms.iter() {
+                    if farm.state == JumboAutoCompounderState::Running {
+                        return;
+                    }
+                }
+            }
+            VersionedStrategy::PembrockAutoCompounder(_) => {
+                let compounder = strat.pemb_get_ref();
+                if compounder.state == PembAutoCompounderState::Running {
+                    return;
+                }
+            }
+        }
+
+        panic!("There is no running strategy for this pool")
+    }
+}
+
+pub fn get_token_id(token_address: String) -> String {
+    let mut token_id: String = "err".to_string();
+    for (i, c) in token_address.chars().enumerate() {
+        if c == '.' {
+            token_id = token_address.substring(0, i).to_string();
+            break;
+        }
+    }
+    if (token_id == *"err") {
+        panic!("Fail trying to get the token id.")
+    }
+    token_id
 }

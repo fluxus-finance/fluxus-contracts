@@ -49,7 +49,7 @@ impl StratFarmInfo {
         }
     }
 
-    pub fn increase_slippage(&mut self) {
+    pub(crate) fn increase_slippage(&mut self) {
         if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
             // increment slippage
             self.slippage -= 4;
@@ -193,7 +193,7 @@ impl AutoCompounder {
         )
     }
 
-    pub fn get_farm_info(&self, farm_id: &str) -> StratFarmInfo {
+    pub(crate) fn get_farm_info(&self, farm_id: &str) -> StratFarmInfo {
         for farm in self.farms.iter() {
             if farm.id == farm_id {
                 return farm.clone();
@@ -203,7 +203,7 @@ impl AutoCompounder {
         panic!("Farm does not exist")
     }
 
-    pub fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StratFarmInfo {
+    pub(crate) fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
                 return farm;
@@ -217,7 +217,7 @@ impl AutoCompounder {
     /// if `rewards_map` contains the same token than the strat, an reward > 0,
     /// then updates the strat to the next cycle, to avoid claiming the seed multiple times
     /// TODO: what if there are multiple farms with the same token_reward?
-    pub fn update_strats_by_seed(&mut self, rewards_map: HashMap<String, U128>) {
+    pub(crate) fn update_strats_by_seed(&mut self, rewards_map: HashMap<String, U128>) {
         for farm in self.farms.iter_mut() {
             if let Some(reward_earned) = rewards_map.get(&farm.reward_token.to_string()) {
                 if reward_earned.0 > 0 {
@@ -227,7 +227,7 @@ impl AutoCompounder {
         }
     }
 
-    pub fn stake(
+    pub(crate) fn stake(
         &self,
         token_id: String,
         seed_id: String,
@@ -259,7 +259,7 @@ impl AutoCompounder {
     }
 
     /// Withdraw user lps and send it to the contract.
-    pub fn unstake(
+    pub(crate) fn unstake(
         &self,
         token_id: String,
         seed_id: String,
@@ -291,7 +291,7 @@ impl AutoCompounder {
     /// Function to claim the reward from the farm contract
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
-    pub fn claim_reward(&self, farm_id_str: String) -> Promise {
+    pub(crate) fn claim_reward(&self, farm_id_str: String) -> Promise {
         log!("claim_reward");
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -313,7 +313,7 @@ impl AutoCompounder {
     /// Function to claim the reward from the farm contract
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
-    pub fn withdraw_of_reward(
+    pub(crate) fn withdraw_of_reward(
         &self,
         farm_id_str: String,
         treasury_current_amount: u128,
@@ -368,7 +368,7 @@ impl AutoCompounder {
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
-    pub fn autocompounds_swap(&self, farm_id_str: String, treasure: AccountFee) -> Promise {
+    pub(crate) fn autocompounds_swap(&self, farm_id_str: String, treasure: AccountFee) -> Promise {
         log!("autocompounds_swap");
 
         let treasury_acc: AccountId = treasure.account_id;
@@ -464,7 +464,7 @@ impl AutoCompounder {
             ))
     }
 
-    pub fn get_tokens_return(
+    pub(crate) fn get_tokens_return(
         &self,
         farm_id_str: String,
         amount_token_1: U128,
@@ -537,14 +537,18 @@ impl AutoCompounder {
         }
     }
 
-    pub fn autocompounds_liquidity_and_stake(&self, farm_id_str: String) -> Promise {
+    pub(crate) fn autocompounds_liquidity_and_stake(&self, farm_id_str: String) -> Promise {
         log!("autocompounds_liquidity_and_stake");
 
         // send reward to contract caller
         self.send_reward_to_sentry(farm_id_str, env::predecessor_account_id())
     }
 
-    pub fn send_reward_to_sentry(&self, farm_id_str: String, sentry_acc_id: AccountId) -> Promise {
+    pub(crate) fn send_reward_to_sentry(
+        &self,
+        farm_id_str: String,
+        sentry_acc_id: AccountId,
+    ) -> Promise {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let farm_info = self.get_farm_info(&farm_id);
@@ -566,11 +570,6 @@ impl AutoCompounder {
     }
 }
 
-pub enum SupportedExchanges {
-    RefFinance,
-    Jumbo,
-}
-
 // Versioned Farmer, used for lazy upgrade.
 // Which means this structure would upgrade automatically when used.
 // To achieve that, each time the new version comes in,
@@ -582,7 +581,7 @@ pub enum SupportedExchanges {
 
 // impl VersionedCompounder {
 //     #[allow(dead_code)]
-//     pub fn new(
+//     pub(crate) fn new(
 //         strategy_fee: u128,
 //         treasury: AccountFee,
 //         strat_creator: AccountFee,
