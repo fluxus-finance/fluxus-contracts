@@ -13,12 +13,3 @@ near call $CONTRACT_NAME pembrock_create_strategy '{
     "pool_id": '$pembrock_pool_id',
     "reward_token": "'$pembrock_reward_token'"
     }' --accountId $CONTRACT_NAME --gas $total_gas
-
-
-# near call $CONTRACT_NAME add_farm_to_strategy '{
-#     "seed_id": "'$seed_id'",
-#     "pool_id_token1_reward": '$pool_id_token1_reward', 
-#     "pool_id_token2_reward": '$pool_id_token2_reward', 
-#     "reward_token": "'$reward_token'",
-#     "farm_id": "'$farm_id'" 
-# }' --accountId $CONTRACT_NAME --gas $total_gas

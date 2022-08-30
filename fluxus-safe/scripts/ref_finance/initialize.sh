@@ -15,13 +15,3 @@ near call $CONTRACT_NAME call_user_register '{"exchange_contract_id": "'$exchang
 
 #At the farm
 near call $farm_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.1
-
-
-near call $exchange_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.1
-
-
-
-
-near view token.pembrock.testnet ft_balance_of '{"account_id": "'$CONTRACT_NAME'"}' 
-
-near call token.pembrock.testnet storage_deposit '{"account_id": "'$exchange_contract_id'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.1
