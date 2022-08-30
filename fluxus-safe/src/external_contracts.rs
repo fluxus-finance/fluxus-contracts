@@ -149,6 +149,12 @@ pub trait RefExchange {
     fn mft_balance_of(&self, token_id: String, account_id: AccountId) -> U128;
     fn remove_liquidity(&mut self, pool_id: u64, shares: U128, min_amounts: Vec<U128>);
     fn withdraw(&mut self, token_id: String, amount: U128, unregister: Option<bool>);
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
 }
 
 // Wrap.testnet functions that we need to call inside the auto_compounder.
@@ -193,6 +199,8 @@ pub trait ExtPembrock {
 
     fn withdraw(&mut self, token_id: AccountId, amount: U128) -> PromiseOrValue<U128>;
     fn get_account(&self, account_id: AccountId) -> PembrockAccount;
+    fn claim(&self) -> U128;
+
 }
 
 // reward-v1.slovko.testnet get_claimed_rewards

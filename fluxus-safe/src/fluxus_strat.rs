@@ -224,7 +224,10 @@ impl VersionedStrategy {
         strat_name: String,
         treasure: AccountFee,
     ) -> PromiseOrValue<u128> {
-        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let mut farm_id:String = "".to_string();
+        if farm_id_str != *""{
+            (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        }
         match self {
             VersionedStrategy::AutoCompounder(compounder) => {
                 let farm_info = compounder.get_farm_info(&farm_id);
@@ -291,10 +294,9 @@ impl VersionedStrategy {
                     PembAutoCompounderCycle::ClaimReward => {
                         PromiseOrValue::Promise(pemb_compounder.claim_reward(strat_name))
                     },
-                    _ => unimplemented!()
-                    // PembAutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
-                    //     pemb_compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
-                    // ),
+                    PembAutoCompounderCycle::SwapAndLend => PromiseOrValue::Promise(
+                        pemb_compounder.swap_and_lend(strat_name),
+                    ),
                     // PembAutoCompounderCycle::Swap => {
                     //     pemb_compounder.autocompounds_swap(farm_id_str, treasure)
                     // }

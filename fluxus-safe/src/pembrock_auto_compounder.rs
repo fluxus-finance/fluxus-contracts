@@ -35,18 +35,6 @@ pub struct PembStratFarmInfo {
 }
 
 impl PembStratFarmInfo {
-    pub(crate) fn next_cycle(&mut self) {
-        match self.cycle_stage {
-            PembAutoCompounderCycle::ClaimReward => {
-                self.cycle_stage = PembAutoCompounderCycle::Withdrawal
-            }
-            PembAutoCompounderCycle::Withdrawal => self.cycle_stage = PembAutoCompounderCycle::Swap,
-            PembAutoCompounderCycle::Swap => self.cycle_stage = PembAutoCompounderCycle::Stake,
-            PembAutoCompounderCycle::Stake => {
-                self.cycle_stage = PembAutoCompounderCycle::ClaimReward
-            }
-        }
-    }
 
     pub fn increase_slippage(&mut self) {
         if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
@@ -121,6 +109,8 @@ pub struct PembrockAutoCompounder {
 
     /// Latest harvest timestamp
     pub harvest_timestamp: u64,
+
+    pub harvest_value_available_to_stake: u128,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
@@ -147,18 +137,14 @@ impl From<&PembAutoCompounderState> for String {
 #[serde(crate = "near_sdk::serde")]
 pub enum PembAutoCompounderCycle {
     ClaimReward,
-    Withdrawal,
-    Swap,
-    Stake,
+    SwapAndLend
 }
 
 impl From<&PembAutoCompounderCycle> for String {
     fn from(cycle: &PembAutoCompounderCycle) -> Self {
         match *cycle {
             PembAutoCompounderCycle::ClaimReward => String::from("Reward"),
-            PembAutoCompounderCycle::Withdrawal => String::from("Withdrawal"),
-            PembAutoCompounderCycle::Swap => String::from("Swap"),
-            PembAutoCompounderCycle::Stake => String::from("Stake"),
+            PembAutoCompounderCycle::SwapAndLend => String::from("SwapAndLend"),
         }
     }
 }
@@ -196,6 +182,7 @@ impl PembrockAutoCompounder {
             reward_token,
             available_balance: 0u128,
             harvest_timestamp: 0u64,
+            harvest_value_available_to_stake: 0u128
         }
     }
 
@@ -269,12 +256,62 @@ impl PembrockAutoCompounder {
             self.pembrock_reward_id.clone(),
             0,
             Gas(20_000_000_000_000),
-        ))
+        )).then(ext_pembrock::claim(
+            self.pembrock_reward_id.clone(),
+                1,
+                Gas(100_000_000_000_000),
+            )
+        )
         .then(callback_pembrock::callback_pembrock_rewards(
             strat_name,
+            self.pembrock_reward_id.clone().to_string(),
             env::current_account_id(),
             0,
-            Gas(20_000_000_000_000),
+            Gas(120_000_000_000_000),
         ))
     }
+
+    pub fn swap_and_lend(&mut self, strat_name: String) -> Promise {
+
+        //let strat = self.pemb_get_strat_mut(&strat_name);
+        //let compounder = strat.pemb_get_mut();
+
+
+        // let strat = self.pemb_get_strat_mut(&strat_name);
+
+        // let compounder = strat.pemb_get_mut();
+
+        // compounder.last_reward_amount = claimed;
+
+        ext_ref_exchange::get_return(
+            self.pool_id_token1_reward,
+            self.reward_token.clone(),
+            U128(self.last_reward_amount),
+            self.token1_address.clone(),
+            self.exchange_contract_id.clone(),
+            0,
+            Gas(10_000_000_000_000),
+        )
+        .then(
+            callback_pembrock::callback_pembrock_swap(
+                strat_name,
+                env::current_account_id(),
+                0,
+                Gas(250_000_000_000_000),
+            ),
+        )
+        
+    }
+
+
+    pub(crate) fn next_cycle(&mut self) {
+        match self.cycle_stage {
+            PembAutoCompounderCycle::ClaimReward => {
+                self.cycle_stage = PembAutoCompounderCycle::SwapAndLend
+            }
+            PembAutoCompounderCycle::SwapAndLend => self.cycle_stage = PembAutoCompounderCycle::ClaimReward,
+        }
+    }
+
+
 }

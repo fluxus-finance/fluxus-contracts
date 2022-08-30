@@ -13,7 +13,7 @@ source .env
 echo $username
  
 
-#### initializes the contract, create strategy and registers in the necessary contracts
+# #### initializes the contract, create strategy and registers in the necessary contracts
  ./initialize.sh
 
  ./pembrock_register.sh
@@ -22,7 +22,7 @@ echo $username
 
  ./pembrock_stake_process.sh
 
-./pembrock_unstake_process.sh
+# ./pembrock_unstake_process.sh
 
 # #### create strategy from .env
 # ./add_strategy.sh
@@ -37,3 +37,6 @@ echo $username
 # ./unstake_process.sh
  
  
+ near call $CONTRACT_NAME harvest '{"farm_id_str": "", "strat_name":"pembrock@wrap"}' --accountId $CONTRACT_NAME --gas 300000000000000
+
+ near call $CONTRACT_NAME harvest '{"farm_id_str": "", "strat_name":"pembrock@wrap"}' --accountId $CONTRACT_NAME --gas 300000000000000
