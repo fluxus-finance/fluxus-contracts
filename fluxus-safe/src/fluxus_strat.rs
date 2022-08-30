@@ -224,8 +224,8 @@ impl VersionedStrategy {
         strat_name: String,
         treasure: AccountFee,
     ) -> PromiseOrValue<u128> {
-        let mut farm_id:String = "".to_string();
-        if farm_id_str != *""{
+        let mut farm_id: String = "".to_string();
+        if farm_id_str != *"" {
             (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         }
         match self {
@@ -293,16 +293,10 @@ impl VersionedStrategy {
                 match pemb_compounder.cycle_stage {
                     PembAutoCompounderCycle::ClaimReward => {
                         PromiseOrValue::Promise(pemb_compounder.claim_reward(strat_name))
-                    },
-                    PembAutoCompounderCycle::SwapAndLend => PromiseOrValue::Promise(
-                        pemb_compounder.swap_and_lend(strat_name),
-                    ),
-                    // PembAutoCompounderCycle::Swap => {
-                    //     pemb_compounder.autocompounds_swap(farm_id_str, treasure)
-                    // }
-                    // PembAutoCompounderCycle::Stake => PromiseOrValue::Promise(
-                    //     pemb_compounder.autocompounds_liquidity_and_stake(farm_id_str),
-                    // ),
+                    }
+                    PembAutoCompounderCycle::SwapAndLend => {
+                        PromiseOrValue::Promise(pemb_compounder.swap_and_lend(strat_name))
+                    }
                 }
             }
         }

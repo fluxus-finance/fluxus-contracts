@@ -103,23 +103,28 @@ impl Contract {
     #[private]
     pub fn callback_pembrock_rewards(
         &mut self,
-        #[callback_result] claim: Result<U128, PromiseError>,
+        #[callback_result] claim_result: Result<U128, PromiseError>,
         strat_name: String,
-        pembrock_reward_id: String,
     ) -> PromiseOrValue<u128> {
-       
-        let claimed =claim.unwrap().0;
-         log!("debug claim: {:#?}", claimed);
+        assert!(claim_result.is_ok(), "ERR: failed to claim");
 
+        let claimed = claim_result.unwrap().0;
+        log!("debug claim: {}", claimed);
+
+        assert!(claimed > 0, "ERR: claimed zero amount for {}", strat_name);
 
         let strat = self.pemb_get_strat_mut(&strat_name);
 
         let compounder = strat.pemb_get_mut();
 
-        compounder.next_cycle();
+        compounder.last_reward_amount += claimed;
 
-        compounder.last_reward_amount = claimed;
-        log!("{}", compounder.last_reward_amount);
+        compounder.next_cycle();
+        log!(
+            "last_reward_amount for {}: {}",
+            strat_name,
+            compounder.last_reward_amount
+        );
 
         PromiseOrValue::Value(0u128)
     }
@@ -130,22 +135,14 @@ impl Contract {
         #[callback_result] get_return_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> Promise {
-       
-        // let claimed =claim.unwrap().0;
-        //  log!("debug claim: {:#?}", claimed);
-
-
         let strat = self.pemb_get_strat(&strat_name);
 
         let compounder = strat.pemb_get();
 
-        // compounder.last_reward_amount = claimed;
-        // log!("{}", compounder.last_reward_amount);
-
         let amount_out = get_return_result.unwrap();
 
-        //let msg = format!( "{{\"force\":0,\"actions\":[{{\"pool_id\":461,\"token_in\":\"compounder.reward_token\",\"token_out\":\"wrap.testnet\",\"amount_in\":\"1000000000000000000000000\",\"min_amount_out\":\"amount_out\"}}");
         let msg = format!("{{\"force\":0,\"actions\":[{{\"pool_id\":{},\"token_in\":\"{}\",\"token_out\":\"{}\",\"amount_in\":\"{}\",\"min_amount_out\":\"{}\"}}]}}", 461, compounder.reward_token, compounder.token1_address, compounder.last_reward_amount, amount_out.0) ;
+
         ext_reward_token::ft_transfer_call(
             compounder.exchange_contract_id,
             U128(compounder.last_reward_amount),
@@ -160,7 +157,6 @@ impl Contract {
             0,
             Gas(120_000_000_000_000),
         ))
-
     }
 
     #[private]
@@ -168,19 +164,30 @@ impl Contract {
         &mut self,
         #[callback_result] swap_result: Result<U128, PromiseError>,
         strat_name: String,
-    ) -> Promise{
+    ) -> Promise {
+        assert!(swap_result.is_ok(), "ERR: failed to swap");
 
-        let strat = self.pemb_get_strat(&strat_name);
+        let amount_to_transfer = swap_result.unwrap();
 
-        let compounder = strat.pemb_get();
+        // the total amount of the seed increases
+        let total_seed_amount = self.seed_total_amount(&strat_name);
 
-        let amount_to_transfer = swap_result.unwrap(); 
-    
+        self.data_mut()
+            .seed_id_amount
+            .insert(&strat_name, &(total_seed_amount + amount_to_transfer.0));
+
+        let strat = self.pemb_get_strat_mut(&strat_name);
+
+        let compounder = strat.pemb_get_mut();
+
+        // after the swap, there's no more reward available to swap
+        compounder.last_reward_amount = 0;
+
         ext_pembrock::ft_transfer_call(
-            compounder.pembrock_contract_id,
+            compounder.pembrock_contract_id.clone(),
             amount_to_transfer,
             "deposit".to_string(),
-            compounder.token1_address,
+            compounder.token1_address.clone(),
             1,
             Gas(80_000_000_000_000),
         )
@@ -191,33 +198,25 @@ impl Contract {
             0,
             Gas(10_000_000_000_000),
         ))
-
-
     }
-
 
     #[private]
     pub fn callback_pembrock_post_lend(
         &mut self,
         #[callback_result] post_lend_result: Result<U128, PromiseError>,
         strat_name: String,
-        amount: u128
-    ){
-
+        amount: u128,
+    ) {
         let strat = self.pemb_get_strat_mut(&strat_name);
 
         let compounder = strat.pemb_get_mut();
 
         if let Ok(_amount) = post_lend_result {
-            // assert_eq!(amount.0, 0, "ERR_STAKE_FAILED");
             compounder.harvest_value_available_to_stake = 0;
-        }
-        else{
+        } else {
             compounder.harvest_value_available_to_stake += amount;
         }
-
     }
-
 
     /// Withdraw user lps and send it to the contract.
     pub fn unstake(&self, seed_id: String, amount_withdrawal: Option<U128>) -> Promise {

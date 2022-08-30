@@ -475,13 +475,7 @@ pub trait PembrockAutoCompound {
         account_id: AccountId,
         shares: u128,
     ) -> Promise;
-    fn callback_pembrock_rewards(
-        &mut self,
-        #[callback_result] account_details_result: Result<PembrockAccount, PromiseError>,
-        #[callback_result] claimed_rewards_result: Result<U128, PromiseError>,
-        strat_name: String,
-        pembrock_reward_id: String
-    ) -> PromiseOrValue<u128>;
+    fn callback_pembrock_rewards(&mut self, strat_name: String) -> PromiseOrValue<u128>;
     fn callback_pembrock_swap(
         &mut self,
         #[callback_result] get_return_result: Result<U128, PromiseError>,
@@ -498,7 +492,6 @@ pub trait PembrockAutoCompound {
         &mut self,
         #[callback_result] post_lend_result: Result<U128, PromiseError>,
         strat_name: String,
-        amount: u128
-        // pembrock_reward_id: String
+        amount: u128, // pembrock_reward_id: String
     );
 }
