@@ -34,22 +34,31 @@ use utils::*;
 mod errors;
 use crate::errors::*;
 
-pub mod auto_compounder;
-pub use auto_compounder::*;
-mod auto_compound;
+mod jumbo;
+pub use jumbo::*;
 
-pub mod stable_auto_compounder;
-pub use stable_auto_compounder::*;
-mod stable_auto_compound;
+mod pembrock;
+pub use pembrock::*;
 
-pub mod jumbo_auto_compounder;
-pub use jumbo_auto_compounder::*;
-mod jumbo_auto_compound;
+mod ref_finance;
+pub use ref_finance::*;
 
-pub mod pembrock_auto_compounder;
-pub use pembrock_auto_compounder::*;
+// pub mod auto_compounder;
+// pub use auto_compounder::*;
+// mod auto_compound;
 
-mod actions_of_compounder;
+// pub mod stable_auto_compounder;
+// pub use stable_auto_compounder::*;
+// mod stable_auto_compound;
+
+// pub mod jumbo_auto_compounder;
+// pub use jumbo_auto_compounder::*;
+// mod jumbo_auto_compound;
+
+// pub mod pembrock_auto_compounder;
+// pub use pembrock_auto_compounder::*;
+
+// mod actions_of_compounder;
 
 mod views;
 
