@@ -56,7 +56,6 @@ impl VersionedStrategy {
             VersionedStrategy::PembrockAutoCompounder(compounder) => {
                 VersionedStrategy::PembrockAutoCompounder(compounder.clone())
             }
-            _ => unimplemented!(),
             VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => {
                 VersionedStrategy::JumboAutoCompounder(jumbo_compounder.clone())
             }
@@ -70,7 +69,6 @@ impl VersionedStrategy {
             Self::AutoCompounder(_) => false,
             Self::StableAutoCompounder(_) => false,
             Self::PembrockAutoCompounder(_) => false,
-            _ => unimplemented!(),
             Self::JumboAutoCompounder(_) => false,
         }
     }
