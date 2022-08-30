@@ -51,7 +51,9 @@ async fn do_harvest(
     for i in 0..4 {
         let _res = sentry_acc
             .call(worker, safe_contract.id(), "harvest")
-            .args_json(serde_json::json!({ "farm_id_str": farm_id_str }))?
+            .args_json(
+                serde_json::json!({ "farm_id_str": farm_id_str, "strat_name": "".to_string() }),
+            )?
             .gas(utils::TOTAL_GAS)
             .transact()
             .await?;

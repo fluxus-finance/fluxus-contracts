@@ -46,7 +46,9 @@ async fn jumbo_do_auto_compound_with_fast_forward(
     for i in 0..5 {
         let _res = sentry_acc
             .call(worker, contract.id(), "harvest")
-            .args_json(serde_json::json!({ "farm_id_str": farm_id_str }))?
+            .args_json(
+                serde_json::json!({ "farm_id_str": farm_id_str, "strat_name": "".to_string() }),
+            )?
             .gas(TOTAL_GAS)
             .transact()
             .await?;

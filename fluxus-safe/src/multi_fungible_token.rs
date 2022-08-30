@@ -63,7 +63,7 @@ impl Contract {
         let total_fft = self.total_supply_amount(fft_name);
         let total_seed = self.data().seed_id_amount.get(&seed_id).unwrap_or_default();
         log!(
-            "user_fft {} total fft {} total seed {}",
+            "user_fft {} total fft supply {} total seed amount {}",
             user_fft_shares,
             total_fft,
             total_seed
@@ -101,7 +101,6 @@ impl Contract {
     ///Return the total_supply of an specific fft_share (ref lp token).
     #[private]
     pub fn total_supply_by_pool_id(&mut self, seed_id: String) -> u128 {
-        log!("Total supply of: {}", seed_id);
         let fft_share_id = self
             .data_mut()
             .fft_share_by_seed_id
@@ -139,7 +138,6 @@ impl Contract {
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), user.clone());
 
         let new_balance = old_amount + balance;
-        log!("{} + {} = new_balance {}", old_amount, balance, new_balance);
 
         let mut map_temp = self
             .data()
@@ -254,13 +252,10 @@ impl Contract {
         receiver_id: String,
         amount: u128,
     ) {
-        log!("{} and {}", sender_id, fft_share);
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), sender_id.clone());
-        log!("{} > = {}", old_amount, amount);
         assert!(old_amount >= amount);
-        log!("{} - {}", old_amount, amount);
+
         let new_balance = old_amount - amount;
-        log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
 
         let mut map_temp = self
             .data()

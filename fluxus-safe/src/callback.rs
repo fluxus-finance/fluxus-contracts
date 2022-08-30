@@ -465,3 +465,33 @@ pub trait JumboCallbacks {
         farm_id_str: String,
     );
 }
+
+#[ext_contract(callback_pembrock)]
+pub trait PembrockAutoCompound {
+    fn callback_pembrock_stake_result(
+        &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        seed_id: String,
+        account_id: AccountId,
+        shares: u128,
+    ) -> Promise;
+    fn callback_pembrock_rewards(&mut self, strat_name: String) -> PromiseOrValue<u128>;
+    fn callback_pembrock_swap(
+        &mut self,
+        #[callback_result] get_return_result: Result<U128, PromiseError>,
+        strat_name: String,
+        // pembrock_reward_id: String
+    ) -> Promise;
+    fn callback_pembrock_lend(
+        &mut self,
+        #[callback_result] swap_result: Result<U128, PromiseError>,
+        strat_name: String,
+        // pembrock_reward_id: String
+    ) -> Promise;
+    fn callback_pembrock_post_lend(
+        &mut self,
+        #[callback_result] post_lend_result: Result<U128, PromiseError>,
+        strat_name: String,
+        amount: u128, // pembrock_reward_id: String
+    );
+}

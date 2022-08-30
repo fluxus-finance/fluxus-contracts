@@ -52,12 +52,10 @@ pub struct AdminFees {
 impl AdminFees {
     pub fn new(strat_creator: AccountFee, sentries_fee: u128, strategy_fee: u128) -> Self {
         assert!(
-            strat_creator.fee_percentage + sentries_fee
-                <= MAX_CONTRIBUTOR_FEE
+            strat_creator.fee_percentage + sentries_fee <= MAX_CONTRIBUTOR_FEE,
+            "ERR: fees too high"
         );
-        assert!(
-            strategy_fee <= MAX_PROTOCOL_FEE
-        );
+        assert!(strategy_fee <= MAX_PROTOCOL_FEE, "ERR: fees too high");
         AdminFees {
             strategy_fee,
             strat_creator,

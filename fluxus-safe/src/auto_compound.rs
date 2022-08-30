@@ -705,7 +705,7 @@ impl Contract {
         #[callback_result] shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> U128 {
-        assert!(shares_result.is_ok(), "ERR");
+        assert!(shares_result.is_ok(), "ERR: failed to add liquidity");
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -721,7 +721,11 @@ impl Contract {
 
         let total_seed = self.seed_total_amount(&seed_id);
 
-        log!("shares received {}. total {}", shares_received, total_seed);
+        log!(
+            "Received {} shares. The current number of shares is {}",
+            shares_received,
+            total_seed
+        );
 
         let data = self.data_mut();
 
@@ -739,7 +743,10 @@ impl Contract {
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
-        assert!(total_shares_result.is_ok(), "ERR");
+        assert!(
+            total_shares_result.is_ok(),
+            "ERR: failed to get shares from exchange"
+        );
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();

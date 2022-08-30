@@ -149,6 +149,12 @@ pub trait RefExchange {
     fn mft_balance_of(&self, token_id: String, account_id: AccountId) -> U128;
     fn remove_liquidity(&mut self, pool_id: u64, shares: U128, min_amounts: Vec<U128>);
     fn withdraw(&mut self, token_id: String, amount: U128, unregister: Option<bool>);
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
 }
 
 // Wrap.testnet functions that we need to call inside the auto_compounder.
@@ -171,6 +177,36 @@ pub trait ExtRewardToken {
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>);
     fn ft_balance_of(&self, account_id: AccountId) -> U128;
     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance>;
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct PembrockAccount {
+    lend_shares: HashMap<AccountId, U128>,
+    debt_shares: HashMap<AccountId, U128>,
+    total_rewards: U128,
+    storage_stake: U128,
+}
+
+// dev-v1.slovko.testnet get_account '{"account_id":"mesto-pem.testnet"}'
+#[ext_contract(ext_pembrock)]
+pub trait ExtPembrock {
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
+
+    fn withdraw(&mut self, token_id: AccountId, amount: U128) -> PromiseOrValue<U128>;
+    fn get_account(&self, account_id: AccountId) -> PembrockAccount;
+    fn claim(&self) -> U128;
+
+}
+
+// reward-v1.slovko.testnet get_claimed_rewards
+#[ext_contract(ext_pembrock_reward)]
+pub trait ExtPembrockReward {
+    fn get_claimed_rewards(&self, account_id: AccountId) -> U128;
 }
 
 #[ext_contract(ext_jumbo_farming)]

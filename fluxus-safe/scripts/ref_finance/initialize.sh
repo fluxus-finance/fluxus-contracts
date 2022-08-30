@@ -15,5 +15,3 @@ near call $CONTRACT_NAME call_user_register '{"exchange_contract_id": "'$exchang
 
 #At the farm
 near call $farm_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.1
-
-

@@ -1,23 +1,13 @@
 #Running run.sh: 
 
 # build wasm
-./build.sh
+../build.sh
 
 #Deploy with near-dev
-near dev-deploy --wasmFile ../res/fluxus_safe.wasm
-
-source neardev/dev-account.env
-echo $CONTRACT_NAME
-
-source .env
-echo $username
- 
+near dev-deploy --wasmFile ../../res/fluxus_safe.wasm
 
 #### initializes the contract, create strategy and registers in the necessary contracts
 ./initialize.sh
-
-# #### create strategy from .env
-# ./add_strategy.sh
 
 #### create stable strategy
 ./add_stable_strategy.sh

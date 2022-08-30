@@ -2,6 +2,7 @@ use crate::*;
 
 use crate::auto_compounder::AutoCompounder;
 use crate::jumbo_auto_compounder::JumboAutoCompounder;
+use crate::pembrock_auto_compounder::PembrockAutoCompounder;
 
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -19,6 +20,7 @@ use near_sdk::{
 pub enum VersionedStrategy {
     AutoCompounder(AutoCompounder),
     StableAutoCompounder(StableAutoCompounder),
+    PembrockAutoCompounder(PembrockAutoCompounder),
     JumboAutoCompounder(JumboAutoCompounder),
 }
 
@@ -27,7 +29,8 @@ impl VersionedStrategy {
     pub fn kind(&self) -> String {
         match self {
             VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::StableAutoCompounder(_) => "STABLE_AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::StableAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::PembrockAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
             VersionedStrategy::JumboAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
         }
     }
@@ -49,6 +52,10 @@ impl VersionedStrategy {
             VersionedStrategy::StableAutoCompounder(stable_compounder) => {
                 VersionedStrategy::StableAutoCompounder(stable_compounder.clone())
             }
+
+            VersionedStrategy::PembrockAutoCompounder(compounder) => {
+                VersionedStrategy::PembrockAutoCompounder(compounder.clone())
+            }
             VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => {
                 VersionedStrategy::JumboAutoCompounder(jumbo_compounder.clone())
             }
@@ -61,6 +68,7 @@ impl VersionedStrategy {
         match self {
             Self::AutoCompounder(_) => false,
             Self::StableAutoCompounder(_) => false,
+            Self::PembrockAutoCompounder(_) => false,
             Self::JumboAutoCompounder(_) => false,
         }
     }
@@ -160,6 +168,10 @@ impl VersionedStrategy {
             VersionedStrategy::StableAutoCompounder(stable_compounder) => {
                 stable_compounder.stake(token_id, seed_id, account_id, shares)
             }
+            VersionedStrategy::PembrockAutoCompounder(pemb_compounder) => {
+                // pemb_compounder.stake_on_pembrock(account_id, shares, account_id, shares)
+                unimplemented!()
+            }
             VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => {
                 jumbo_compounder.stake(token_id, seed_id, account_id, shares)
             }
@@ -194,6 +206,7 @@ impl VersionedStrategy {
                     withdraw_amount,
                     user_fft_shares,
                 ),
+            VersionedStrategy::PembrockAutoCompounder(stable_compounder) => unimplemented!(),
             VersionedStrategy::JumboAutoCompounder(jumbo_compounder) => jumbo_compounder.unstake(
                 wrap_mft_token_id(&jumbo_compounder.pool_id.to_string()),
                 seed_id,
@@ -207,9 +220,13 @@ impl VersionedStrategy {
     pub fn harvest_proxy(
         &mut self,
         farm_id_str: String,
+        strat_name: String,
         treasure: AccountFee,
     ) -> PromiseOrValue<u128> {
-        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let mut farm_id: String = "".to_string();
+        if farm_id_str != *"" {
+            (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        }
         match self {
             VersionedStrategy::AutoCompounder(compounder) => {
                 let farm_info = compounder.get_farm_info(&farm_id);
@@ -271,6 +288,38 @@ impl VersionedStrategy {
                     ),
                 }
             }
+            VersionedStrategy::PembrockAutoCompounder(pemb_compounder) => {
+                match pemb_compounder.cycle_stage {
+                    PembAutoCompounderCycle::ClaimReward => {
+                        PromiseOrValue::Promise(pemb_compounder.claim_reward(strat_name))
+                    }
+                    PembAutoCompounderCycle::SwapAndLend => {
+                        PromiseOrValue::Promise(pemb_compounder.swap_and_lend(strat_name))
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(unreachable_patterns)]
+    pub fn pemb_get(self) -> PembrockAutoCompounder {
+        match self {
+            VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+    #[allow(unreachable_patterns)]
+    pub fn pemb_get_ref(&self) -> &PembrockAutoCompounder {
+        match self {
+            VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
+        }
+    }
+    #[allow(unreachable_patterns)]
+    pub fn pemb_get_mut(&mut self) -> &mut PembrockAutoCompounder {
+        match self {
+            VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
+            _ => unimplemented!(),
         }
     }
 }
@@ -291,6 +340,35 @@ impl Contract {
     }
 
     pub fn get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
+        let strat = self
+            .data_mut()
+            .strategies
+            .get_mut(seed_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        if strat.need_upgrade() {
+            strat.upgrade();
+            strat
+        } else {
+            strat
+        }
+    }
+
+    pub fn pemb_get_strat(&self, seed_id: &str) -> VersionedStrategy {
+        let strat = self
+            .data()
+            .strategies
+            .get(seed_id)
+            .expect(ERR21_TOKEN_NOT_REG);
+
+        if strat.need_upgrade() {
+            strat.upgrade()
+        } else {
+            strat.clone()
+        }
+    }
+
+    pub fn pemb_get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
         let strat = self
             .data_mut()
             .strategies

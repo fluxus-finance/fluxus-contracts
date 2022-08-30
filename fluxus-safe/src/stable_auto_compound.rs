@@ -363,7 +363,10 @@ impl Contract {
         // TODO: propagate error
         match result {
             Ok(balance_op) => match balance_op {
-                Some(balance) => assert!(balance.total.0 > 1),
+                Some(balance) => assert!(
+                    balance.total.0 > 1,
+                    "ERR: account does not have enough funds to pay for storage"
+                ),
                 _ => {
                     let msg = format!(
                         "{}{:#?}",
@@ -486,7 +489,10 @@ impl Contract {
         #[callback_result] shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> Promise {
-        assert!(shares_result.is_ok(), "ERR");
+        assert!(
+            shares_result.is_ok(),
+            "ERR: failed to add liquidity to stable pool"
+        );
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
 
@@ -534,7 +540,10 @@ impl Contract {
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
-        assert!(total_shares_result.is_ok(), "ERR");
+        assert!(
+            total_shares_result.is_ok(),
+            "ERR: failed to get shares from exchange"
+        );
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_stable_compounder_mut();

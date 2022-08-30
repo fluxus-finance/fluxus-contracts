@@ -19,15 +19,13 @@ impl Contract {
             panic!("ERR_STAKE_FAILED");
         }
 
-        log!("my seed {}", seed_id);
-
         //Total fft_share
         let total_fft = self.total_supply_by_pool_id(seed_id.clone());
-        log!("total fft is = {}", total_fft);
 
         let fft_share_id = self.get_fft_share_id_from_seed(seed_id.clone());
 
         let data = self.data_mut();
+
         //Total seed_id
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
 
@@ -55,6 +53,171 @@ impl Contract {
         )
     }
 
+    // TODO: move to actions_of_pembrock
+    #[private]
+    pub fn callback_pembrock_stake_result(
+        &mut self,
+        #[callback_result] transfer_result: Result<U128, PromiseError>,
+        seed_id: String,
+        account_id: AccountId,
+        shares: u128,
+    ) -> String {
+        if let Ok(amount) = transfer_result {
+            assert_ne!(amount.0, 0, "ERR_STAKE_FAILED");
+        }
+
+        //Total fft_share
+        let total_fft = self.total_supply_by_pool_id(seed_id.clone());
+
+        let fft_share_id = self.get_fft_share_id_from_seed(seed_id.clone());
+
+        let data = self.data_mut();
+
+        //Total seed_id
+        let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(&seed_id, &(total_seed + shares));
+
+        let fft_share_amount = if total_fft == 0 {
+            shares
+        } else {
+            (U256::from(shares) * U256::from(total_fft) / U256::from(total_seed)).as_u128()
+        };
+
+        log!(
+            "{} {} will be minted for {}",
+            fft_share_amount,
+            fft_share_id,
+            account_id.to_string()
+        );
+        self.mft_mint(fft_share_id, fft_share_amount, account_id.to_string());
+
+        format!(
+            "The {} added {} to {}",
+            account_id, fft_share_amount, seed_id
+        )
+    }
+
+    #[private]
+    pub fn callback_pembrock_rewards(
+        &mut self,
+        #[callback_result] claim_result: Result<U128, PromiseError>,
+        strat_name: String,
+    ) -> PromiseOrValue<u128> {
+        assert!(claim_result.is_ok(), "ERR: failed to claim");
+
+        let claimed = claim_result.unwrap().0;
+        log!("debug claim: {}", claimed);
+
+        assert!(claimed > 0, "ERR: claimed zero amount for {}", strat_name);
+
+        let strat = self.pemb_get_strat_mut(&strat_name);
+
+        let compounder = strat.pemb_get_mut();
+
+        compounder.last_reward_amount += claimed;
+
+        compounder.next_cycle();
+        log!(
+            "last_reward_amount for {}: {}",
+            strat_name,
+            compounder.last_reward_amount
+        );
+
+        PromiseOrValue::Value(0u128)
+    }
+
+    #[private]
+    pub fn callback_pembrock_swap(
+        &mut self,
+        #[callback_result] get_return_result: Result<U128, PromiseError>,
+        strat_name: String,
+    ) -> Promise {
+        let strat = self.pemb_get_strat(&strat_name);
+
+        let compounder = strat.pemb_get();
+
+        let amount_out = get_return_result.unwrap();
+
+        let msg = format!("{{\"force\":0,\"actions\":[{{\"pool_id\":{},\"token_in\":\"{}\",\"token_out\":\"{}\",\"amount_in\":\"{}\",\"min_amount_out\":\"{}\"}}]}}", 461, compounder.reward_token, compounder.token1_address, compounder.last_reward_amount, amount_out.0) ;
+
+        ext_reward_token::ft_transfer_call(
+            compounder.exchange_contract_id,
+            U128(compounder.last_reward_amount),
+            msg,
+            compounder.reward_token,
+            1,
+            Gas(100_000_000_000_000),
+        )
+        .then(callback_pembrock::callback_pembrock_lend(
+            strat_name,
+            env::current_account_id(),
+            0,
+            Gas(120_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_pembrock_lend(
+        &mut self,
+        #[callback_result] swap_result: Result<U128, PromiseError>,
+        strat_name: String,
+    ) -> Promise {
+        assert!(swap_result.is_ok(), "ERR: failed to swap");
+
+        let amount_to_transfer = swap_result.unwrap();
+
+        // the total amount of the seed increases
+        let total_seed_amount = self.seed_total_amount(&strat_name);
+
+        self.data_mut()
+            .seed_id_amount
+            .insert(&strat_name, &(total_seed_amount + amount_to_transfer.0));
+
+        let strat = self.pemb_get_strat_mut(&strat_name);
+
+        let compounder = strat.pemb_get_mut();
+
+        // after the swap, there's no more reward available to swap
+        compounder.last_reward_amount = 0;
+
+        ext_pembrock::ft_transfer_call(
+            compounder.pembrock_contract_id.clone(),
+            amount_to_transfer,
+            "deposit".to_string(),
+            compounder.token1_address.clone(),
+            1,
+            Gas(80_000_000_000_000),
+        )
+        .then(callback_pembrock::callback_pembrock_post_lend(
+            strat_name,
+            amount_to_transfer.0,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+
+    #[private]
+    pub fn callback_pembrock_post_lend(
+        &mut self,
+        #[callback_result] post_lend_result: Result<U128, PromiseError>,
+        strat_name: String,
+        amount: u128,
+    ) {
+        let strat = self.pemb_get_strat_mut(&strat_name);
+
+        let compounder = strat.pemb_get_mut();
+
+        if let Ok(_amount) = post_lend_result {
+            compounder.harvest_value_available_to_stake = 0;
+        } else {
+            compounder.harvest_value_available_to_stake += amount;
+        }
+    }
+
     /// Withdraw user lps and send it to the contract.
     pub fn unstake(&self, seed_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, _) = get_predecessor_and_current_account();
@@ -68,7 +231,7 @@ impl Contract {
 
         assert!(
             user_fft_shares > 0,
-            "err: {} has {} shares",
+            "err: {} does not have enough shares. Only has {} shares",
             caller_id,
             user_fft_shares
         );
@@ -116,7 +279,10 @@ impl Contract {
         withdraw_amount: u128,
         user_fft_shares: u128,
     ) -> Promise {
-        assert!(shares_result.is_ok(), "ERR");
+        assert!(
+            shares_result.is_ok(),
+            "ERR: failed to get shares from exchange"
+        );
 
         let compounder = self.get_strat(&seed_id).get_compounder();
 
@@ -185,12 +351,11 @@ impl Contract {
         amount: Balance,
         fft_shares: Balance,
     ) {
-        match mft_transfer_result {
-            Ok(_) => log!("Nice!"),
-            Err(err) => {
-                panic!("err")
-            }
-        }
+        assert!(
+            mft_transfer_result.is_ok(),
+            "ERR: failed to transfer shares to {}",
+            account_id
+        );
 
         let data = self.data_mut();
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
@@ -219,7 +384,10 @@ impl Contract {
         withdraw_amount: u128,
         user_fft_shares: u128,
     ) -> Promise {
-        assert!(shares_result.is_ok(), "ERR");
+        assert!(
+            shares_result.is_ok(),
+            "ERR: failed to get shares from exchange"
+        );
 
         let stable_compounder = self.get_strat(&seed_id).get_stable_compounder();
 
@@ -292,12 +460,11 @@ impl Contract {
         amount: Balance,
         fft_shares: Balance,
     ) {
-        match mft_transfer_result {
-            Ok(_) => log!("Nice!"),
-            Err(err) => {
-                panic!("err")
-            }
-        }
+        assert!(
+            mft_transfer_result.is_ok(),
+            "ERR: failed to transfer shares to {}",
+            account_id
+        );
 
         let data = self.data_mut();
         let total_seed = data.seed_id_amount.get(&seed_id).unwrap_or_default();
@@ -314,6 +481,83 @@ impl Contract {
             .clone();
 
         self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
+    }
+
+    pub fn pembrock_unstake(
+        &mut self,
+        token_name: String,
+        amount_withdrawal: Option<U128>,
+    ) -> Promise {
+        let (caller_id, contract_id) = get_predecessor_and_current_account();
+
+        let seed_id: String = format!("pembrock@{}", token_name);
+
+        let fft_share_id = self.get_fft_share_id_from_seed(seed_id.clone());
+        let mut user_fft_shares =
+            self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
+
+        //Total fft_share
+        let total_fft = self.total_supply_amount(fft_share_id);
+
+        //Total seed_id
+        let total_seed = self.seed_total_amount(&seed_id);
+
+        //Converting user total fft_shares in seed_id:
+        let user_shares = (U256::from(user_fft_shares) * U256::from(total_seed)
+            / U256::from(total_fft))
+        .as_u128();
+
+        let strat = self
+            .data()
+            .strategies
+            .get(&seed_id)
+            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+
+        let compounder = strat.clone().pemb_get();
+
+        let amount: U128;
+        if let Some(amount_withdrawal) = amount_withdrawal {
+            amount = amount_withdrawal;
+            user_fft_shares = (U256::from(amount_withdrawal.0) * U256::from(total_fft)
+                / U256::from(total_seed))
+            .as_u128();
+        } else {
+            amount = U128(user_shares);
+        }
+        assert!(
+            user_shares >= amount.0,
+            "{} is trying to withdrawal {} and only has {}",
+            caller_id,
+            amount.0,
+            user_shares
+        );
+
+        log!("{} is trying to withdrawal {}", caller_id, amount.0);
+
+        ext_pembrock::withdraw(
+            compounder.token1_address.clone(),
+            amount,
+            compounder.pembrock_contract_id,
+            1,
+            Gas(100_000_000_000_000),
+        )
+        .then(ext_reward_token::ft_transfer(
+            caller_id.clone(),
+            amount,
+            Some("".to_string()),
+            compounder.token1_address,
+            1,
+            Gas(100_000_000_000_000),
+        ))
+        .then(callback_ref_finance::callback_withdraw_shares(
+            seed_id,
+            caller_id,
+            amount.0,
+            user_fft_shares,
+            contract_id,
+            0,
+            Gas(20_000_000_000_000),
+        ))
     }
 }
 

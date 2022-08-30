@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
+use substring::Substring;
 use uint::construct_uint;
 
 use near_contract_standards::storage_management::{
@@ -44,6 +45,9 @@ mod stable_auto_compound;
 pub mod jumbo_auto_compounder;
 pub use jumbo_auto_compounder::*;
 mod jumbo_auto_compound;
+
+pub mod pembrock_auto_compounder;
+pub use pembrock_auto_compounder::*;
 
 mod actions_of_compounder;
 
@@ -251,8 +255,28 @@ impl Contract {
                     }
                 }
             }
+            VersionedStrategy::PembrockAutoCompounder(_) => {
+                let compounder = strat.pemb_get_ref();
+                if compounder.state == PembAutoCompounderState::Running {
+                    return;
+                }
+            }
         }
 
         panic!("There is no running strategy for this pool")
     }
+}
+
+pub fn get_token_id(token_address: String) -> String {
+    let mut token_id: String = "err".to_string();
+    for (i, c) in token_address.chars().enumerate() {
+        if c == '.' {
+            token_id = token_address.substring(0, i).to_string();
+            break;
+        }
+    }
+    if (token_id == *"err") {
+        panic!("Fail trying to get the token id.")
+    }
+    token_id
 }
