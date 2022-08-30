@@ -11,4 +11,4 @@ near call $CONTRACT_NAME new '{ "owner_id":"'$username'", "treasure_contract_id"
 #### Register contract 
 
 #At ref
-near call $CONTRACT_NAME call_user_register '{"exchange_contract_id": "'$exchange_contract_id'", "account_id": "'$CONTRACT_NAME'"}' --accountId $CONTRACT_NAME
+near call $exchange_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false }' --accountId $CONTRACT_NAME --deposit 1
