@@ -254,21 +254,22 @@ impl PembrockAutoCompounder {
         )
     }
 
-    pub fn swap_and_lend(&mut self, strat_name: String) -> Promise {
-        ext_ref_exchange::get_return(
-            self.pool_id_token1_reward,
+    pub fn swap_and_lend(&self, strat_name: String) -> Promise {
+        let sentry_acc_id = env::predecessor_account_id();
+
+        ext_reward_token::storage_balance_of(
+            sentry_acc_id.clone(),
             self.reward_token.clone(),
-            U128(self.last_reward_amount),
-            self.token1_address.clone(),
-            self.exchange_contract_id.clone(),
             0,
             Gas(10_000_000_000_000),
         )
-        .then(callback_pembrock::callback_pembrock_swap(
+        .then(callback_pembrock::callback_pembrock_post_sentry(
             strat_name,
+            sentry_acc_id,
+            self.reward_token.clone(),
             env::current_account_id(),
             0,
-            Gas(250_000_000_000_000),
+            Gas(260_000_000_000_000),
         ))
     }
 

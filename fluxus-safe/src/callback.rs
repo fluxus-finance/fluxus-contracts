@@ -144,8 +144,8 @@ pub trait RefExchangeAutoCompound {
     ) -> Promise;
 
     fn callback_post_sentry(
-        &self,
-        #[callback_result] result: Result<U128, PromiseError>,
+        &mut self,
+        #[callback_result] result: Result<Option<StorageBalance>, PromiseError>,
         farm_id_str: String,
         sentry_acc_id: AccountId,
         reward_token: AccountId,
@@ -493,5 +493,28 @@ pub trait PembrockAutoCompound {
         #[callback_result] post_lend_result: Result<U128, PromiseError>,
         strat_name: String,
         amount: u128, // pembrock_reward_id: String
+    );
+    fn callback_pembrock_post_creator_ft_transfer(
+        &mut self,
+        #[callback_result] transfer_result: Result<(), PromiseError>,
+        strat_name: String,
+    );
+    fn callback_pembrock_post_treasury_transfer(
+        &mut self,
+        #[callback_result] transfer_result: Result<(), PromiseError>,
+    );
+    fn callback_pembrock_post_sentry(
+        &self,
+        #[callback_result] result: Result<Option<StorageBalance>, PromiseError>,
+        strat_name: String,
+        sentry_acc_id: AccountId,
+        reward_token: AccountId,
+    );
+    fn callback_pembrock_post_sentry_mft_transfer(
+        &mut self,
+        #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        strat_name: String,
+        sentry_id: AccountId,
+        amount_earned: u128,
     );
 }
