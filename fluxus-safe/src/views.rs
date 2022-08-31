@@ -441,11 +441,8 @@ impl Contract {
         }
     }
 
-    pub fn get_strategy_kind(&self) -> String {
-        match self.data().strategies.values().next() {
-            Some(x) => x.kind(),
-            None => "No strategies available".into(),
-        }
+    pub fn get_strategy_kind(&self, seed_id: String) -> String {
+        self.get_strat(&seed_id).kind()
     }
 }
 
