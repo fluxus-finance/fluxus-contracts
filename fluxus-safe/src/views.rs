@@ -45,9 +45,14 @@ impl Contract {
 
     /// Returns the minimum value accepted for given token_id
     pub fn get_seed_min_deposit(self, seed_id: String) -> U128 {
-        // TODO: stable version
-        let compounder = self.get_strat(&seed_id).get_compounder();
-        compounder.seed_min_deposit
+        let strat = self.get_strat(&seed_id);
+
+        match strat {
+            VersionedStrategy::AutoCompounder(compounder) => compounder.seed_min_deposit,
+            VersionedStrategy::StableAutoCompounder(compounder) => compounder.seed_min_deposit,
+            VersionedStrategy::JumboAutoCompounder(compounder) => compounder.seed_min_deposit,
+            VersionedStrategy::PembrockAutoCompounder(_) => U128(0),
+        }
     }
 
     /// Returns the total amount of near that was deposited
