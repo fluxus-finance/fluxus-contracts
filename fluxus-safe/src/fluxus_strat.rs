@@ -27,10 +27,10 @@ impl VersionedStrategy {
     /// Returns Strategy kind.
     pub fn kind(&self) -> String {
         match self {
-            VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::StableAutoCompounder(_) => "STABLE_AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::JumboAutoCompounder(_) => "JUMBO_AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::PembrockAutoCompounder(_) => "PEMBROCK_AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::AutoCompounder(_) => "REF_REGULAR".to_string(),
+            VersionedStrategy::StableAutoCompounder(_) => "REF_STABLE".to_string(),
+            VersionedStrategy::JumboAutoCompounder(_) => "JUMBO_REGULAR".to_string(),
+            VersionedStrategy::PembrockAutoCompounder(_) => "PEMBROCK".to_string(),
         }
     }
 
