@@ -360,19 +360,46 @@ impl Contract {
         strat.harvest_proxy(farm_id_str, strat_name, treasury)
     }
 
-    // TODO: stable version
     pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
         self.is_owner_or_guardians();
-        let (seed_id, token_id, _) = get_ids_from_farm(farm_id_str.clone());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
         let strat = self.get_strat_mut(&seed_id);
-        let compounder = strat.get_compounder_mut();
-        for (i, farm) in compounder.farms.iter().enumerate() {
-            println!("{} - {}", farm_id_str, farm.id);
-            if farm_id_str == farm.id {
-                compounder.farms.remove(i);
-                break;
+
+        match strat {
+            VersionedStrategy::AutoCompounder(compounder) => {
+                for (i, farm) in compounder.farms.iter().enumerate() {
+                    println!("{} - {}", farm_id_str, farm.id);
+                    if farm_id == farm.id {
+                        compounder.farms.remove(i);
+                        break;
+                    }
+                }
             }
+            VersionedStrategy::StableAutoCompounder(compounder) => {
+                for (i, farm) in compounder.farms.iter().enumerate() {
+                    println!("{} - {}", farm_id_str, farm.id);
+                    if farm_id == farm.id {
+                        compounder.farms.remove(i);
+                        break;
+                    }
+                }
+            }
+            VersionedStrategy::JumboAutoCompounder(compounder) => {
+                for (i, farm) in compounder.farms.iter().enumerate() {
+                    println!("{} - {}", farm_id_str, farm.id);
+                    if farm_id == farm.id {
+                        compounder.farms.remove(i);
+                        break;
+                    }
+                }
+            }
+            _ => unimplemented!(),
         }
+    }
+
+    pub fn delete_strategy_by_strat_name(&mut self, strat_name: String) {
+        self.is_owner_or_guardians();
+        self.data_mut().strategies.remove(&strat_name);
     }
 
     pub fn pembrock_create_strategy(

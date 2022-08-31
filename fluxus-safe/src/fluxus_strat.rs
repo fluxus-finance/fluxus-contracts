@@ -1,8 +1,7 @@
-use crate::*;
-
 use crate::auto_compounder::AutoCompounder;
 use crate::jumbo_auto_compounder::JumboAutoCompounder;
 use crate::pembrock_auto_compounder::PembrockAutoCompounder;
+use crate::*;
 
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -29,9 +28,9 @@ impl VersionedStrategy {
     pub fn kind(&self) -> String {
         match self {
             VersionedStrategy::AutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::StableAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::PembrockAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
-            VersionedStrategy::JumboAutoCompounder(_) => "AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::StableAutoCompounder(_) => "STABLE_AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::JumboAutoCompounder(_) => "JUMBO_AUTO_COMPOUNDER".to_string(),
+            VersionedStrategy::PembrockAutoCompounder(_) => "PEMBROCK_AUTO_COMPOUNDER".to_string(),
         }
     }
 
