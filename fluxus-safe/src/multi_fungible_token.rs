@@ -37,17 +37,19 @@ impl Contract {
         };
         fft_name
     }
+
     ///Return the u128 amount of an user for an specific fft_share (ref lp token).
-    pub fn users_fft_share_amount(&self, fft_share: String, user: String) -> u128 {
+    pub fn users_fft_share_amount(&self, fft_share: String, account_id: String) -> u128 {
         let map = self.data().users_balance_by_fft_share.get(&fft_share);
         if let Some(shares) = map {
-            if let Some(user_balance) = shares.get(&user) {
+            if let Some(user_balance) = shares.get(&account_id) {
                 return user_balance;
             }
         }
 
         0
     }
+
     /// Return the u128 amount a user has in seed_id.
     pub fn user_share_seed_id(&self, seed_id: String, user: String) -> u128 {
         let data = self.data();
@@ -61,7 +63,7 @@ impl Contract {
         let total_fft = self.total_supply_amount(fft_name);
         let total_seed = self.data().seed_id_amount.get(&seed_id).unwrap_or_default();
         log!(
-            "user_fft {} total fft {} total seed {}",
+            "user_fft {} total fft supply {} total seed amount {}",
             user_fft_shares,
             total_fft,
             total_seed
@@ -74,6 +76,7 @@ impl Contract {
     }
 
     ///Register a seed into the users_balance_by_fft_share
+    #[private]
     pub fn register_seed(&mut self, fft_share: String) {
         let temp = LookupMap::new(StorageKey::SeedRegister {
             fft_share: fft_share.clone(),
@@ -83,29 +86,21 @@ impl Contract {
             .insert(&fft_share, &temp);
     }
 
-    pub fn seed_total_amount(&self, token_id: String) -> u128 {
-        let mut id = token_id;
-        id.remove(0).to_string();
-        let seed_id: String = format!("{}@{}", self.data().exchange_contract_id, id);
-
-        self.data().seed_id_amount.get(&seed_id).unwrap_or(0u128)
+    pub fn seed_total_amount(&self, seed_id: &String) -> u128 {
+        self.data().seed_id_amount.get(seed_id).unwrap_or(0u128)
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
     pub fn total_supply_amount(&self, fft_share: String) -> u128 {
-        let result = self.data().total_supply_by_fft_share.get(&fft_share);
-
-        if let Some(res) = result {
-            res
-        } else {
-            0
-        }
+        self.data()
+            .total_supply_by_fft_share
+            .get(&fft_share)
+            .unwrap_or(0u128)
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
-    pub fn total_supply_by_pool_id(&mut self, token_id: String) -> u128 {
-        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
-        log!("Total supply of: {}", seed_id);
+    #[private]
+    pub fn total_supply_by_pool_id(&mut self, seed_id: String) -> u128 {
         let fft_share_id = self
             .data_mut()
             .fft_share_by_seed_id
@@ -120,28 +115,29 @@ impl Contract {
             0u128
         }
     }
-    pub fn convert_pool_id_in_fft_share(&mut self, token_id: String) -> String {
-        let seed_id: String = format!("{}@{}", self.data_mut().exchange_contract_id, token_id);
 
+    pub fn get_fft_share_id_from_seed(&self, seed_id: String) -> String {
         let fft_share_id = self
-            .data_mut()
+            .data()
             .fft_share_by_seed_id
             .get(&seed_id)
             .unwrap()
             .clone();
+
         log!("fft id is: {}", fft_share_id);
+
         fft_share_id
     }
 
     ///Assigns a fft_share value to an user for a specific fft_share (ref lp token)
     /// and increment the total_supply of this seed's fft_share.
     /// It returns the user's new balance.
+    #[private]
     pub fn mft_mint(&mut self, fft_share: String, balance: u128, user: String) -> u128 {
         //Add balance to the user for this seed
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), user.clone());
 
         let new_balance = old_amount + balance;
-        log!("{} + {} = new_balance {}", old_amount, balance, new_balance);
 
         let mut map_temp = self
             .data()
@@ -168,6 +164,7 @@ impl Contract {
     ///Burn fft_share value for an user in a specific fft_share (ref lp token)
     /// and decrement the total_supply of this seed's fft_share.
     /// It returns the user's new balance.
+    #[private]
     pub fn mft_burn(&mut self, fft_share: String, balance: u128, user: String) -> u128 {
         //Sub balance to the user for this seed
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), user.clone());
@@ -255,13 +252,10 @@ impl Contract {
         receiver_id: String,
         amount: u128,
     ) {
-        log!("{} and {}", sender_id, fft_share);
         let old_amount: u128 = self.users_fft_share_amount(fft_share.clone(), sender_id.clone());
-        log!("{} > = {}", old_amount, amount);
         assert!(old_amount >= amount);
-        log!("{} - {}", old_amount, amount);
+
         let new_balance = old_amount - amount;
-        log!("{} + {} = new_balance {}", old_amount, amount, new_balance);
 
         let mut map_temp = self
             .data()
@@ -371,7 +365,7 @@ impl Contract {
                 };
                 self.internal_mft_transfer(
                     token_id,
-                    (*receiver_id).to_string(),
+                    receiver_id.to_string(),
                     refund_to.to_string(),
                     refund_amount,
                     None,
@@ -415,8 +409,6 @@ mod tests {
         let mut account = create_account();
         let mut contract = Contract::new(
             "auto_compounder.near".parse().unwrap(),
-            "ref-finance-101.testnet".parse().unwrap(),
-            "farm101.fluxusfi.testnet".parse().unwrap(),
             "dev-1656420526638-61041719201929".parse().unwrap(),
         );
 
@@ -445,8 +437,6 @@ mod tests {
 
         let mut account = create_account();
         let mut contract = Contract::new(
-            "auto_compounder.near".parse().unwrap(),
-            "ref-finance-101.testnet".parse().unwrap(),
             "farm101.fluxusfi.testnet".parse().unwrap(),
             "dev-1656420526638-61041719201929".parse().unwrap(),
         );
@@ -475,8 +465,6 @@ mod tests {
         let mut account = create_account();
         let mut contract = Contract::new(
             "auto_compounder.near".parse().unwrap(),
-            "ref-finance-101.testnet".parse().unwrap(),
-            "farm101.fluxusfi.testnet".parse().unwrap(),
             "dev-1656420526638-61041719201929".parse().unwrap(),
         );
 
