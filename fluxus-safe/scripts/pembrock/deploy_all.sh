@@ -30,24 +30,24 @@ source .env
 source neardev/dev-account.env
 
 # ## initializes the contract, create strategy and registers in the necessary contracts
-# near call $CONTRACT_NAME new '{ "owner_id":"'$username'", "treasure_contract_id": "'$treasure_contract_id'" }' --accountId $CONTRACT_NAME
+near call $CONTRACT_NAME new '{ "owner_id":"'$username'", "treasure_contract_id": "'$treasure_contract_id'" }' --accountId $CONTRACT_NAME
 
-# #### Register contract 
-# near call $CONTRACT_NAME storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
+#### Register contract 
+near call $CONTRACT_NAME storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
 
-# # At ref
-# near call $ref_exchange_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
-# near call $ref_farming_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
+# At ref
+near call $ref_exchange_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
+near call $ref_farming_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
 
-# # At jumbo
-# near call $jumbo_exchange_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
-# near call $jumbo_farming_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
+# At jumbo
+near call $jumbo_exchange_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
+near call $jumbo_farming_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
 
-# # At pembrock
-# near call $pembrock_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
-# near call $pembrock_reward_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2 --gas 300000000000000
-# near call $pembrock_reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2 --gas 300000000000000
-# near call $ref_exchange_id register_tokens '{ "token_ids" : [ "'$pembrock_reward_token'" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
+# At pembrock
+near call $pembrock_contract_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2
+near call $pembrock_reward_id storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2 --gas 300000000000000
+near call $pembrock_reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.2 --gas 300000000000000
+near call $ref_exchange_id register_tokens '{ "token_ids" : [ "'$pembrock_reward_token'" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
 
 
 ### create stable strategies
@@ -187,15 +187,15 @@ near call $CONTRACT_NAME add_farm_to_jumbo_strategy '{
 # near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --gas 300000000000000 --deposit 0.00125
 
 
-near view $CONTRACT_NAME get_ref_farm_ids_by_seed '{ "seed_id": "ref-finance-101.testnet@114" }'
-near view $CONTRACT_NAME get_strategies '{}'
-near call $CONTRACT_NAME get_reward_ref_strategy '{ "farm_id_str": "ref-finance-101.testnet@17#0" }' --accountId themans.testnet
-near view $CONTRACT_NAME get_reward_pembrock_lend_testnet_strategy '{ "seed_id": "pembrock@wrap" }'
+# near view $CONTRACT_NAME get_ref_farm_ids_by_seed '{ "seed_id": "ref-finance-101.testnet@114" }'
+# near view $CONTRACT_NAME get_strategies '{}'
+# near view $CONTRACT_NAME get_reward_ref_strategy '{ "farm_id_str": "ref-finance-101.testnet@17#0" }'
+# near view $CONTRACT_NAME get_reward_pembrock_lend_testnet_strategy '{ "seed_id": "pembrock@wrap" }'
 near view $CONTRACT_NAME get_allowed_pemb_tokens '{}'
 near view $CONTRACT_NAME get_allowed_jumbo_tokens '{}'
 near view $CONTRACT_NAME get_allowed_tokens '{}'
 
-near call $CONTRACT_NAME get_unclaimed_ref_rewards '{ "farm_id_str": "ref-finance-101.testnet@17#0" }' --accountId themans.testnet
+# near call $CONTRACT_NAME get_unclaimed_ref_rewards '{ "farm_id_str": "ref-finance-101.testnet@17#0" }' 
 
 
 
