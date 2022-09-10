@@ -431,6 +431,44 @@ impl Contract {
         )
     }
 
+    /// Returns the amount of unclaimed reward given token_id has
+    pub fn get_unclaimed_ref_rewards(&self, farm_id_str: String) -> Promise {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
+        let strat = self.get_strat(&seed_id);
+        let compounder = strat.get_compounder_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        ext_ref_farming::get_unclaimed_rewards(
+            env::current_account_id(),
+            seed_id,
+            compounder.farm_contract_id.clone(),
+            1,
+            Gas(3_000_000_000_000),
+        )
+        .then(callback_ref_finance::callback_post_unclaimed_rewards(
+            farm_info.reward_token,
+            env::current_account_id(),
+            0,
+            Gas(10_000_000_000_000),
+        ))
+    }
+    #[private]
+    pub fn callback_post_unclaimed_rewards(
+        &self,
+        #[callback_result] rewards_result: Result<HashMap<String, U128>, PromiseError>,
+        reward_token: AccountId,
+    ) -> U128 {
+        if let Ok(tokens) = rewards_result {
+            if tokens.contains_key(&reward_token.to_string()) {
+                return *tokens.get(&reward_token.to_string()).unwrap();
+            }
+        }
+
+        U128(0)
+    }
+
+
     // /// Sentry user can redeem manually earned reward
     // pub fn redeem_reward(&self, token_id: String) -> Promise {
     //     let sentry_acc_id = env::predecessor_account_id();

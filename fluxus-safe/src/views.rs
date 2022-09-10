@@ -64,18 +64,6 @@ impl Contract {
     //         .map(|x| x.to_string())
     // }
 
-    /// Returns all seeds ids/strat_names
-    // TODO: refactor, should be get seeds
-    pub fn get_allowed_tokens(&self) -> Vec<String> {
-        let mut seeds: Vec<String> = Vec::new();
-
-        for (seed_id, _) in self.data().strategies.iter() {
-            seeds.push(seed_id.clone());
-        }
-
-        seeds
-    }
-
     // TODO
     // pub fn get_running_farm_ids(&self) -> Vec<String> {
     //     let mut running_strategies: Vec<String> = Vec::new();
@@ -444,6 +432,93 @@ impl Contract {
     pub fn get_strategy_kind(&self, seed_id: String) -> String {
         self.get_strat(&seed_id).kind()
     }
+
+    ///Return the reward token of a ref strategy
+    pub fn get_reward_ref_strategy(&self, farm_id_str: String) -> String {
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        log!("{} -- {}", token_id, farm_id);
+        let strat = self.get_strat(&seed_id);
+        let compounder = strat.get_compounder_ref();
+        let farm_info = compounder.get_farm_info(&farm_id);
+
+        farm_info.reward_token.into()
+    }  
+
+    /// Return the pembrock strategy reward
+    pub fn get_reward_pembrock_lend_testnet_strategy(&self, seed_id: String) -> String {
+
+        let strat = self.pemb_get_strat(&seed_id);
+        let compounder = strat.pemb_get_ref();
+        let reward = compounder.reward_token.to_string();
+
+        reward
+    }
+
+    ///Return ref farm_ids of a specific seed
+    pub fn get_ref_farm_ids_by_seed(&self, seed_id: String) -> Vec<String> {
+        //assert_eq!(seed_id.substring(0, 16), "ref-finance-101@", "It is not a ref seed_id.");
+        let mut strats: Vec<String> = vec![];
+
+        let compounder = self.get_strat(&seed_id).get_compounder_ref().clone();
+
+        for farm in compounder.farms.iter() {
+            strats.push(format!("{}#{}", seed_id, farm.id));
+        }
+
+        strats
+    }
+
+    pub fn get_allowed_tokens(&self) -> Vec<String> {
+        let mut seeds: Vec<String> = Vec::new();
+
+        for (seed_id, strat) in self.data().strategies.iter() {
+            match strat {
+                VersionedStrategy::AutoCompounder(_) => seeds.push(seed_id.clone()),
+                VersionedStrategy::StableAutoCompounder(_) => seeds.push(seed_id.clone()),
+                VersionedStrategy::JumboAutoCompounder(_) => log!("Jumbo: {}", seed_id),
+                VersionedStrategy::PembrockAutoCompounder(_) => log!("Pembrock: {}", seed_id),
+            }
+        }
+
+        seeds
+    }  
+
+    ///Return jumbo`s seeds working in our contract
+    pub fn get_allowed_jumbo_tokens(&self) -> Vec<String> {
+        let mut seeds: Vec<String> = Vec::new();
+
+        for (seed_id, strat) in self.data().strategies.iter() {
+            match strat {
+                VersionedStrategy::AutoCompounder(_) => {},
+                VersionedStrategy::StableAutoCompounder(_) => {},
+                VersionedStrategy::JumboAutoCompounder(_) => seeds.push(seed_id.clone()),
+                VersionedStrategy::PembrockAutoCompounder(_) => {},
+            }
+        }
+
+        seeds
+    }
+
+    ///Return Pembrock`s seeds working in our contract
+    pub fn get_allowed_pemb_tokens(&self) -> Vec<String> {
+        let mut seeds: Vec<String> = Vec::new();
+
+        for (seed_id, strat) in self.data().strategies.iter() {
+            match strat {
+                VersionedStrategy::AutoCompounder(_) => {},
+                VersionedStrategy::StableAutoCompounder(_) => {},
+                VersionedStrategy::JumboAutoCompounder(_) => {},
+                VersionedStrategy::PembrockAutoCompounder(_) => seeds.push(seed_id.clone()),
+            }
+            // if *strat == VersionedStrategy::PembrockAutoCompounder(_)
+            // {seeds.push(seed_id.clone());}
+            
+        }
+
+        seeds
+    }
+
+
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
