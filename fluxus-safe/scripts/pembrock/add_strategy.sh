@@ -8,8 +8,7 @@ near call $CONTRACT_NAME pembrock_create_strategy '{
     "exchange_contract_id": "'$exchange_contract_id'", 
     "pembrock_contract_id": "'$pembrock_contract_id'",
     "pembrock_reward_id": "'$pembrock_reward_id'",
-    "token1_address": "'$token_address'", 
-    "token_name": "'$token_name'", 
+    "token_address": "'$token_address'", 
     "pool_id": '$pembrock_pool_id',
     "reward_token": "'$pembrock_reward_token'"
     }' --accountId $CONTRACT_NAME --gas $total_gas
