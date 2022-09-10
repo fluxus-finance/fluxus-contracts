@@ -442,11 +442,10 @@ impl Contract {
         let farm_info = compounder.get_farm_info(&farm_id);
 
         farm_info.reward_token.into()
-    }  
+    }
 
     /// Return the pembrock strategy reward
     pub fn get_reward_pembrock_lend_testnet_strategy(&self, seed_id: String) -> String {
-
         let strat = self.pemb_get_strat(&seed_id);
         let compounder = strat.pemb_get_ref();
         let reward = compounder.reward_token.to_string();
@@ -481,7 +480,7 @@ impl Contract {
         }
 
         seeds
-    }  
+    }
 
     ///Return jumbo`s seeds working in our contract
     pub fn get_allowed_jumbo_tokens(&self) -> Vec<String> {
@@ -489,10 +488,10 @@ impl Contract {
 
         for (seed_id, strat) in self.data().strategies.iter() {
             match strat {
-                VersionedStrategy::AutoCompounder(_) => {},
-                VersionedStrategy::StableAutoCompounder(_) => {},
+                VersionedStrategy::AutoCompounder(_) => {}
+                VersionedStrategy::StableAutoCompounder(_) => {}
                 VersionedStrategy::JumboAutoCompounder(_) => seeds.push(seed_id.clone()),
-                VersionedStrategy::PembrockAutoCompounder(_) => {},
+                VersionedStrategy::PembrockAutoCompounder(_) => {}
             }
         }
 
@@ -505,20 +504,85 @@ impl Contract {
 
         for (seed_id, strat) in self.data().strategies.iter() {
             match strat {
-                VersionedStrategy::AutoCompounder(_) => {},
-                VersionedStrategy::StableAutoCompounder(_) => {},
-                VersionedStrategy::JumboAutoCompounder(_) => {},
+                VersionedStrategy::AutoCompounder(_) => {}
+                VersionedStrategy::StableAutoCompounder(_) => {}
+                VersionedStrategy::JumboAutoCompounder(_) => {}
                 VersionedStrategy::PembrockAutoCompounder(_) => seeds.push(seed_id.clone()),
             }
             // if *strat == VersionedStrategy::PembrockAutoCompounder(_)
             // {seeds.push(seed_id.clone());}
-            
         }
 
         seeds
     }
 
+    pub fn get_harvest_info(&self) -> Vec<StrategyInfo> {
+        let mut strat_farms: Vec<StrategyInfo> = Vec::new();
 
+        for (seed_id, strat) in self.data().strategies.iter() {
+            match strat {
+                VersionedStrategy::AutoCompounder(compounder) => {
+                    for strat_farm in compounder.farms.iter() {
+                        strat_farms.push(StrategyInfo {
+                            strat_kind: strat.kind(),
+                            seed_id: Some(seed_id.to_string()),
+                            strat_name: None,
+                            farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
+                            is_active: strat_farm.state == AutoCompounderState::Running,
+                            reward_tokens: strat_farm.reward_token.to_string(),
+                        })
+                    }
+                }
+                VersionedStrategy::StableAutoCompounder(stable) => {
+                    for strat_farm in stable.farms.iter() {
+                        strat_farms.push(StrategyInfo {
+                            strat_kind: strat.kind(),
+                            seed_id: Some(seed_id.to_string()),
+                            strat_name: None,
+                            farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
+                            is_active: strat_farm.state == AutoCompounderState::Running,
+                            reward_tokens: strat_farm.reward_token.to_string(),
+                        })
+                    }
+                }
+                VersionedStrategy::JumboAutoCompounder(jumbo) => {
+                    for strat_farm in jumbo.farms.iter() {
+                        strat_farms.push(StrategyInfo {
+                            strat_kind: strat.kind(),
+                            seed_id: Some(seed_id.to_string()),
+                            strat_name: None,
+                            farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
+                            is_active: strat_farm.state == JumboAutoCompounderState::Running,
+                            reward_tokens: strat_farm.reward_token.to_string(),
+                        })
+                    }
+                }
+                VersionedStrategy::PembrockAutoCompounder(pembrock) => {
+                    strat_farms.push(StrategyInfo {
+                        strat_kind: strat.kind(),
+                        seed_id: None,
+                        strat_name: Some(seed_id.to_string()),
+                        farm_id_str: None,
+                        is_active: pembrock.state == PembAutoCompounderState::Running,
+                        reward_tokens: pembrock.reward_token.to_string(),
+                    })
+                }
+            }
+        }
+
+        strat_farms
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct StrategyInfo {
+    pub strat_kind: String,
+    pub seed_id: Option<String>,
+    pub strat_name: Option<String>,
+    pub farm_id_str: Option<String>,
+    pub is_active: bool,
+    pub reward_tokens: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
