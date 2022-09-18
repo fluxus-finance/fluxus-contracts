@@ -12,7 +12,7 @@ impl Contract {
         shares: u128,
     ) -> String {
         if let Ok(amount) = transfer_result {
-            assert_ne!(amount.0, 0, "ERR_STAKE_FAILED");
+            assert_ne!(amount.0, 0, "{}", ERR16_STAKE_FAILED);
         }
 
         //Total fft_share
@@ -55,12 +55,12 @@ impl Contract {
         #[callback_result] claim_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> PromiseOrValue<u128> {
-        assert!(claim_result.is_ok(), "ERR: failed to claim");
+        assert!(claim_result.is_ok(), "{}", ERR03_CLAIM_FAILED);
 
         let claimed = claim_result.unwrap().0;
         log!("debug claim: {}", claimed);
 
-        assert!(claimed > 0, "ERR: claimed zero amount for {}", strat_name);
+        assert!(claimed > 0, "{}", ERR19_CLAIMED_ZERO_AMOUNT);
 
         let data_mut = self.data_mut();
 
@@ -143,7 +143,7 @@ impl Contract {
                 log!("Transfer to treasure succeeded")
             }
             Err(_) => {
-                log!("Transfer to strategy creator failed");
+                log!(ERR08_TRANSFER_TO_TREASURE);
             }
         }
     }
@@ -164,7 +164,7 @@ impl Contract {
                 log!("Transfer to strategy creator succeeded")
             }
             Err(_) => {
-                log!("Transfer to strategy creator failed");
+                log!(ERR09_TRANSFER_TO_CREATOR);
             }
         }
     }
@@ -183,7 +183,7 @@ impl Contract {
                 _ => {
                     let msg = format!(
                         "{}{:#?}",
-                        "ERR: callback_post_sentry - not enough balance on storage",
+                        ERR11_NOT_ENOUGH_BALANCE,
                         balance_op
                             .unwrap_or(StorageBalance {
                                 total: U128(0),
@@ -195,7 +195,7 @@ impl Contract {
                 }
             },
             Err(_) => env::panic_str(
-                "ERR: callback post Sentry - caller not registered to Reward token contract",
+                ERR12_CALLER_NOT_REGISTER,
             ),
         }
 
@@ -258,7 +258,7 @@ impl Contract {
     ) {
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
-            log!("Transfer to sentry failed".to_string());
+            log!(ERR13_TRANSFER_TO_SENTRY);
 
             let compounder = self.get_strat_mut(&strat_name).pemb_get_mut();
 
@@ -313,7 +313,7 @@ impl Contract {
         #[callback_result] swap_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> Promise {
-        assert!(swap_result.is_ok(), "ERR: failed to swap");
+        assert!(swap_result.is_ok(), "{}",ERR10_SWAP_TOKEN);
 
         let amount_to_transfer = swap_result.unwrap();
 
@@ -394,7 +394,7 @@ impl Contract {
             .data()
             .strategies
             .get(&seed_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+            .expect(ERR20_SEED_ID_DOES_NOT_EXIST);
 
         let compounder = strat.clone().pemb_get();
 

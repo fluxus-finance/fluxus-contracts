@@ -255,7 +255,7 @@ impl Contract {
             }
         }
 
-        panic!("There is no running strategy for this pool")
+        panic!("{}",ERR30_NO_RUNNING_STRATEGIES)
     }
 }
 
@@ -268,7 +268,7 @@ pub fn get_token_id(token_address: String) -> String {
         }
     }
     if (token_id == *"err") {
-        panic!("Fail trying to get the token id.")
+        panic!("{}",ERR31_FAIL_GETTING_TOKEN_ID)
     }
     token_id
 }

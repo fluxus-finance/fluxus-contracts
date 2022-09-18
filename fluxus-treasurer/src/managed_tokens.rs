@@ -10,7 +10,7 @@ impl Contract {
         assert_eq!(
             self.data().token_to_pool.contains_key(&token),
             false,
-            "TREASURER::ERR_TOKEN_ALREADY_EXIST"
+            "{}",ERR16_TOKEN_ALREADY_EXIST
         );
 
         ext_exchange::register_tokens(
@@ -44,8 +44,8 @@ impl Contract {
         token: AccountId,
         pool_id: u64,
     ) -> String {
-        assert!(register_result.is_ok(), "TREASURER::COULD_NOT_REGISTER");
-        assert!(deposit_result.is_ok(), "TREASURER::COULD_NOT_DEPOSIT");
+        assert!(register_result.is_ok(),"{}", ERR17_REGISTER);
+        assert!(deposit_result.is_ok(),"{}", ERR18_DEPOSIT);
 
         self.data_mut()
             .token_to_pool
@@ -62,7 +62,7 @@ impl Contract {
         self.is_owner();
         assert!(
             self.data().token_to_pool.contains_key(&token),
-            "TREASURER::ERR_TOKEN_DOES_NOT_EXIST"
+            "{}",ERR19_TOKEN_NOT_EXIST
         );
 
         self.data_mut().token_to_pool.insert(token.clone(), pool_id);
@@ -149,10 +149,10 @@ mod tests {
         assert_eq!(
             registered_tokens.len(),
             1,
-            "ERR_COULD_NOT_GET_REGISTERED_TOKENS",
+            "{}",ERR20_COULD_NOT_REGISTER,
         );
 
         let pool = registered_tokens.get(&token).unwrap();
-        assert_eq!(pool_id, *pool, "ERR_COULD_NOT_REGISTER_TOKENS");
+        assert_eq!(pool_id, *pool, "{}",ERR20_COULD_NOT_REGISTER);
     }
 }

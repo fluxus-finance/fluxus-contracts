@@ -343,7 +343,7 @@ impl Contract {
                 .accounts
                 .insert(&owner_id, &lostfound.into());
         } else {
-            env::panic_str("ERR: non-whitelisted token can NOT deposit into lost-found.");
+            env::panic_str(ERR21_CAN_NOT_DEPOSIT_INTO_LOST_FOUND);
         }
     }
 
@@ -389,14 +389,14 @@ impl Contract {
     ) -> u128 {
         let mut account = self.internal_unwrap_account(&account_id);
         let available = account.storage_available();
-        assert!(available > 0, "ERR_NO_STORAGE_CAN_WITHDRAW");
+        assert!(available > 0, "{}",ERR22_NO_AVAILABLE_STORAGE_TO_WITHDRAW);
         let mut withdraw_amount = amount;
         if amount == 0 {
             withdraw_amount = available;
         }
         assert!(
             withdraw_amount <= available,
-            "ERR_STORAGE_WITHDRAW_TOO_MUCH"
+            "{}",ERR23_NOT_ENOUGH_AVAILABLE_STORAGE_TO_WITHDRAW
         );
         account.near_amount -= withdraw_amount;
         self.internal_save_account(&account_id, account);

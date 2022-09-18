@@ -25,7 +25,7 @@ impl Contract {
 
         // TODO: update to seed
         return if self.data().strategies.contains_key(&seed_id) {
-            format!("VersionedStrategy for {} already exist", token_id)
+            format!("{}",ERR24_VERSIONED_STRATEGY_ALREADY_EXIST)
         } else {
             // OK
             let uxu_share_id = self.new_fft_share(seed_id.clone());
@@ -87,7 +87,7 @@ impl Contract {
 
         for farm in compounder.farms.clone() {
             if farm.id == farm_id {
-                return format!("Farm with index {} for {} already exist", farm_id, seed_id);
+                ERR25_FARM_ID_ALREADY_EXIST_FOR_SEED.to_string();
             }
         }
 
@@ -133,7 +133,7 @@ impl Contract {
 
         // TODO: update to seed
         return if self.data().strategies.contains_key(&seed_id) {
-            format!("VersionedStrategy for {} already exist", token_id)
+            ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
@@ -195,7 +195,7 @@ impl Contract {
 
         for farm in stable_compounder.farms.clone() {
             if farm.id == farm_id {
-                return format!("Farm with index {} for {} already exist", farm_id, seed_id);
+                return ERR25_FARM_ID_ALREADY_EXIST_FOR_SEED.to_string();
             }
         }
 
@@ -239,7 +239,7 @@ impl Contract {
         let token_id = wrap_mft_token_id(&pool_id.to_string());
 
         return if self.data().strategies.contains_key(&token_id) {
-            format!("VersionedStrategy for {} already exist", token_id)
+            ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
             let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
             let uxu_share_id = self.new_fft_share(seed_id.clone());
@@ -301,7 +301,7 @@ impl Contract {
 
         for farm in compounder.farms.clone() {
             if farm.id == farm_id {
-                return format!("Farm with index {} for {} already exist", farm_id, seed_id);
+                return ERR25_FARM_ID_ALREADY_EXIST_FOR_SEED.to_string();
             }
         }
 
@@ -421,7 +421,7 @@ impl Contract {
         let strat_name: String = format!("pembrock@{}", token_name);
 
         return if self.data().strategies.contains_key(&strat_name) {
-            format!("VersionedStrategy for {} already exist", token_name)
+            ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
             let uxu_share_id = self.new_fft_share(strat_name.clone());
 

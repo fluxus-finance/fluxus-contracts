@@ -12,7 +12,7 @@ impl Contract {
         for (acc_id, account_fee) in self.data().stakeholders_fees.iter() {
             assert!(
                 *acc_id != account_id,
-                "TREASURER::ERR_ADDRESS_ALREADY_EXIST"
+                "{}",ERR21_ADDRESS_EXIST
             );
             total_fees += account_fee;
         }
@@ -21,7 +21,7 @@ impl Contract {
 
         assert!(
             total_fees <= 100u128,
-            "TREASURER::ERR_FEE_EXCEEDS_MAXIMUM_VALUE"
+            "{}", ERR22_MAXIMUM_FEE
         );
 
         self.data_mut()
@@ -51,7 +51,7 @@ impl Contract {
         self.is_owner();
         assert!(
             self.data().stakeholders_fees.contains_key(&account_id),
-            "TREASURER::ERR_ACCOUNT_DOES_NOT_EXIST"
+            "{}",ERR10_ACCOUNT_DOES_NOT_EXIST,
         );
 
         let mut total_fees = new_percentage;
@@ -63,7 +63,7 @@ impl Contract {
 
         assert!(
             total_fees <= 100u128,
-            "TREASURER::ERR_FEE_EXCEEDS_MAXIMUM_VALUE"
+            "{}",ERR22_MAXIMUM_FEE
         );
 
         self.data_mut()
@@ -202,12 +202,12 @@ mod tests {
             total_fees += perc;
         }
 
-        assert_eq!(total_fees, 100u128, "ERR_WRONG_FEE_TOTAL_AMOUNT");
+        assert_eq!(total_fees, 100u128, "{}",ERR23_WRONG_FEE);
 
         assert_eq!(
             stakeholders_fees.get(&acc0),
             Some(&new_fee_percentage),
-            "ERR_UPDATE_PERCENTAGE"
+            "{}",ERR24_UPDATE_FEE
         );
     }
 }
