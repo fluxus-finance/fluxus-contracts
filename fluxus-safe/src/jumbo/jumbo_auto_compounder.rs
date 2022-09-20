@@ -165,6 +165,18 @@ impl From<&JumboAutoCompounderCycle> for String {
 
 /// Auto-compounder internal methods
 impl JumboAutoCompounder {
+    /// Initialize a new jumbo's compounder.
+    /// Args:
+    /// strategy_fee: 5,
+    /// strat_creator: { "account_id": "'$username'", "fee_percentage": 5, "current_amount" : 0 },
+    /// sentry_fee: 10,
+    /// exchange_contract_id: exchange_contract.testnet,
+    /// farm_contract_id: farm_contract.testnet,
+    /// token1_address: token2.testnet,
+    /// token2_address: token1.testnet,
+    /// pool_id: 17,
+    /// seed_id: exchange@seed_id,
+    /// seed_min_deposit: U128(1000000)
     pub(crate) fn new(
         strategy_fee: u128,
         strat_creator: AccountFee,
@@ -193,6 +205,9 @@ impl JumboAutoCompounder {
         }
     }
 
+    /// Split reward into fees and reward_remaining.
+    /// Args:
+    /// reward_amount: 100000000,
     pub(crate) fn compute_fees(&mut self, reward_amount: u128) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
         let percent = Percentage::from(self.admin_fees.strategy_fee);
@@ -218,6 +233,9 @@ impl JumboAutoCompounder {
         )
     }
 
+    /// Return a jumbo's farm information.
+    /// Args:
+    /// farm_id: 1,
     pub fn get_jumbo_farm_info(&self, farm_id: &str) -> JumboStratFarmInfo {
         for farm in self.farms.iter() {
             if farm.id == farm_id {
@@ -228,6 +246,9 @@ impl JumboAutoCompounder {
         panic!("Farm does not exist")
     }
 
+    /// Return a jumbo's mutable farm information.
+    /// Args:
+    /// farm_id: 1,
     pub fn get_mut_jumbo_farm_info(&mut self, farm_id: String) -> &mut JumboStratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
