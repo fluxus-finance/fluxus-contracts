@@ -10,6 +10,14 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { git = "https://github.com/near/near-sdk-rs", tag = "4.0.0-pre.9"}
 near-contract-standards = { git = "https://github.com/near/near-sdk-rs", tag = "4.0.0-pre.9" } 
-log = "0.4"
-console_log = { version = "0.2", optional = true }
 percentage = "0.1.0"
+
+[profile.release]
+codegen-units = 1
+# s = optimize for binary size ("z" would additionally turn off loop vectorization)
+opt-level = "z"
+# link time optimization
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true
