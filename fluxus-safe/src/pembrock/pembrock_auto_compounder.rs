@@ -1,5 +1,4 @@
 use crate::*;
-use substring::Substring;
 
 const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 
