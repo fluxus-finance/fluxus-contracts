@@ -62,7 +62,7 @@ impl Contract {
         self.is_owner();
         assert!(
             self.data().token_to_pool.contains_key(&token),
-            "{}",ERR19_TOKEN_NOT_EXIST
+            "{}",ERR19_TOKEN_DOES_NOT_EXIST
         );
 
         self.data_mut().token_to_pool.insert(token.clone(), pool_id);

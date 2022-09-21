@@ -396,7 +396,7 @@ impl Contract {
         }
         assert!(
             withdraw_amount <= available,
-            "{}",ERR23_NOT_ENOUGH_AVAILABLE_STORAGE_TO_WITHDRAW
+            "{}",ERR23_NOT_AVAILABLE_STORAGE
         );
         account.near_amount -= withdraw_amount;
         self.internal_save_account(&account_id, account);

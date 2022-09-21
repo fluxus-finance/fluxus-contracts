@@ -106,7 +106,7 @@ impl Contract {
             Some(pool_id) => {
                 pool = *pool_id;
             }
-            _ => env::panic_str(ERR01_TOKEN_NOT_REG),
+            _ => env::panic_str(ERR01_TOKEN_NOT_REGISTERED),
         };
 
         ext_exchange::get_deposit(
@@ -338,7 +338,7 @@ impl Contract {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
         require!(
             caller_acc_id == contract_id || caller_acc_id == self.data().owner_id,
-            ERR13_NOT_ALLOWED
+            ERR13_CALLER_NOT_ALLOWED
         );
     }
 

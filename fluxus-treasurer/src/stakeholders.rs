@@ -207,7 +207,7 @@ mod tests {
         assert_eq!(
             stakeholders_fees.get(&acc0),
             Some(&new_fee_percentage),
-            "{}",ERR24_UPDATE_FEE
+            "{}",ERR24_UPDATED_FEE
         );
     }
 }

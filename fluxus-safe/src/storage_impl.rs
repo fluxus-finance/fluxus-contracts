@@ -22,7 +22,7 @@ impl StorageManagement for Contract {
         if registration_only {
             // Registration only setups the account but doesn't leave space for tokens.
             if already_registered {
-                log!(ERR39_ACCOUNT_ALREADY_REGISTER);
+                log!(ERR39_ACCOUNT_ALREADY_REGISTERED);
                 if amount > 0 {
                     Promise::new(env::predecessor_account_id()).transfer(amount);
                 }
@@ -81,7 +81,7 @@ impl StorageManagement for Contract {
 
         require!(
             amount_already_deposited >= amount,
-            ERR23_NOT_ENOUGH_AVAILABLE_STORAGE_TO_WITHDRAW
+            ERR23_NOT_AVAILABLE_STORAGE
         );
 
         let available = u128::from(
