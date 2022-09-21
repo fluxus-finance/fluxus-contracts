@@ -34,7 +34,7 @@ impl Contract {
         info
     }
 
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   state: Running, Ended, ...
     pub fn update_compounder_state(
@@ -86,7 +86,7 @@ impl Contract {
     }
 
     /// Update slippage for given token_id
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   new_slippage: value between 80-100
     pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {

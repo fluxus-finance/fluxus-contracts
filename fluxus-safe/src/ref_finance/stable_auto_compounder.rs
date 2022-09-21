@@ -246,7 +246,7 @@ impl StableAutoCompounder {
 
     /// Step 1
     /// Function to claim the reward from the farm contract
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn claim_reward(&self, farm_id_str: String) -> Promise {
         log!("claim_reward");
@@ -270,7 +270,7 @@ impl StableAutoCompounder {
 
     /// Step 2
     /// Function to claim the reward from the farm contract
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn withdraw_of_reward(
         &self,
@@ -327,7 +327,7 @@ impl StableAutoCompounder {
 
     /// Step 3
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn autocompounds_swap(
         &mut self,
