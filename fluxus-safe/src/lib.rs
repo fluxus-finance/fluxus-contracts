@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryInto;
 use std::fmt;
-use substring::Substring;
 use uint::construct_uint;
 
 use near_contract_standards::storage_management::{
@@ -255,20 +254,6 @@ impl Contract {
             }
         }
 
-        panic!("{}",ERR30_NO_RUNNING_STRATEGIES)
+        panic!("{}", ERR30_NO_RUNNING_STRATEGIES)
     }
-}
-
-pub fn get_token_id(token_address: String) -> String {
-    let mut token_id: String = "err".to_string();
-    for (i, c) in token_address.chars().enumerate() {
-        if c == '.' {
-            token_id = token_address.substring(0, i).to_string();
-            break;
-        }
-    }
-    if (token_id == *"err") {
-        panic!("{}",ERR31_FAIL_GETTING_TOKEN_ID)
-    }
-    token_id
 }

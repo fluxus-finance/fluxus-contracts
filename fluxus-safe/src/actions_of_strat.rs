@@ -25,7 +25,7 @@ impl Contract {
 
         // TODO: update to seed
         return if self.data().strategies.contains_key(&seed_id) {
-            format!("{}",ERR24_VERSIONED_STRATEGY_ALREADY_EXIST)
+            format!("{}", ERR24_VERSIONED_STRATEGY_ALREADY_EXIST)
         } else {
             // OK
             let uxu_share_id = self.new_fft_share(seed_id.clone());
@@ -410,15 +410,14 @@ impl Contract {
         exchange_contract_id: AccountId,
         pembrock_contract_id: AccountId,
         pembrock_reward_id: AccountId,
-        token_name: String,
-        token1_address: AccountId,
+        token_address: AccountId,
         pool_id: u64,
         reward_token: AccountId,
     ) -> String {
         self.is_owner();
 
         // pembrock@usdt
-        let strat_name: String = format!("pembrock@{}", token_name);
+        let strat_name: String = format!("pembrock@{}", token_address);
 
         return if self.data().strategies.contains_key(&strat_name) {
             ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
@@ -435,8 +434,7 @@ impl Contract {
                     exchange_contract_id,
                     pembrock_contract_id,
                     pembrock_reward_id,
-                    token1_address,
-                    token_name.clone(),
+                    token_address.clone(),
                     pool_id,
                     reward_token,
                 ));
@@ -481,7 +479,10 @@ impl Contract {
 
             // strat.pemb_get_mut().farms.push(farm_info);
 
-            format!("VersionedStrategy for {} created successfully", token_name)
+            format!(
+                "VersionedStrategy for {} created successfully",
+                token_address
+            )
         };
     }
 }
