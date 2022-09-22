@@ -1,0 +1,25 @@
+//Treasure
+pub const ERR01_TOKEN_NOT_REGISTERED: &str = "E21: token not registered.";
+pub const ERR02_GET_DEPOSITS: &str = "E02: It was not possible to get the deposits.";
+pub const ERR03_NO_DEPOSIT_AVAILABLE: &str = "E03: There is no deposit available.";
+pub const ERR04_COULD_NOT_GET_RETURN_FOR_TOKEN: &str = "E04: Fail trying to get the amount_out.";
+pub const ERR05_COULD_NOT_DESERIALIZE_TOKEN: &str = "E05: It was not possible to deserialize the token.";
+pub const ERR06_SWAP_FAILED: &str = "E06: The swap failed.";
+pub const ERR07_COULD_NOT_GET_BALANCE: &str = "E07: It was not possible to get the balance.";
+pub const ERR08_GET_PERCENTAGE: &str = "E08: It was not possible to get the percentage.";
+pub const ERR09_DISTRIBUTE_HIGHER: &str = "E09: Tried to distribute a higher amount.";
+pub const ERR10_ACCOUNT_DOES_NOT_EXIST: &str = "E10: The account does not exist.";
+pub const ERR11_WITHDRAW_ZERO_AMOUNT: &str = "E11: Withdraw zero amount.";
+pub const ERR12_WITHDRAW_FAILED: &str = "E12: Withdraw from contract failed.";
+pub const ERR13_CALLER_NOT_ALLOWED: &str = "E13: The caller is not allowed to do this.";
+pub const ERR14_CONTRACT_PAUSED: &str = "E14: The contract is Paused.";
+pub const ERR15_CONTRACT_ALREADY_INITIALIZED: &str = "E15: The contract is already initialized.";
+pub const ERR16_TOKEN_ALREADY_EXIST: &str = "E16: The token already exist.";
+pub const ERR17_REGISTER: &str = "E17: Could not register.";
+pub const ERR18_DEPOSIT: &str = "E18: Could not deposit.";
+pub const ERR19_TOKEN_DOES_NOT_EXIST: &str = "E19: The token does not exist.";
+pub const ERR20_COULD_NOT_REGISTER: &str = "E20: The token could not be registered.";
+pub const ERR21_ADDRESS_EXIST: &str = "E21: The address already exist.";
+pub const ERR22_MAXIMUM_FEE: &str = "E22: The maximum value of fee has exceeded.";
+pub const ERR23_WRONG_FEE: &str = "E23: The fee value is wrong.";
+pub const ERR24_UPDATED_FEE: &str = "E24: The fee was not updated.";

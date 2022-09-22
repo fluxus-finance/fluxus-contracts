@@ -2,7 +2,7 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, AccountId};
 use std::collections::HashMap;
-
+use crate::*;
 const MAX_STRAT_CREATOR_FEE: u128 = 20;
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -20,7 +20,7 @@ impl AccountFee {
     pub fn new(acc_id: AccountId, fee: u128) -> Self {
         assert!(
             (0..MAX_STRAT_CREATOR_FEE + 1).contains(&fee),
-            "ERR_FEE_NOT_VALID"
+            "{}",ERR26_FEE_NOT_VALID
         );
 
         AccountFee {
@@ -53,9 +53,9 @@ impl AdminFees {
     pub fn new(strat_creator: AccountFee, sentries_fee: u128, strategy_fee: u128) -> Self {
         assert!(
             strat_creator.fee_percentage + sentries_fee <= MAX_CONTRIBUTOR_FEE,
-            "ERR: fees too high"
+            "{}",ERR27_FEE_TOO_HIGH
         );
-        assert!(strategy_fee <= MAX_PROTOCOL_FEE, "ERR: fees too high");
+        assert!(strategy_fee <= MAX_PROTOCOL_FEE, "{}",ERR27_FEE_TOO_HIGH);
         AdminFees {
             strategy_fee,
             strat_creator,

@@ -90,7 +90,7 @@ impl Contract {
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   new_slippage: value between 80-100
     pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {
-        assert!(self.is_owner_or_guardians(), "ERR: not allowed");
+        assert!(self.is_owner_or_guardians(), "{}",ERR34_NOT_ALLOWED);
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
@@ -112,7 +112,7 @@ impl Contract {
 
         require!(
             !self.data().allowed_accounts.contains(&account_id),
-            "ERR_ACCOUNT_ALREADY_EXIST"
+            ERR35_ALREADY_ALLOWED
         );
         self.data_mut().allowed_accounts.push(account_id)
     }
@@ -128,7 +128,7 @@ impl Contract {
             accounts
                 .iter()
                 .position(|x| *x == account_id)
-                .expect("ERR_ACCOUNT_DOES_NOT_EXIST"),
+                .expect(ERR36_ACCOUNT_DOES_NOT_EXIST),
         );
     }
 
@@ -138,7 +138,7 @@ impl Contract {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
         require!(
             caller_acc_id == contract_id || caller_acc_id == self.data().owner_id,
-            "ERR_NOT_ALLOWED"
+            ERR34_NOT_ALLOWED
         );
     }
 
@@ -148,7 +148,7 @@ impl Contract {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
         assert!(
             (caller_acc_id == account_id) || (caller_acc_id == contract_id),
-            "ERR_NOT_ALLOWED"
+            "{}",ERR34_NOT_ALLOWED
         );
     }
 
@@ -166,7 +166,7 @@ impl Contract {
             }
         }
 
-        assert!(is_allowed, "ERR_NOT_ALLOWED");
+        assert!(is_allowed, "{}",ERR34_NOT_ALLOWED);
     }
 
     /// Extend the whitelist of tokens.
@@ -175,7 +175,7 @@ impl Contract {
         assert_eq!(
             env::predecessor_account_id(),
             self.data().owner_id,
-            "ERR_NOT_ALLOWED"
+            "{}",ERR34_NOT_ALLOWED
         );
         for token in tokens {
             self.data_mut().whitelisted_tokens.insert(&token);
@@ -196,7 +196,7 @@ impl Contract {
                     env::log_str("Check_promise successful");
                     true
                 }
-                PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
+                PromiseResult::Failed => env::panic_str(ERR37_PROMISE_FAILED),
                 _ => false,
             },
             _ => false,

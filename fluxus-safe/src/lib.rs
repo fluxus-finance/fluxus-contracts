@@ -254,6 +254,6 @@ impl Contract {
             }
         }
 
-        panic!("There is no running strategy for this pool")
+        panic!("{}", ERR30_NO_RUNNING_STRATEGIES)
     }
 }

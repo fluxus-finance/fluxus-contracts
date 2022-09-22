@@ -200,7 +200,7 @@ impl AutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     pub(crate) fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StratFarmInfo {
@@ -210,7 +210,7 @@ impl AutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     /// Iterate through farms inside a compounder
