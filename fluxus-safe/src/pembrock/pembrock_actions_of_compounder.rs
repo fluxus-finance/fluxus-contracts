@@ -2,7 +2,12 @@ use crate::*;
 
 #[near_bindgen]
 impl Contract {
-    // TODO: move to actions_of_pembrock
+
+    /// Make sure that the stake succeeded and mint the correct amount to the user.
+    /// # Parameters example: 
+    ///   seed_id: exchange@pool_id
+    ///   account_id: account.testnet
+    ///   shares: 10000000 
     #[private]
     pub fn callback_pembrock_stake_result(
         &mut self,
@@ -49,6 +54,9 @@ impl Contract {
         )
     }
 
+    /// Make sure that the claim succeeded and transfer some amount to the strategy creator.
+    /// # Parameters example: 
+    ///   strat_name: pembrock@wrap
     #[private]
     pub fn callback_pembrock_rewards(
         &mut self,
@@ -132,6 +140,7 @@ impl Contract {
         PromiseOrValue::Value(0u128)
     }
 
+    /// Ensure that the transfer to the treasury succeeded.
     #[private]
     pub fn callback_pembrock_post_treasury_transfer(
         &mut self,
@@ -148,6 +157,9 @@ impl Contract {
         }
     }
 
+    /// Ensure that the transfer to the creator succeeded.
+    /// # Parameters example: 
+    ///   strat_name: pembrock@wrap
     #[private]
     pub fn callback_pembrock_post_creator_ft_transfer(
         &mut self,
@@ -169,6 +181,11 @@ impl Contract {
         }
     }
 
+    /// Transfer an amount of tokens to the sentry contract.
+    /// # Parameters example: 
+    ///   strat_name: pembrock@wrap
+    ///   sentry_acc_id: sentry_account.testnet
+    ///   reward_token: reward_account.testnet
     #[private]
     pub fn callback_pembrock_post_sentry(
         &mut self,
@@ -248,6 +265,11 @@ impl Contract {
         ))
     }
 
+    /// Ensure that the transfer succeeded and store the amount earned.
+    /// # Parameters example: 
+    ///   strat_name: pembrock@wrap
+    ///   sentry_id: sentry_account.testnet
+    ///   amount earned: 10000000
     #[private]
     pub fn callback_pembrock_post_sentry_mft_transfer(
         &mut self,
@@ -272,6 +294,9 @@ impl Contract {
         }
     }
 
+    /// Swap the tokens and then call a function to lend the new amount of tokens.
+    /// # Parameters example: 
+    ///   strat_name: pembrock@wrap
     #[private]
     pub fn callback_pembrock_swap(
         &mut self,
@@ -307,6 +332,9 @@ impl Contract {
         ))
     }
 
+    /// Ensure that the swap succeeded and lend the amount of tokens.
+    /// # Parameters example: 
+    ///   strat_name: pembrock@wrap
     #[private]
     pub fn callback_pembrock_lend(
         &mut self,
@@ -348,6 +376,9 @@ impl Contract {
         ))
     }
 
+    /// Update the harvest available amount to stake.
+    /// # Parameters example: 
+    ///   amount: 10000000
     #[private]
     pub fn callback_pembrock_post_lend(
         &mut self,
@@ -366,6 +397,10 @@ impl Contract {
         }
     }
 
+    /// Withdraw an amount that was being lent and transfer to the caller. 
+    /// # Parameters example: 
+    ///   token_name: wrap
+    ///   amount_withdraw: U128(10000000) or None
     pub fn pembrock_unstake(
         &mut self,
         token_name: String,

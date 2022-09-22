@@ -112,6 +112,7 @@ pub struct PembrockAutoCompounder {
     pub harvest_value_available_to_stake: u128,
 }
 
+/// Pembrock Auto_compounder possibly states.
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub enum PembAutoCompounderState {
@@ -132,6 +133,7 @@ impl From<&PembAutoCompounderState> for String {
     }
 }
 
+/// Cycles needed to the Pembrock Auto_compounder.
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub enum PembAutoCompounderCycle {
@@ -150,6 +152,18 @@ impl From<&PembAutoCompounderCycle> for String {
 
 /// Auto-compounder internal methods
 impl PembrockAutoCompounder {
+
+    /// Initialize a new jumbo's compounder.
+    /// # Parameters example: 
+    /// strategy_fee: 5,
+    /// strat_creator: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
+    /// sentry_fee: 10,
+    /// exchange_contract_id: exchange_contract.testnet,
+    /// pembrock_contract_id: pembrock_contract.testnet,
+    /// pembrock_reward_id: reward_pembrock.testnet
+    /// token1_address: token1.testnet,
+    /// pool_id: 17,
+    /// reward_token: reward_token.testnet 
     pub(crate) fn new(
         strategy_fee: u128,
         strat_creator: AccountFee,
@@ -185,6 +199,9 @@ impl PembrockAutoCompounder {
         }
     }
 
+    /// Split reward into fees and reward_remaining.
+    /// # Parameters example: 
+    /// reward_amount: 10000000,
     pub(crate) fn compute_fees(&mut self, reward_amount: u128) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
         let percent = Percentage::from(self.admin_fees.strategy_fee);
@@ -208,6 +225,11 @@ impl PembrockAutoCompounder {
         )
     }
 
+    /// Stake the token in the pembrock contract.
+    /// # Parameters example: 
+    /// account_id: account.testnet,
+    /// shares: 10000000,
+    /// strat_name: pembrock@wrap,
     pub fn stake_on_pembrock(
         &self,
         account_id: &AccountId,
@@ -243,6 +265,9 @@ impl PembrockAutoCompounder {
         ))
     }
 
+    /// Claim the rewards earned in the pembrock contract.
+    /// # Parameters example:
+    /// strat_name: pembrock@wrap,
     pub fn claim_reward(&mut self, strat_name: String) -> Promise {
         ext_pembrock::claim(self.pembrock_reward_id.clone(), 1, Gas(100_000_000_000_000)).then(
             callback_pembrock::callback_pembrock_rewards(
@@ -254,6 +279,9 @@ impl PembrockAutoCompounder {
         )
     }
 
+    /// Get the token balance and call a function to swap the reward to the right token.
+    /// # Parameters example:
+    /// strat_name: pembrock@wrap,
     pub fn swap_and_lend(&self, strat_name: String) -> Promise {
         let sentry_acc_id = env::predecessor_account_id();
 
@@ -273,6 +301,7 @@ impl PembrockAutoCompounder {
         ))
     }
 
+    /// Function that update the auto_compounder cycle.
     pub(crate) fn next_cycle(&mut self) {
         match self.cycle_stage {
             PembAutoCompounderCycle::ClaimReward => {
