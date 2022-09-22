@@ -296,7 +296,7 @@ impl JumboAutoCompounder {
 
     /// Get the pool shares and then call a function to unstake them.
     /// # Parameters example: 
-    /// token_id: :1,
+    /// token_id: 1,
     /// seed_id: exchange@seed_id,
     /// receiver_id: receiver_account.testnet,
     /// withdraw_amount: 1000000,
@@ -407,7 +407,7 @@ impl JumboAutoCompounder {
         }
     }
 
-    /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
+    /// Transfer reward token to exchange then swap the amount the contract has in the exchange
     /// # Parameters example: 
     /// farm_id_str: exchange@pool_id#farm_id
     /// treasure: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
@@ -486,7 +486,7 @@ impl JumboAutoCompounder {
         ))
     }
 
-    /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
+    /// Transfer reward token to exchange then swap the amount the contract has in the exchange
     /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn autocompounds_swap_second_token(&mut self, farm_id_str: String) -> Promise {
