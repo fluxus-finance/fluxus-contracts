@@ -150,7 +150,7 @@ impl Contract {
         let compounder = data_mut
             .strategies
             .get_mut(&seed_id)
-            .expect(ERR21_TOKEN_NOT_REG)
+            .expect(ERR42_TOKEN_NOT_REG)
             .get_compounder_mut();
 
         let last_reward_amount = compounder

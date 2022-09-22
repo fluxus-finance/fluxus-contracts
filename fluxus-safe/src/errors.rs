@@ -1,7 +1,4 @@
 
-pub const ERR21_TOKEN_NOT_REG: &str = "E21: token not registered";
-pub const ERR33_TRANSFER_TO_SELF: &str = "E33: transfer to self";
-
 //Jumbo
 pub const ERR01_LIST_FARMS_FAILED: &str = "E01: It was not possible to get the jumbo's list of farms.";
 pub const ERR02_GET_REWARD_FAILED: &str = "E02: It was not possible to get the contract`s reward.";
@@ -48,5 +45,5 @@ pub const ERR38_LESS_THAN_MIN_STORAGE: &str = "E38: The amount deposited is less
 pub const ERR39_ACCOUNT_ALREADY_REGISTERED: &str = "E39: The account is already register in the contract.";
 pub const ERR40_STORAGE_UNREGISTER_TOKENS_NOT_EMPTY: &str = "E40: The token amount is not empty. Cannot unregister it.";
 pub const ERR41_STRATEGY_ENDED: &str = "E51: The strategy is Ended.";
-
-
+pub const ERR42_TOKEN_NOT_REG: &str = "E42: token not registered";
+pub const ERR43_TOKEN_NOT_REG: &str = "E43: transfer to self";

@@ -435,7 +435,7 @@ impl Contract {
     //         .data()
     //         .strategies
     //         .get(&token_id)
-    //         .expect(ERR21_TOKEN_NOT_REG);
+    //         .expect(ERR42_TOKEN_NOT_REG);
 
     //     let compounder = strat.get_ref();
 

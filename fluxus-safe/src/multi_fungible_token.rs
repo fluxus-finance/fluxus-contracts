@@ -224,7 +224,7 @@ impl Contract {
         amount: u128,
         memo: Option<String>,
     ) {
-        assert_ne!(sender_id, receiver_id, "{}", ERR33_TRANSFER_TO_SELF);
+        assert_ne!(sender_id, receiver_id, "{}", ERR43_TOKEN_NOT_REG);
         self.share_transfer(
             token_id.clone(),
             sender_id.clone(),

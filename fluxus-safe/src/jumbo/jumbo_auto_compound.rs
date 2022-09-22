@@ -130,7 +130,7 @@ impl Contract {
         let strat = data_mut
             .strategies
             .get_mut(&seed_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         let compounder = strat.get_jumbo_mut();
 
@@ -199,7 +199,7 @@ impl Contract {
         let strat = data_mut
             .strategies
             .get_mut(&seed_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         let compounder = strat.get_jumbo_mut();
         let farm_info_mut = compounder.get_mut_jumbo_farm_info(farm_id);

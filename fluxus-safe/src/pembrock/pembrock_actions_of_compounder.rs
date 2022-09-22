@@ -67,7 +67,7 @@ impl Contract {
         let strat = data_mut
             .strategies
             .get_mut(&strat_name)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         let compounder = strat.pemb_get_mut();
 
