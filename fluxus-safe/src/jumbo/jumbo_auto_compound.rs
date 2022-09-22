@@ -13,7 +13,7 @@ impl Contract {
         #[callback_result] farms_result: Result<Vec<FarmInfo>, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<String> {
-        assert!(farms_result.is_ok(),"{}", ERR01_LIST_FARMS_FAILED);
+        assert!(farms_result.is_ok(), "{}", ERR01_LIST_FARMS_FAILED);
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -59,7 +59,7 @@ impl Contract {
         #[callback_result] reward_amount_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
-        assert!(reward_amount_result.is_ok(),"{}", "ERR02_GET_REWARD_FAILED");
+        assert!(reward_amount_result.is_ok(), "{}", ERR02_GET_REWARD_FAILED);
 
         let reward_amount = reward_amount_result.unwrap();
 
@@ -106,7 +106,7 @@ impl Contract {
         #[callback_result] claim_reward_result: Result<(), PromiseError>,
         farm_id_str: String,
     ) {
-        assert!(claim_reward_result.is_ok(), "{}",ERR03_CLAIM_FAILED);
+        assert!(claim_reward_result.is_ok(), "{}", ERR03_CLAIM_FAILED);
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -121,7 +121,11 @@ impl Contract {
         #[callback_result] withdraw_result: Result<(), PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<U128> {
-        assert!(withdraw_result.is_ok(),"{}", ERR04_WITHDRAW_FROM_FARM_FAILED);
+        assert!(
+            withdraw_result.is_ok(),
+            "{}",
+            ERR04_WITHDRAW_FROM_FARM_FAILED
+        );
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -266,7 +270,7 @@ impl Contract {
 
         let min_out = min_amount_out.unwrap();
 
-        assert!(min_out.0 > 0,"{}", ERR10_SWAP_TOKEN);
+        assert!(min_out.0 > 0, "{}", ERR10_SWAP_TOKEN);
 
         log!("Min out for token 1: {}", min_out.0);
 
@@ -344,7 +348,7 @@ impl Contract {
 
         let min_out = min_amount_out.unwrap();
 
-        assert!(min_out.0 > 0, "{}",ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
+        assert!(min_out.0 > 0, "{}", ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
 
         log!("Min out for token 2: {}", min_out.0);
 
@@ -430,9 +434,7 @@ impl Contract {
                     env::panic_str(msg.as_str());
                 }
             },
-            Err(_) => env::panic_str(
-                ERR12_CALLER_NOT_REGISTER,
-            ),
+            Err(_) => env::panic_str(ERR12_CALLER_NOT_REGISTER),
         }
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());

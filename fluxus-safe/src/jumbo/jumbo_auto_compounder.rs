@@ -225,7 +225,7 @@ impl JumboAutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     pub fn get_mut_jumbo_farm_info(&mut self, farm_id: String) -> &mut JumboStratFarmInfo {
@@ -235,7 +235,7 @@ impl JumboAutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     pub fn stake(
@@ -534,7 +534,7 @@ impl Contract {
         if let Ok(amount) = transfer_result {
             assert_eq!(amount.0, 0, "{}", ERR16_STAKE_FAILED);
         } else {
-            panic!("{}",ERR16_STAKE_FAILED);
+            panic!("{}", ERR16_STAKE_FAILED);
         }
         //Total fft_share
         let total_fft = self.total_supply_by_pool_id(seed_id.clone());
@@ -588,7 +588,7 @@ impl Contract {
         withdraw_amount: u128,
         user_fft_shares: u128,
     ) -> Promise {
-        assert!(shares_result.is_ok(),"{}", ERR17_GET_POOL_SHARES);
+        assert!(shares_result.is_ok(), "{}", ERR17_GET_POOL_SHARES);
 
         let compounder = self.get_strat(&seed_id).get_jumbo();
 
@@ -658,7 +658,7 @@ impl Contract {
         match mft_transfer_result {
             Ok(_) => log!("Nice!"),
             Err(err) => {
-                panic!("{}",ERR18_JUMBO_WITHDRAW)
+                panic!("{}", ERR18_JUMBO_WITHDRAW)
             }
         }
 

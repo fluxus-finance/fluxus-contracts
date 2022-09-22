@@ -15,7 +15,7 @@ impl Contract {
         #[callback_result] farms_result: Result<Vec<FarmInfoBoost>, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<String> {
-        assert!(farms_result.is_ok(), "{}",ERR01_LIST_FARMS_FAILED);
+        assert!(farms_result.is_ok(), "{}", ERR01_LIST_FARMS_FAILED);
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
 
@@ -59,7 +59,7 @@ impl Contract {
         #[callback_result] reward_amount_result: Result<HashMap<String, U128>, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
-        assert!(reward_amount_result.is_ok(), "{}",ERR02_GET_REWARD_FAILED);
+        assert!(reward_amount_result.is_ok(), "{}", ERR02_GET_REWARD_FAILED);
 
         let mut rewards_map = reward_amount_result.unwrap();
 
@@ -88,7 +88,7 @@ impl Contract {
                 farm_info.state = AutoCompounderState::Cleared;
                 return PromiseOrValue::Value(0u128);
             } else {
-                panic!("{}",ERR06_ZERO_REWARDS_EARNED)
+                panic!("{}", ERR06_ZERO_REWARDS_EARNED)
             }
         }
 
@@ -118,7 +118,11 @@ impl Contract {
         reward_amount: U128,
         rewards_map: HashMap<String, U128>,
     ) -> u128 {
-        assert!(claim_reward_result.is_ok(), "{}",ERR04_WITHDRAW_FROM_FARM_FAILED);
+        assert!(
+            claim_reward_result.is_ok(),
+            "{}",
+            ERR04_WITHDRAW_FROM_FARM_FAILED
+        );
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -141,7 +145,11 @@ impl Contract {
         #[callback_result] withdraw_result: Result<bool, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<U128> {
-        assert!(withdraw_result.is_ok(), "{}",ERR04_WITHDRAW_FROM_FARM_FAILED);
+        assert!(
+            withdraw_result.is_ok(),
+            "{}",
+            ERR04_WITHDRAW_FROM_FARM_FAILED
+        );
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -245,7 +253,7 @@ impl Contract {
         seed_id: String,
     ) {
         if strat_creator_transfer_result.is_err() {
-    log!(ERR09_TRANSFER_TO_CREATOR);
+            log!(ERR09_TRANSFER_TO_CREATOR);
             return;
         }
 
@@ -338,11 +346,15 @@ impl Contract {
         common_token: u64,
         amount_token: U128,
     ) -> (U128, U128) {
-        assert!(token_out.is_ok(), "{}",ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
+        assert!(
+            token_out.is_ok(),
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
 
         let amount: U128 = token_out.unwrap();
 
-        assert!(amount.0 > 0u128, "{}",ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
+        assert!(amount.0 > 0u128, "{}", ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
 
         if common_token == 1 {
             (amount_token, amount)
@@ -357,14 +369,30 @@ impl Contract {
         #[callback_result] token1_out: Result<U128, PromiseError>,
         #[callback_result] token2_out: Result<U128, PromiseError>,
     ) -> (U128, U128) {
-        assert!(token1_out.is_ok(), "{}",ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
-        assert!(token2_out.is_ok(), "{}",ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
+        assert!(
+            token1_out.is_ok(),
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
+        assert!(
+            token2_out.is_ok(),
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
 
         let amount_token1: U128 = token1_out.unwrap();
         let amount_token2: U128 = token2_out.unwrap();
 
-        assert!(amount_token1.0 > 0u128, "{}",ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
-        assert!(amount_token2.0 > 0u128, "{}",ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
+        assert!(
+            amount_token1.0 > 0u128,
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
+        assert!(
+            amount_token2.0 > 0u128,
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
 
         (amount_token1, amount_token2)
     }
@@ -587,9 +615,7 @@ impl Contract {
                     env::panic_str(msg.as_str());
                 }
             },
-            Err(_) => env::panic_str(
-                ERR12_CALLER_NOT_REGISTER,
-            ),
+            Err(_) => env::panic_str(ERR12_CALLER_NOT_REGISTER),
         }
 
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.clone());
@@ -705,7 +731,7 @@ impl Contract {
         #[callback_result] shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> U128 {
-        assert!(shares_result.is_ok(), "{}",ERR14_ADD_LIQUIDITY);
+        assert!(shares_result.is_ok(), "{}", ERR14_ADD_LIQUIDITY);
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -743,10 +769,7 @@ impl Contract {
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
-        assert!(
-            total_shares_result.is_ok(),
-            "{}",ERR17_GET_POOL_SHARES
-        );
+        assert!(total_shares_result.is_ok(), "{}", ERR17_GET_POOL_SHARES);
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
