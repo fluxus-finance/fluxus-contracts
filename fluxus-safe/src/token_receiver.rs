@@ -58,12 +58,9 @@ impl FungibleTokenReceiver for Contract {
         self.assert_contract_running();
 
         let token_in = env::predecessor_account_id();
-        let token_in_id = get_token_id(token_in.to_string());
-        log!("token_id is: {}", token_in_id.to_string());
-
         // TODO: assert pembrock strat is running
         //self.assert_strategy_is_running(&seed_id);
-        let strat_name: String = format!("pembrock@{}", token_in_id);
+        let strat_name: String = format!("pembrock@{}", token_in);
 
         let compounder = self.pemb_get_strat(&strat_name).pemb_get();
 
