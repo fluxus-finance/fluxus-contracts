@@ -4,6 +4,18 @@ use crate::*;
 #[near_bindgen]
 impl Contract {
     // TODO: thi&s method should register in the correct pool/farm
+    /// Create a new strategy for ref-finance.
+    /// # Parameters example: 
+    ///  _strategy: "",
+    ///  strategy_fee: 5,
+    ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
+    ///  sentry_fee: 10,
+    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  farm_contract_id: farm_contract.testnet,
+    ///  token1_address: token1.testnet, 
+    ///  token2_address: token2.testnet, 
+    ///  pool_id: 17, 
+    ///  seed_min_deposit: U128(1000000000000000000)
     pub fn create_strategy(
         &mut self,
         _strategy: String,
@@ -74,6 +86,13 @@ impl Contract {
         };
     }
 
+    /// Add farm to the strategy already cerated.
+    /// # Parameters example: 
+    ///  seed_id: exchange_contract.testnet@pool_id,
+    ///  pool_id_token1_reward: 5,
+    ///  pool_id_token2_reward: 6,
+    ///  reward_token: token.testnet,
+    ///  farm_id: exchange_contract.testnet@pool_id#farm_id,
     pub fn add_farm_to_strategy(
         &mut self,
         seed_id: String,
@@ -112,6 +131,18 @@ impl Contract {
         )
     }
 
+    /// Create a new stable strategy for ref-finance.
+    /// # Parameters example: 
+    ///  _strategy: "",
+    ///  strategy_fee: 5,
+    ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
+    ///  sentry_fee: 10,
+    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  farm_contract_id: farm_contract.testnet,
+    ///  token1_address: token1.testnet, 
+    ///  token2_address: token2.testnet, 
+    ///  pool_id: 17, 
+    ///  seed_min_deposit: U128(1000000000000000000)
     pub fn create_stable_strategy(
         &mut self,
         _strategy: String,
@@ -180,6 +211,15 @@ impl Contract {
         };
     }
 
+    /// Add farm to the stable strategy already cerated.
+    /// # Parameters example: 
+    ///  seed_id: exchange_contract.testnet@pool_id,
+    ///  token_address: token.testnet,
+    ///  pool_id_token_reward: 6,
+    ///  token_position: 1,
+    ///  reward_token: token.testnet,
+    ///  available_balance: [100000000],
+    ///  farm_id: exchange_contract.testnet@pool_id#farm_id,
     pub fn add_farm_to_stable_strategy(
         &mut self,
         seed_id: String,
@@ -221,6 +261,18 @@ impl Contract {
         )
     }
 
+    /// Create a new jumbo strategy for ref-finance.
+    /// # Parameters example: 
+    ///  _strategy: "",
+    ///  strategy_fee: 5,
+    ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
+    ///  sentry_fee: 10,
+    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  farm_contract_id: farm_contract.testnet,
+    ///  token1_address: token1.testnet, 
+    ///  token2_address: token2.testnet, 
+    ///  pool_id: 17, 
+    ///  seed_min_deposit: U128(1000000000000000000)
     pub fn create_jumbo_strategy(
         &mut self,
         _strategy: String,
@@ -288,6 +340,13 @@ impl Contract {
         };
     }
 
+    /// Add farm to the jumbo strategy already cerated.
+    /// # Parameters example: 
+    ///  seed_id: exchange_contract.testnet@pool_id,
+    ///  pool_id_token1_reward: 5,
+    ///  pool_id_token2_reward: 6,
+    ///  reward_token: token.testnet,
+    ///  farm_id: exchange_contract.testnet@pool_id#farm_id,
     pub fn add_farm_to_jumbo_strategy(
         &mut self,
         seed_id: String,
@@ -327,6 +386,9 @@ impl Contract {
         )
     }
 
+    /// Create a fft_share to a seed_id.
+    /// # Parameters example: 
+    ///  seed_id: exchange_contract.testnet@pool_id,
     #[private]
     fn new_fft_share(&mut self, seed_id: String) -> Option<String> {
         let already_has = self.data_mut().fft_share_by_seed_id.get(&seed_id).is_some();
@@ -347,6 +409,10 @@ impl Contract {
         fft_share_id
     }
 
+    /// Call the harvest for some compounder.
+    /// # Parameters example: 
+    ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
+    ///  strat_name: pembrock@usdt,
     pub fn harvest(&mut self, farm_id_str: String, strat_name: String) -> PromiseOrValue<u128> {
         let treasury = self.data().treasury.clone();
 
@@ -360,6 +426,9 @@ impl Contract {
         strat.harvest_proxy(farm_id_str, strat_name, treasury)
     }
 
+    /// Delete some strategy created for a farm_id.
+    /// # Parameters example: 
+    ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
     pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
         self.is_owner_or_guardians();
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
@@ -397,11 +466,27 @@ impl Contract {
         }
     }
 
+    /// Delete some strategy created for a strat_name.
+    /// # Parameters example: 
+    ///  strat_name: pembrock@usdt,
     pub fn delete_strategy_by_strat_name(&mut self, strat_name: String) {
         self.is_owner_or_guardians();
         self.data_mut().strategies.remove(&strat_name);
     }
 
+    /// Create a new strategy for pembrock.
+    /// # Parameters example: 
+    ///  _strategy: "",
+    ///  strategy_fee: 5,
+    ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
+    ///  sentry_fee: 10,
+    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  pembrock_contract_id: pembrock_contract.testnet,/////
+    ///  pembrock_reward_id: reward_pembrock.testnet, 
+    ///  token_name: token1, 
+    ///  token1_address: token1.testnet
+    ///  pool_id: 17, 
+    ///  reward_token: token_pembrock.testnet
     pub fn pembrock_create_strategy(
         &mut self,
         strategy_fee: u128,

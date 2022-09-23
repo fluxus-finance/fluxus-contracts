@@ -75,6 +75,10 @@ pub struct Account {
 }
 
 impl Account {
+
+    /// Create a new account structure.
+    /// # Parameters example: 
+    ///   account_id: account.testnet
     pub fn new(account_id: &AccountId) -> Self {
         Account {
             near_amount: 0,
@@ -86,6 +90,9 @@ impl Account {
         }
     }
 
+    /// Get the balance of a specific token for an account.
+    /// # Parameters example: 
+    ///   token_id: token1.testnet
     pub fn get_balance(&self, token_id: &AccountId) -> Option<Balance> {
         if let Some(token_balance) = self.tokens.get(token_id) {
             Some(token_balance)
@@ -96,6 +103,7 @@ impl Account {
         }
     }
 
+    /// Return a vector with all tokens.
     pub fn get_tokens(&self) -> Vec<AccountId> {
         let mut a: Vec<AccountId> = self.tokens.keys().collect();
         let b: Vec<AccountId> = self.legacy_tokens.keys().cloned().collect();
@@ -105,6 +113,9 @@ impl Account {
 
     /// Deposit amount to the balance of given token,
     /// if given token not register and not enough storage, deposit fails
+    /// # Parameters example: 
+    ///   token: token1.testnet
+    ///   amount: 100000000
     pub(crate) fn deposit_with_storage_check(
         &mut self,
         token: &AccountId,
@@ -132,6 +143,9 @@ impl Account {
     }
 
     /// Deposit amount to the balance of given token.
+    /// # Parameters example: 
+    ///   token: token1.testnet
+    ///   amount: 100000000
     pub(crate) fn deposit(&mut self, token: &AccountId, amount: Balance) {
         if let Some(x) = self.legacy_tokens.remove(token) {
             // need convert to tokens
@@ -145,6 +159,9 @@ impl Account {
 
     /// Withdraw amount of `token` from the internal balance.
     /// Panics if `amount` is bigger than the current balance.
+    /// # Parameters example: 
+    ///   token: token1.testnet
+    ///   amount: 100000000
     pub(crate) fn withdraw(&mut self, token: &AccountId, amount: Balance) {
         if let Some(x) = self.legacy_tokens.remove(token) {
             // need convert to
@@ -194,6 +211,8 @@ impl Account {
     }
 
     /// Registers given token and set balance to 0.
+    /// # Parameters example: 
+    ///   token_ids: [token1.testnet, token2.testnet]
     pub(crate) fn register(&mut self, token_ids: &Vec<AccountId>) {
         for token_id in token_ids {
             let t = token_id;
@@ -205,6 +224,8 @@ impl Account {
 
     /// Unregister `token_id` from this account balance.
     /// Panics if the `token_id` balance is not 0.
+    /// # Parameters example: 
+    ///   token_id: token1.testnet 
     pub(crate) fn unregister(&mut self, token_id: &AccountId) {
         let amount = self.legacy_tokens.remove(token_id).unwrap_or_default();
         assert_eq!(amount, 0, "{}", "E24: non-zero token balance");
@@ -217,6 +238,8 @@ impl Account {
 impl Contract {
     /// Registers given token in the user's account deposit.
     /// Fails if not enough balance on this account to cover storage.
+    /// # Parameters example: 
+    ///   token_ids: [token1.testnet, token2.testnet]
     #[payable]
     pub fn register_tokens(&mut self, token_ids: Vec<AccountId>) {
         assert_one_yocto();
@@ -229,6 +252,8 @@ impl Contract {
 
     /// Unregister given token from user's account deposit.
     /// Panics if the balance of any given token is non 0.
+    /// # Parameters example: 
+    ///   token_ids: [token1.testnet, token2.testnet]
     #[payable]
     pub fn unregister_tokens(&mut self, token_ids: Vec<AccountId>) {
         assert_one_yocto();
@@ -244,6 +269,10 @@ impl Contract {
     /// Withdraws given token from the deposits of given user.
     /// Optional unregister will try to remove record of this token from AccountDeposit for given user.
     /// Unregister will fail if the left over balance is non 0.
+    /// # Parameters example: 
+    ///   token_id: token1.testnet
+    ///   amount: U128(100000000)
+    ///   unregister: True or None
     #[payable]
     pub fn withdraw(
         &mut self,
@@ -267,6 +296,11 @@ impl Contract {
         self.internal_send_tokens(&sender_id, &token_id, amount)
     }
 
+    /// Check if the transfer succeeded.
+    /// # Parameters example: 
+    ///   token_id: token1.testnet
+    ///   sender_id: sender.testnet
+    ///   amount: U128(100000000)
     #[private]
     pub fn exchange_callback_post_withdraw(
         &mut self,
@@ -334,7 +368,11 @@ impl Contract {
 
     /// save token to owner account as lostfound, no need to care about storage
     /// only global whitelisted token can be stored in lost-found
+    /// # Parameters example: 
+    ///   token_id: token1.testnet
+    ///   amount: 100000000
     pub(crate) fn internal_lostfound(&mut self, token_id: &AccountId, amount: u128) {
+        
         if self.data().whitelisted_tokens.contains(token_id) {
             let mut lostfound = self.internal_unwrap_or_default_account(&self.data().owner_id);
             lostfound.deposit(token_id, amount);
@@ -350,6 +388,9 @@ impl Contract {
     /// Registers account in deposited amounts with given amount of $NEAR.
     /// If account already exists, adds amount to it.
     /// This should be used when it's known that storage is prepaid.
+    /// # Parameters example: 
+    ///   token_id: token1.testnet
+    ///   amount: 100000000
     pub(crate) fn internal_register_account(&mut self, account_id: &AccountId, amount: Balance) {
         let mut account = self.internal_unwrap_or_default_account(&account_id);
         log!(
@@ -381,7 +422,10 @@ impl Contract {
     //     self.internal_save_account(&account_id, account);
     // }
 
-    /// storage withdraw
+    /// Decrement the available amount of an account.
+    /// # Parameters example: 
+    ///   account_id: account.testnet
+    ///   amount: 100000000
     pub(crate) fn internal_storage_withdraw(
         &mut self,
         account_id: &AccountId,
@@ -405,6 +449,10 @@ impl Contract {
 
     /// Record deposit of some number of tokens to this contract.
     /// Fails if account is not registered or if token isn't whitelisted.
+    /// # Parameters example: 
+    ///   sender_id: account.testnet
+    ///   token_id: token1.testnet
+    ///   amount: 100000000
     pub(crate) fn internal_deposit(
         &mut self,
         sender_id: &AccountId,
@@ -422,6 +470,9 @@ impl Contract {
         self.internal_save_account(&sender_id, account);
     }
 
+    /// Return a Option<Account> based on an account_id
+    /// # Parameters example: 
+    ///   account_id: account.testnet
     pub fn internal_get_account(&self, account_id: &AccountId) -> Option<Account> {
         self.data()
             .accounts
@@ -429,11 +480,17 @@ impl Contract {
             .map(|va| va.into_current())
     }
 
+    /// Return an Account based on an account_id
+    /// # Parameters example: 
+    ///   account_id: account.testnet
     pub fn internal_unwrap_account(&self, account_id: &AccountId) -> Account {
         self.internal_get_account(account_id)
             .expect("E27: attach 1yN to swap tokens not in whitelist")
     }
 
+    /// Return an Account based on an account_id or create a new one.
+    /// # Parameters example: 
+    ///   account_id: account.testnet
     pub fn internal_unwrap_or_default_account(&self, account_id: &AccountId) -> Account {
         self.internal_get_account(account_id)
             .unwrap_or_else(|| Account::new(account_id))
@@ -452,6 +509,10 @@ impl Contract {
     }*/
     /// Sends given amount to given user and if it fails, returns it back to user's balance.
     /// Tokens must already be subtracted from internal balance.
+    /// # Parameters example: 
+    ///   sender_id: account.testnet
+    ///   token_id: token.testnet
+    ///   amount: 10000000
     pub(crate) fn internal_send_tokens(
         &self,
         sender_id: &AccountId,
