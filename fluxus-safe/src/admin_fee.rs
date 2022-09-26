@@ -17,6 +17,10 @@ pub struct AccountFee {
 }
 
 impl AccountFee {
+    /// Create a new AccountFee object.
+    /// # Parameters example: 
+    ///  acc_id: account.testnet, 
+    ///  fee: 5,
     pub fn new(acc_id: AccountId, fee: u128) -> Self {
         assert!(
             (0..MAX_STRAT_CREATOR_FEE + 1).contains(&fee),
@@ -50,6 +54,11 @@ pub struct AdminFees {
 }
 
 impl AdminFees {
+    /// Create a new AdminFee object.
+    /// # Parameters example: 
+    ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
+    ///  sentries_fee: 5,
+    ///  strategy_fee: 5,
     pub fn new(strat_creator: AccountFee, sentries_fee: u128, strategy_fee: u128) -> Self {
         assert!(
             strat_creator.fee_percentage + sentries_fee <= MAX_CONTRIBUTOR_FEE,
