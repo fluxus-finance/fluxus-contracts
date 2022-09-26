@@ -410,6 +410,7 @@ impl Contract {
             strat.clone()
         }
     }
+    
     /// Return the Pembrock VersionedStrategy structure as a mutable reference.
     /// # Parameters example: 
     ///  seed_id: exchange@seed_id,

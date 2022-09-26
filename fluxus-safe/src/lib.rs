@@ -158,6 +158,11 @@ impl VersionedContractData {}
 
 #[near_bindgen]
 impl Contract {
+
+    /// Initialize the contract.
+    /// # Parameters example: 
+    ///  owner_id: account.testnet,
+    ///  treasure_contract_id: treasurer.testnet
     #[init]
     pub fn new(owner_id: AccountId, treasure_contract_id: AccountId) -> Self {
         assert!(!env::state_exists(), "Already initialized");
@@ -193,6 +198,8 @@ impl Contract {
 }
 
 impl Contract {
+   
+    /// Return the contract data.
     #[allow(unreachable_patterns)]
     fn data(&self) -> &ContractData {
         match &self.data {
@@ -200,6 +207,8 @@ impl Contract {
             _ => unimplemented!(),
         }
     }
+
+    /// Return the contract data as mutable.
     #[allow(unreachable_patterns)]
     fn data_mut(&mut self) -> &mut ContractData {
         match &mut self.data {
@@ -208,6 +217,7 @@ impl Contract {
         }
     }
 
+    /// Ensure that the contract is running.
     fn assert_contract_running(&self) {
         match self.data().state {
             RunningState::Running => (),
@@ -259,6 +269,9 @@ impl Contract {
     }
 }
 
+/// Return the token id based on the token`s contract.
+/// # Parameters example:
+///   token_address: token.testnet
 pub fn get_token_id(token_address: String) -> String {
     let mut token_id: String = "err".to_string();
     for (i, c) in token_address.chars().enumerate() {
