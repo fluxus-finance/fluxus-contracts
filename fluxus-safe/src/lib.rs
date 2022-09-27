@@ -226,6 +226,8 @@ impl Contract {
     }
 
     /// Ensures that at least one strategy is running for given token_id
+    /// # Parameters example:
+    ///   seed_id: exchange@seed_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
 

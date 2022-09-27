@@ -222,10 +222,10 @@ impl Contract {
         new_balance
     }
 
-    /// Transfer fft_shares internally (user for user).
+    /// Call a function to transfer fft_shares internally (user for user).
     /// Token_id is a specific fft_share.
     /// # Parameters example:
-    ///   token_id: :17,
+    ///   token_id: fft_share_1,
     ///   receiver_id: account.testnet,
     ///   user: account.testnet,
     ///   memo: None 
@@ -289,8 +289,8 @@ impl Contract {
     /// # Parameters example:
     ///   fft_share: fft_share_1,
     ///   sender_id: account.testnet,
+    ///   receiver_id: account2.testnet,
     ///   amount: 10000000,
-    ///   memo: None 
     pub fn share_transfer(
         &mut self,
         fft_share: String,

@@ -229,7 +229,7 @@ impl PembrockAutoCompounder {
     /// # Parameters example: 
     /// account_id: account.testnet,
     /// shares: 10000000,
-    /// strat_name: pembrock@wrap,
+    /// strat_name: pembrock@token_name,
     pub fn stake_on_pembrock(
         &self,
         account_id: &AccountId,
@@ -267,7 +267,7 @@ impl PembrockAutoCompounder {
 
     /// Claim the rewards earned in the pembrock contract.
     /// # Parameters example:
-    /// strat_name: pembrock@wrap,
+    /// strat_name: pembrock@token_name,
     pub fn claim_reward(&mut self, strat_name: String) -> Promise {
         ext_pembrock::claim(self.pembrock_reward_id.clone(), 1, Gas(100_000_000_000_000)).then(
             callback_pembrock::callback_pembrock_rewards(
@@ -281,7 +281,7 @@ impl PembrockAutoCompounder {
 
     /// Get the token balance and call a function to swap the reward to the right token.
     /// # Parameters example:
-    /// strat_name: pembrock@wrap,
+    /// strat_name: pembrock@token_name,
     pub fn swap_and_lend(&self, strat_name: String) -> Promise {
         let sentry_acc_id = env::predecessor_account_id();
 

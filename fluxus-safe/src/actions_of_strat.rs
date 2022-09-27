@@ -88,11 +88,11 @@ impl Contract {
 
     /// Add farm to the strategy already cerated.
     /// # Parameters example: 
-    ///  seed_id: exchange_contract.testnet@pool_id,
+    ///  seed_id: exchange@pool_id,
     ///  pool_id_token1_reward: 5,
     ///  pool_id_token2_reward: 6,
     ///  reward_token: token.testnet,
-    ///  farm_id: exchange_contract.testnet@pool_id#farm_id,
+    ///  farm_id: exchange@pool_id#farm_id,
     pub fn add_farm_to_strategy(
         &mut self,
         seed_id: String,
@@ -213,13 +213,13 @@ impl Contract {
 
     /// Add farm to the stable strategy already cerated.
     /// # Parameters example: 
-    ///  seed_id: exchange_contract.testnet@pool_id,
+    ///  seed_id: exchange@pool_id,
     ///  token_address: token.testnet,
     ///  pool_id_token_reward: 6,
     ///  token_position: 1,
     ///  reward_token: token.testnet,
     ///  available_balance: [100000000],
-    ///  farm_id: exchange_contract.testnet@pool_id#farm_id,
+    ///  farm_id: exchange@pool_id#farm_id,
     pub fn add_farm_to_stable_strategy(
         &mut self,
         seed_id: String,
@@ -342,11 +342,11 @@ impl Contract {
 
     /// Add farm to the jumbo strategy already cerated.
     /// # Parameters example: 
-    ///  seed_id: exchange_contract.testnet@pool_id,
+    ///  seed_id: exchange@pool_id,
     ///  pool_id_token1_reward: 5,
     ///  pool_id_token2_reward: 6,
     ///  reward_token: token.testnet,
-    ///  farm_id: exchange_contract.testnet@pool_id#farm_id,
+    ///  farm_id: exchange@pool_id#farm_id,
     pub fn add_farm_to_jumbo_strategy(
         &mut self,
         seed_id: String,
@@ -388,7 +388,7 @@ impl Contract {
 
     /// Create a fft_share to a seed_id.
     /// # Parameters example: 
-    ///  seed_id: exchange_contract.testnet@pool_id,
+    ///  seed_id: exchange@pool_id,
     #[private]
     fn new_fft_share(&mut self, seed_id: String) -> Option<String> {
         let already_has = self.data_mut().fft_share_by_seed_id.get(&seed_id).is_some();

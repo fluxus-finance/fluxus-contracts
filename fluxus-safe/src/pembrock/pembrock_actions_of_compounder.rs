@@ -56,7 +56,7 @@ impl Contract {
 
     /// Make sure that the claim succeeded and transfer some amount to the strategy creator.
     /// # Parameters example: 
-    ///   strat_name: pembrock@wrap
+    ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_rewards(
         &mut self,
@@ -159,7 +159,7 @@ impl Contract {
 
     /// Ensure that the transfer to the creator succeeded.
     /// # Parameters example: 
-    ///   strat_name: pembrock@wrap
+    ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_post_creator_ft_transfer(
         &mut self,
@@ -183,7 +183,7 @@ impl Contract {
 
     /// Transfer an amount of tokens to the sentry contract.
     /// # Parameters example: 
-    ///   strat_name: pembrock@wrap
+    ///   strat_name: pembrock@token_name
     ///   sentry_acc_id: sentry_account.testnet
     ///   reward_token: reward_account.testnet
     #[private]
@@ -267,7 +267,7 @@ impl Contract {
 
     /// Ensure that the transfer succeeded and store the amount earned.
     /// # Parameters example: 
-    ///   strat_name: pembrock@wrap
+    ///   strat_name: pembrock@token_name
     ///   sentry_id: sentry_account.testnet
     ///   amount earned: 10000000
     #[private]
@@ -296,7 +296,7 @@ impl Contract {
 
     /// Swap the tokens and then call a function to lend the new amount of tokens.
     /// # Parameters example: 
-    ///   strat_name: pembrock@wrap
+    ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_swap(
         &mut self,
@@ -334,7 +334,7 @@ impl Contract {
 
     /// Ensure that the swap succeeded and lend the amount of tokens.
     /// # Parameters example: 
-    ///   strat_name: pembrock@wrap
+    ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_lend(
         &mut self,
@@ -378,6 +378,7 @@ impl Contract {
 
     /// Update the harvest available amount to stake.
     /// # Parameters example: 
+    ///   strat_name: pembrock@token_name
     ///   amount: 10000000
     #[private]
     pub fn callback_pembrock_post_lend(

@@ -350,6 +350,7 @@ impl Contract {
 
     /// Make sure that the swap is possible and call it.
     /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     ///   amount_token_2: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_get_token2_return(

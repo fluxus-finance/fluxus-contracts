@@ -150,10 +150,7 @@ impl Contract {
         );
     }
 
-    /// Checks if predecessor_account_id is either the contract or the owner of the contract
-    /// # Parameter example:
-    ///   caller_acc_id: account.testnet
-    ///   contract_id: contract.testnet
+    /// Checks if predecessor_account_id is either the contract or the owner of the contract.
     #[private]
     pub(crate) fn is_owner(&self) {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();

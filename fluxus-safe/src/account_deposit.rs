@@ -359,6 +359,9 @@ impl Contract {
 impl Contract {
     /// Checks that account has enough storage to be stored and saves it into collection.
     /// This should be only place to directly use `self.accounts`.
+    /// # Parameters example:
+    ///   account_id: account.testnet,
+    ///   account: {near_amount: 100000000, legacy_tokens: {token_id.testnet: 100000000}, tokens: {token_id2.testnet: 100000000}, storage_used: 1000000}
     pub(crate) fn internal_save_account(&mut self, account_id: &AccountId, account: Account) {
         account.assert_storage_usage();
         self.data_mut()

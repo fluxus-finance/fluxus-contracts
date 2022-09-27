@@ -69,7 +69,7 @@ impl StorageManagement for Contract {
         
     /// Withdraw an amount of near for some user in the contract.
     /// # Parameter example:
-    ///   amount: 1000000 or None
+    ///   amount: U128(1000000) or None
     #[payable]
     fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
         //assert_one_yocto();
