@@ -33,7 +33,7 @@ impl Contract {
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
             fft_resp.to_owned()
         } else {
-            env::panic_str("E1: seed_id doesn't exist");
+            env::panic_str(ERR32_SEED_DOES_NOT_EXIST);
         };
         fft_name
     }
@@ -56,7 +56,7 @@ impl Contract {
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
             fft_resp.to_owned()
         } else {
-            env::panic_str("E1: seed_id doesn't exist");
+            env::panic_str(ERR32_SEED_DOES_NOT_EXIST);
         };
 
         let user_fft_shares = self.users_fft_share_amount(fft_name.clone(), user);
@@ -143,7 +143,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&user, &new_balance);
 
@@ -176,7 +176,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&user, &new_balance);
 
@@ -224,7 +224,7 @@ impl Contract {
         amount: u128,
         memo: Option<String>,
     ) {
-        assert_ne!(sender_id, receiver_id, "{}", ERR33_TRANSFER_TO_SELF);
+        assert_ne!(sender_id, receiver_id, "{}", ERR43_TOKEN_NOT_REG);
         self.share_transfer(
             token_id.clone(),
             sender_id.clone(),
@@ -261,7 +261,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&sender_id, &new_balance);
 
@@ -277,7 +277,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&receiver_id, &new_balance);
 

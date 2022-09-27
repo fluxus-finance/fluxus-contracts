@@ -156,7 +156,7 @@ impl StableAutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     pub fn get_mut_farm_info(&mut self, farm_id: &String) -> &mut StableStratFarmInfo {
@@ -166,7 +166,7 @@ impl StableAutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     /// Iterate through farms inside a compounder

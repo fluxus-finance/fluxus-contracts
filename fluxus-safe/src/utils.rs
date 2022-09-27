@@ -34,6 +34,6 @@ pub fn assert_strategy_not_cleared(state: AutoCompounderState) {
     match state {
         AutoCompounderState::Running => (),
         AutoCompounderState::Ended => (),
-        _ => env::panic_str("E51: strategy ended"),
+        _ => env::panic_str(ERR41_STRATEGY_ENDED),
     };
 }

@@ -17,12 +17,12 @@ impl StorageManagement for Contract {
         let min_balance = self.storage_balance_bounds().min.0;
         let already_registered = self.data().accounts.contains_key(&account_id);
         if amount < min_balance && !already_registered {
-            env::panic_str("ERR_DEPOSIT_LESS_THAN_MIN_STORAGE");
+            env::panic_str(ERR38_LESS_THAN_MIN_STORAGE);
         }
         if registration_only {
             // Registration only setups the account but doesn't leave space for tokens.
             if already_registered {
-                log!("ERR_ACC_REGISTERED");
+                log!(ERR39_ACCOUNT_ALREADY_REGISTERED);
                 if amount > 0 {
                     Promise::new(env::predecessor_account_id()).transfer(amount);
                 }
@@ -70,7 +70,7 @@ impl StorageManagement for Contract {
 
         require!(
             self.data().accounts.contains_key(&account_id),
-            "Account is not registered"
+            ERR36_ACCOUNT_DOES_NOT_EXIST
         );
 
         let amount_already_deposited = self
@@ -81,7 +81,7 @@ impl StorageManagement for Contract {
 
         require!(
             amount_already_deposited >= amount,
-            "You do not have enough balance"
+            ERR23_NOT_AVAILABLE_STORAGE
         );
 
         let available = u128::from(
@@ -118,7 +118,7 @@ impl StorageManagement for Contract {
             // TODO: figure out force option logic.
             assert!(
                 account_deposit.tokens.is_empty(),
-                "ERR_STORAGE_UNREGISTER_TOKENS_NOT_EMPTY"
+                "{}",ERR40_STORAGE_UNREGISTER_TOKENS_NOT_EMPTY
             );
             self.data_mut().accounts.remove(&account_id);
             Promise::new(account_id.clone()).transfer(account_deposit.near_amount);
