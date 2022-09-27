@@ -243,7 +243,7 @@ impl VersionedStrategy {
     /// Call the harvest function for some compounder based on it`s type (stable, jumbo...).
     /// # Parameters example: 
     ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
-    ///  strat_name: pembrock@usdt,
+    ///  strat_name: pembrock@token_name,
     ///  treasurer: { account_id: treasure.testnet, "fee_percentage": 5, "current_amount" : 0 },
     pub fn harvest_proxy(
         &mut self,

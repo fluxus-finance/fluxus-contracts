@@ -412,7 +412,7 @@ impl Contract {
     /// Call the harvest for some compounder.
     /// # Parameters example: 
     ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
-    ///  strat_name: pembrock@usdt,
+    ///  strat_name: pembrock@token_name,
     pub fn harvest(&mut self, farm_id_str: String, strat_name: String) -> PromiseOrValue<u128> {
         let treasury = self.data().treasury.clone();
 
@@ -468,7 +468,7 @@ impl Contract {
 
     /// Delete some strategy created for a strat_name.
     /// # Parameters example: 
-    ///  strat_name: pembrock@usdt,
+    ///  strat_name: pembrock@token_name,
     pub fn delete_strategy_by_strat_name(&mut self, strat_name: String) {
         self.is_owner_or_guardians();
         self.data_mut().strategies.remove(&strat_name);
