@@ -62,7 +62,7 @@ impl FungibleTokenReceiver for Contract {
         //self.assert_strategy_is_running(&seed_id);
         let strat_name: String = format!("pembrock@{}", token_in);
 
-        let compounder = self.pemb_get_strat(&strat_name).pemb_get();
+        let compounder = self.get_strat(&strat_name).get_pemb();
 
         // initiate stake process
         let amount_in_u128: u128 = amount.into();

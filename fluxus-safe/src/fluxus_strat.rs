@@ -301,21 +301,21 @@ impl VersionedStrategy {
     }
 
     #[allow(unreachable_patterns)]
-    pub fn pemb_get(self) -> PembrockAutoCompounder {
+    pub fn get_pemb(self) -> PembrockAutoCompounder {
         match self {
             VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }
     #[allow(unreachable_patterns)]
-    pub fn pemb_get_ref(&self) -> &PembrockAutoCompounder {
+    pub fn get_pemb_ref(&self) -> &PembrockAutoCompounder {
         match self {
             VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
         }
     }
     #[allow(unreachable_patterns)]
-    pub fn pemb_get_mut(&mut self) -> &mut PembrockAutoCompounder {
+    pub fn get_pemb_mut(&mut self) -> &mut PembrockAutoCompounder {
         match self {
             VersionedStrategy::PembrockAutoCompounder(compounder) => compounder,
             _ => unimplemented!(),
@@ -353,32 +353,4 @@ impl Contract {
         }
     }
 
-    pub fn pemb_get_strat(&self, seed_id: &str) -> VersionedStrategy {
-        let strat = self
-            .data()
-            .strategies
-            .get(seed_id)
-            .expect(ERR42_TOKEN_NOT_REG);
-
-        if strat.need_upgrade() {
-            strat.upgrade()
-        } else {
-            strat.clone()
-        }
-    }
-
-    pub fn pemb_get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
-        let strat = self
-            .data_mut()
-            .strategies
-            .get_mut(seed_id)
-            .expect(ERR42_TOKEN_NOT_REG);
-
-        if strat.need_upgrade() {
-            strat.upgrade();
-            strat
-        } else {
-            strat
-        }
-    }
 }

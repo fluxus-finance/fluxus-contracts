@@ -218,7 +218,7 @@ impl Contract {
         let mut info: Vec<PembrockAutoCompounder> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
             if strat.kind() == *"PEMBROCK_AUTO_COMPOUNDER" {
-                info.push(strat.pemb_get_ref().clone());
+                info.push(strat.get_pemb_ref().clone());
             }
         }
 
@@ -268,7 +268,7 @@ impl Contract {
     }
 
     pub fn get_strategy_for_pembrock(self, strat_name: String) -> PembAutoCompounderState {
-        let compounder = self.get_strat(&strat_name).pemb_get();
+        let compounder = self.get_strat(&strat_name).get_pemb();
 
         compounder.state
     }
@@ -382,7 +382,7 @@ impl Contract {
 
     pub fn current_strat_step(&self, farm_id_str: String, strat_name: String) -> String {
         match strat_name.is_empty() {
-            false => String::from(&self.get_strat(&strat_name).pemb_get().cycle_stage),
+            false => String::from(&self.get_strat(&strat_name).get_pemb().cycle_stage),
             true => {
                 let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
                 let strat = self.get_strat(&seed_id);
