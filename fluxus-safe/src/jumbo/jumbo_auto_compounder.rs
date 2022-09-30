@@ -28,6 +28,9 @@ pub struct JumboStratFarmInfo {
 
     pub current_shares_to_stake: u128,
 
+    /// Fees earned by the DAO
+    pub treasury: AccountFee,
+
     /// Used to keep track of the owned amount from fee of the token reward
     /// This will be used to store owned amount if ft_transfer to treasure fails
     pub last_fee_amount: u128,
@@ -323,7 +326,7 @@ impl JumboAutoCompounder {
     pub fn withdraw_of_reward(
         &mut self,
         farm_id_str: String,
-        treasury_current_amount: u128,
+        // treasury_current_amount: u128,
     ) -> Promise {
         // self.assert_strategy_not_cleared(&farm_id_str);
         log!("withdraw_of_reward");
@@ -356,7 +359,7 @@ impl JumboAutoCompounder {
             // the withdraw succeeded but not the transfer
             ext_reward_token::ft_transfer_call(
                 self.exchange_contract_id.clone(),
-                U128(farm_info.last_reward_amount + treasury_current_amount), //Amount after withdraw the rewards
+                U128(farm_info.last_reward_amount + farm_info.treasury.current_amount), //Amount after withdraw the rewards
                 "".to_string(),
                 farm_info.reward_token,
                 1,
@@ -375,16 +378,19 @@ impl JumboAutoCompounder {
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
     /// Args:
     ///   farm_id_str: exchange@pool_id#farm_id
-    pub fn autocompounds_swap(&mut self, farm_id_str: String, treasure: AccountFee) -> Promise {
+    pub fn autocompounds_swap(
+        &mut self,
+        farm_id_str: String, /* , treasure: AccountFee */
+    ) -> Promise {
         // TODO: take string as ref
         // self.assert_strategy_not_cleared(&farm_id_str);
         log!("autocompounds_swap");
 
-        let treasury_acc: AccountId = treasure.account_id;
-        let treasury_curr_amount: u128 = treasure.current_amount;
-
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.clone());
         let farm_info = self.get_jumbo_farm_info(&farm_id);
+
+        let treasury_acc: AccountId = farm_info.treasury.account_id;
+        let treasury_curr_amount: u128 = farm_info.treasury.current_amount;
 
         let reward_amount = farm_info.last_reward_amount;
 

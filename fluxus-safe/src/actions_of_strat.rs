@@ -83,6 +83,7 @@ impl Contract {
         farm_id: String,
     ) -> String {
         self.is_owner_or_guardians();
+        let treasure_contract_id = self.data_mut().treasure_contract_id.clone();
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         for farm in compounder.farms.clone() {
@@ -90,12 +91,19 @@ impl Contract {
                 ERR25_FARM_ID_ALREADY_EXIST_FOR_SEED.to_string();
             }
         }
+        let treasury: AccountFee = AccountFee {
+            account_id: treasure_contract_id,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
 
         let farm_info: StratFarmInfo = StratFarmInfo {
             state: AutoCompounderState::Running,
             cycle_stage: AutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
+            treasury,
             last_fee_amount: 0u128,
             pool_id_token1_reward,
             pool_id_token2_reward,
@@ -199,11 +207,23 @@ impl Contract {
             }
         }
 
+        let treasury: AccountFee = AccountFee {
+            account_id: stable_compounder
+                .get_mut_farm_info(&farm_id)
+                .treasury
+                .account_id
+                .clone(),
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
+
         let farm_info: StableStratFarmInfo = StableStratFarmInfo {
             state: AutoCompounderState::Running,
             cycle_stage: AutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
+            treasury,
             last_fee_amount: 0u128,
             token_address,
             pool_id_token_reward,
@@ -305,12 +325,20 @@ impl Contract {
             }
         }
 
+        let treasury: AccountFee = AccountFee {
+            account_id: compounder.get_jumbo_farm_info(&farm_id).treasury.account_id,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
+
         let farm_info: JumboStratFarmInfo = JumboStratFarmInfo {
             state: JumboAutoCompounderState::Running,
             cycle_stage: JumboAutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
             current_shares_to_stake: 0u128,
+            treasury,
             last_fee_amount: 0u128,
             pool_id_token1_reward,
             pool_id_token2_reward,
@@ -348,7 +376,7 @@ impl Contract {
     }
 
     pub fn harvest(&mut self, farm_id_str: String, strat_name: String) -> PromiseOrValue<u128> {
-        let treasury = self.data().treasury.clone();
+        // let treasury = self.data().treasury.clone();
 
         let strat = if !strat_name.is_empty() {
             self.pemb_get_strat_mut(&strat_name)
@@ -357,7 +385,7 @@ impl Contract {
             self.get_strat_mut(&seed_id)
         };
 
-        strat.harvest_proxy(farm_id_str, strat_name, treasury)
+        strat.harvest_proxy(farm_id_str, strat_name)
     }
 
     pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
@@ -407,6 +435,7 @@ impl Contract {
         strategy_fee: u128,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        treasure_contract_id: AccountId,
         exchange_contract_id: AccountId,
         pembrock_contract_id: AccountId,
         pembrock_reward_id: AccountId,
@@ -431,6 +460,7 @@ impl Contract {
                     strategy_fee,
                     strat_creator,
                     sentry_fee,
+                    treasure_contract_id,
                     exchange_contract_id,
                     pembrock_contract_id,
                     pembrock_reward_id,

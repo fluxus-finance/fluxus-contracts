@@ -101,7 +101,7 @@ pub struct ContractData {
     guardians: UnorderedSet<AccountId>,
 
     /// Fees earned by the DAO
-    treasury: AccountFee,
+    treasure_contract_id: AccountId,
 
     // Keeps tracks of accounts that send coins to this contract
     accounts: LookupMap<AccountId, VAccount>,
@@ -162,18 +162,18 @@ impl Contract {
         assert!(!env::state_exists(), "Already initialized");
         let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
-        let treasury: AccountFee = AccountFee {
-            account_id: treasure_contract_id,
-            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
-            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
-            current_amount: 0u128,
-        };
+        // let pub treasury: AccountFee, = AccountFee {
+        //     account_id: treasure_contract_id,
+        //     fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+        //     // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+        //     current_amount: 0u128,
+        // };
 
         Self {
             data: VersionedContractData::V0001(ContractData {
                 owner_id,
                 guardians: UnorderedSet::new(StorageKey::Guardian),
-                treasury,
+                treasure_contract_id,
                 accounts: LookupMap::new(StorageKey::Accounts),
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),

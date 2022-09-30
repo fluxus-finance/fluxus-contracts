@@ -2,53 +2,56 @@ use crate::*;
 
 const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(crate = "near_sdk::serde")]
-pub struct PembStratFarmInfo {
-    /// State is used to update the contract to a Paused/Running state
-    pub state: PembAutoCompounderState,
+// #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
+// #[serde(crate = "near_sdk::serde")]
+// pub struct PembStratFarmInfo {
+//     /// State is used to update the contract to a Paused/Running state
+//     pub state: PembAutoCompounderState,
 
-    /// Used to keep track of the current stage of the auto-compound cycle
-    pub cycle_stage: PembAutoCompounderCycle,
+//     /// Used to keep track of the current stage of the auto-compound cycle
+//     pub cycle_stage: PembAutoCompounderCycle,
 
-    /// Slippage applied to swaps, range from 0 to 100.
-    /// Defaults to 5%. The value will be computed as 100 - slippage
-    pub slippage: u128,
+//     /// Slippage applied to swaps, range from 0 to 100.
+//     /// Defaults to 5%. The value will be computed as 100 - slippage
+//     pub slippage: u128,
 
-    /// Used to keep track of the rewards received from the farm during auto-compound cycle
-    pub last_reward_amount: u128,
+//     /// Used to keep track of the rewards received from the farm during auto-compound cycle
+//     pub last_reward_amount: u128,
 
-    /// Used to keep track of the owned amount from fee of the token reward
-    /// This will be used to store owned amount if ft_transfer to treasure fails
-    pub last_fee_amount: u128,
+//     /// Fees earned by the DAO
+//     pub treasury: AccountFee,
 
-    /// Pool used to swap the reward received by the token used to add liquidity
-    pub pool_id_token1_reward: u64,
+//     /// Used to keep track of the owned amount from fee of the token reward
+//     /// This will be used to store owned amount if ft_transfer to treasure fails
+//     pub last_fee_amount: u128,
 
-    /// Address of the reward token given by the farm
-    pub reward_token: AccountId,
+//     /// Pool used to swap the reward received by the token used to add liquidity
+//     pub pool_id_token1_reward: u64,
 
-    /// Store balance of available token1 and token2
-    /// obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
-    pub available_balance: Balance,
-}
+//     /// Address of the reward token given by the farm
+//     pub reward_token: AccountId,
 
-impl PembStratFarmInfo {
-    pub fn increase_slippage(&mut self) {
-        if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
-            // increment slippage
-            self.slippage -= 4;
+//     /// Store balance of available token1 and token2
+//     /// obs: would be better to have it in as a LookupMap, but Serialize and Clone is not available for it
+//     pub available_balance: Balance,
+// }
 
-            log!(
-                "Slippage updated to {}. It will applied in the next call",
-                self.slippage
-            );
-        } else {
-            self.state = PembAutoCompounderState::Ended;
-            log!("Slippage too high. State was updated to Ended");
-        }
-    }
-}
+// impl PembStratFarmInfo {
+//     pub fn increase_slippage(&mut self) {
+//         if 100u128 - self.slippage < MAX_SLIPPAGE_ALLOWED {
+//             // increment slippage
+//             self.slippage -= 4;
+
+//             log!(
+//                 "Slippage updated to {}. It will applied in the next call",
+//                 self.slippage
+//             );
+//         } else {
+//             self.state = PembAutoCompounderState::Ended;
+//             log!("Slippage too high. State was updated to Ended");
+//         }
+//     }
+// }
 
 // #[derive(BorshSerialize, BorshDeserialize)]
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
@@ -81,6 +84,8 @@ pub struct PembrockAutoCompounder {
 
     /// Used to keep track of the rewards received from the farm during auto-compound cycle
     pub last_reward_amount: u128,
+
+    pub treasury: AccountFee,
 
     /// Used to keep track of the owned amount from fee of the token reward
     /// This will be used to store owned amount if ft_transfer to treasure fails
@@ -144,6 +149,7 @@ impl PembrockAutoCompounder {
         strategy_fee: u128,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        treasure_contract_id: AccountId,
         exchange_contract_id: AccountId,
         pembrock_contract_id: AccountId,
         pembrock_reward_id: AccountId,
@@ -152,6 +158,13 @@ impl PembrockAutoCompounder {
         reward_token: AccountId,
     ) -> Self {
         let admin_fee = AdminFees::new(strat_creator, sentry_fee, strategy_fee);
+
+        let treasury: AccountFee = AccountFee {
+            account_id: treasure_contract_id,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
 
         Self {
             admin_fees: admin_fee,
@@ -163,6 +176,7 @@ impl PembrockAutoCompounder {
             cycle_stage: PembAutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
+            treasury,
             last_fee_amount: 0u128,
             pool_id_token1_reward: pool_id,
             reward_token,

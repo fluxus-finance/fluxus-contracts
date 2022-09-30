@@ -85,7 +85,11 @@ impl Contract {
             .insert(env::current_account_id(), sentry_amount);
 
         // increase protocol amount to cover the case that the last transfer failed
-        data_mut.treasury.current_amount += protocol_amount;
+        // data_mut.treasury.current_amount += protocol_amount;
+        compounder.treasury.current_amount += protocol_amount;
+        // compounder.p
+
+        // compounder.pemb_get
 
         compounder.next_cycle();
         log!(
@@ -136,10 +140,13 @@ impl Contract {
     pub fn callback_pembrock_post_treasury_transfer(
         &mut self,
         #[callback_result] transfer_result: Result<(), PromiseError>,
+        strat_name: String,
     ) {
         match transfer_result {
             Ok(_) => {
-                self.data_mut().treasury.current_amount = 0;
+                // self.data_mut().treasury.current_amount = 0;
+                let compounder = self.pemb_get_strat_mut(&strat_name).pemb_get_mut();
+                compounder.treasury.current_amount = 0;
                 log!("Transfer to treasure succeeded")
             }
             Err(_) => {
@@ -194,9 +201,7 @@ impl Contract {
                     env::panic_str(msg.as_str());
                 }
             },
-            Err(_) => env::panic_str(
-                ERR12_CALLER_NOT_REGISTER,
-            ),
+            Err(_) => env::panic_str(ERR12_CALLER_NOT_REGISTER),
         }
 
         let compounder = self.get_strat_mut(&strat_name).pemb_get_mut();
@@ -313,7 +318,7 @@ impl Contract {
         #[callback_result] swap_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> Promise {
-        assert!(swap_result.is_ok(), "{}",ERR10_SWAP_TOKEN);
+        assert!(swap_result.is_ok(), "{}", ERR10_SWAP_TOKEN);
 
         let amount_to_transfer = swap_result.unwrap();
 

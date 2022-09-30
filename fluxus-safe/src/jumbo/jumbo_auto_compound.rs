@@ -155,7 +155,11 @@ impl Contract {
             .insert(env::current_account_id(), sentry_amount);
 
         // increase protocol amount to cover the case that the last transfer failed
-        data_mut.treasury.current_amount += protocol_amount;
+        compounder
+            .get_mut_jumbo_farm_info(farm_id.clone())
+            .treasury
+            .current_amount += protocol_amount;
+        // data_mut.treasury.current_amount += protocol_amount;
 
         // remaining amount to reinvest
         compounder
@@ -215,8 +219,11 @@ impl Contract {
     pub fn callback_jumbo_post_treasury_mft_transfer(
         &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        farm_id_str: String,
     ) {
-        let data_mut = self.data_mut();
+        // let data_mut = self.data_mut();
+
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
@@ -224,10 +231,18 @@ impl Contract {
             return;
         }
 
-        let amount: u128 = data_mut.treasury.current_amount;
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
+
+        let amount: u128 = compounder
+            .get_mut_farm_info(farm_id.clone())
+            .treasury
+            .current_amount;
 
         // reset treasury amount earned since tx was successful
-        data_mut.treasury.current_amount = 0;
+        compounder
+            .get_mut_farm_info(farm_id)
+            .treasury
+            .current_amount = 0;
 
         log!("Transfer {} to treasure succeeded", amount)
     }

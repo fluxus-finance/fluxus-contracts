@@ -18,6 +18,9 @@ pub struct StableStratFarmInfo {
     /// Used to keep track of the rewards received from the farm during auto-compound cycle
     pub last_reward_amount: u128,
 
+    /// Fees earned by the DAO
+    pub treasury: AccountFee,
+
     /// Used to keep track of the owned amount from fee of the token reward
     /// This will be used to store owned amount if ft_transfer to treasure fails
     pub last_fee_amount: u128,
@@ -275,7 +278,7 @@ impl StableAutoCompounder {
     pub fn withdraw_of_reward(
         &self,
         farm_id_str: String,
-        treasury_current_amount: u128,
+        // treasury_current_amount: u128,
     ) -> Promise {
         log!("withdraw_of_reward");
 
@@ -308,7 +311,7 @@ impl StableAutoCompounder {
             // the withdraw succeeded but not the transfer
             ext_reward_token::ft_transfer_call(
                 self.exchange_contract_id.clone(),
-                U128(farm_info.last_reward_amount + treasury_current_amount), //Amount after withdraw the rewards
+                U128(farm_info.last_reward_amount + farm_info.treasury.current_amount), //Amount after withdraw the rewards
                 "".to_string(),
                 farm_info.reward_token,
                 1,
@@ -332,12 +335,9 @@ impl StableAutoCompounder {
     pub fn autocompounds_swap(
         &mut self,
         farm_id_str: String,
-        treasure: AccountFee,
+        // treasure: AccountFee,
     ) -> PromiseOrValue<u128> {
         log!("autocompounds_swap");
-
-        let treasury_acc: AccountId = treasure.account_id;
-        let treasury_curr_amount: u128 = treasure.current_amount;
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
 
@@ -346,6 +346,10 @@ impl StableAutoCompounder {
         let strat_creator_account_id = self.admin_fees.strat_creator.account_id.clone();
 
         let farm_info_mut = self.get_mut_farm_info(&farm_id);
+
+        let treasury_acc: AccountId = farm_info_mut.treasury.account_id.clone();
+        let treasury_curr_amount: u128 = farm_info_mut.treasury.current_amount;
+
         let token_id = farm_info_mut.token_address.clone();
 
         let reward_amount = farm_info_mut.last_reward_amount;

@@ -11,7 +11,7 @@ impl Contract {
 
     pub fn update_treasure_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
-        self.data_mut().treasury.account_id = contract_id;
+        self.data_mut().treasure_contract_id = contract_id;
     }
 
     /// Returns allowed_accounts
@@ -90,7 +90,7 @@ impl Contract {
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   new_slippage: value between 80-100
     pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {
-        assert!(self.is_owner_or_guardians(), "{}",ERR34_NOT_ALLOWED);
+        assert!(self.is_owner_or_guardians(), "{}", ERR34_NOT_ALLOWED);
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
@@ -148,7 +148,8 @@ impl Contract {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
         assert!(
             (caller_acc_id == account_id) || (caller_acc_id == contract_id),
-            "{}",ERR34_NOT_ALLOWED
+            "{}",
+            ERR34_NOT_ALLOWED
         );
     }
 
@@ -166,7 +167,7 @@ impl Contract {
             }
         }
 
-        assert!(is_allowed, "{}",ERR34_NOT_ALLOWED);
+        assert!(is_allowed, "{}", ERR34_NOT_ALLOWED);
     }
 
     /// Extend the whitelist of tokens.
@@ -175,7 +176,8 @@ impl Contract {
         assert_eq!(
             env::predecessor_account_id(),
             self.data().owner_id,
-            "{}",ERR34_NOT_ALLOWED
+            "{}",
+            ERR34_NOT_ALLOWED
         );
         for token in tokens {
             self.data_mut().whitelisted_tokens.insert(&token);

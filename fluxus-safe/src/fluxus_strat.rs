@@ -220,7 +220,7 @@ impl VersionedStrategy {
         &mut self,
         farm_id_str: String,
         strat_name: String,
-        treasure: AccountFee,
+        // treasure: AccountFee,
     ) -> PromiseOrValue<u128> {
         let mut farm_id: String = "".to_string();
         if farm_id_str != *"" {
@@ -236,12 +236,12 @@ impl VersionedStrategy {
                     AutoCompounderCycle::ClaimReward => {
                         PromiseOrValue::Promise(compounder.claim_reward(farm_id_str))
                     }
-                    AutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
-                        compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
-                    ),
-                    AutoCompounderCycle::Swap => PromiseOrValue::Promise(
-                        compounder.autocompounds_swap(farm_id_str, treasure),
-                    ),
+                    AutoCompounderCycle::Withdrawal => {
+                        PromiseOrValue::Promise(compounder.withdraw_of_reward(farm_id_str))
+                    }
+                    AutoCompounderCycle::Swap => {
+                        PromiseOrValue::Promise(compounder.autocompounds_swap(farm_id_str))
+                    }
                     AutoCompounderCycle::Stake => PromiseOrValue::Promise(
                         compounder.autocompounds_liquidity_and_stake(farm_id_str),
                     ),
@@ -256,12 +256,10 @@ impl VersionedStrategy {
                     AutoCompounderCycle::ClaimReward => {
                         PromiseOrValue::Promise(stable_compounder.claim_reward(farm_id_str))
                     }
-                    AutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
-                        stable_compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
-                    ),
-                    AutoCompounderCycle::Swap => {
-                        stable_compounder.autocompounds_swap(farm_id_str, treasure)
+                    AutoCompounderCycle::Withdrawal => {
+                        PromiseOrValue::Promise(stable_compounder.withdraw_of_reward(farm_id_str))
                     }
+                    AutoCompounderCycle::Swap => stable_compounder.autocompounds_swap(farm_id_str),
                     AutoCompounderCycle::Stake => PromiseOrValue::Promise(
                         stable_compounder.autocompounds_liquidity_and_stake(farm_id_str),
                     ),
@@ -273,12 +271,12 @@ impl VersionedStrategy {
                     JumboAutoCompounderCycle::ClaimReward => {
                         PromiseOrValue::Promise(jumbo_compounder.claim_reward(farm_id_str))
                     }
-                    JumboAutoCompounderCycle::Withdrawal => PromiseOrValue::Promise(
-                        jumbo_compounder.withdraw_of_reward(farm_id_str, treasure.current_amount),
-                    ),
-                    JumboAutoCompounderCycle::SwapToken1 => PromiseOrValue::Promise(
-                        jumbo_compounder.autocompounds_swap(farm_id_str, treasure),
-                    ),
+                    JumboAutoCompounderCycle::Withdrawal => {
+                        PromiseOrValue::Promise(jumbo_compounder.withdraw_of_reward(farm_id_str))
+                    }
+                    JumboAutoCompounderCycle::SwapToken1 => {
+                        PromiseOrValue::Promise(jumbo_compounder.autocompounds_swap(farm_id_str))
+                    }
                     JumboAutoCompounderCycle::SwapToken2 => PromiseOrValue::Promise(
                         jumbo_compounder.autocompounds_swap_second_token(farm_id_str),
                     ),
