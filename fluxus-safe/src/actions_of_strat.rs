@@ -200,6 +200,7 @@ impl Contract {
         farm_id: String,
     ) -> String {
         self.is_owner_or_guardians();
+        let treasury_account_id = self.data().treasure_contract_id.clone();
         let stable_compounder = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
 
         for farm in stable_compounder.farms.clone() {
@@ -209,11 +210,7 @@ impl Contract {
         }
 
         let treasury: AccountFee = AccountFee {
-            account_id: stable_compounder
-                .get_mut_farm_info(&farm_id)
-                .treasury
-                .account_id
-                .clone(),
+            account_id: treasury_account_id,
             fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
             // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
             current_amount: 0u128,
@@ -258,9 +255,9 @@ impl Contract {
     ) -> String {
         self.is_owner_or_guardians();
 
-        let token_id = wrap_mft_token_id(&pool_id.to_string());
+        let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
 
-        return if self.data().strategies.contains_key(&token_id) {
+        return if self.data().strategies.contains_key(&seed_id) {
             ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
             let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
@@ -319,6 +316,8 @@ impl Contract {
         farm_id: String,
     ) -> String {
         self.is_owner_or_guardians();
+
+        let treasury_account_id = self.data().treasure_contract_id.clone();
         let compounder = self.get_strat_mut(&seed_id).get_jumbo_mut();
 
         for farm in compounder.farms.clone() {
@@ -328,7 +327,7 @@ impl Contract {
         }
 
         let treasury: AccountFee = AccountFee {
-            account_id: compounder.get_jumbo_farm_info(&farm_id).treasury.account_id,
+            account_id: treasury_account_id,
             fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
             // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
             current_amount: 0u128,

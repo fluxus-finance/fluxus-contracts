@@ -233,16 +233,16 @@ impl Contract {
             return;
         }
 
-        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
+        let compounder = self.get_strat_mut(&seed_id).get_jumbo_mut();
 
         let amount: u128 = compounder
-            .get_mut_farm_info(&farm_id)
+            .get_jumbo_farm_info(&farm_id)
             .treasury
             .current_amount;
 
         // reset treasury amount earned since tx was successful
         compounder
-            .get_mut_farm_info(&farm_id)
+            .get_mut_jumbo_farm_info(&farm_id)
             .treasury
             .current_amount = 0;
 
