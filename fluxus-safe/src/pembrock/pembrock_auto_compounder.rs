@@ -85,7 +85,11 @@ pub struct PembrockAutoCompounder {
     /// Used to keep track of the rewards received from the farm during auto-compound cycle
     pub last_reward_amount: u128,
 
+    /// Fees earned by the DAO
     pub treasury: AccountFee,
+
+    /// Fees earned by the strategy creator
+    pub strat_creator_fee_amount: u128,
 
     /// Used to keep track of the owned amount from fee of the token reward
     /// This will be used to store owned amount if ft_transfer to treasure fails
@@ -177,6 +181,7 @@ impl PembrockAutoCompounder {
             slippage: 99u128,
             last_reward_amount: 0u128,
             treasury,
+            strat_creator_fee_amount: 0u128,
             last_fee_amount: 0u128,
             pool_id_token1_reward: pool_id,
             reward_token,
@@ -194,7 +199,7 @@ impl PembrockAutoCompounder {
         let percent = Percentage::from(self.admin_fees.sentries_fee);
         let sentry_amount = percent.apply_to(all_fees_amount);
 
-        let percent = Percentage::from(self.admin_fees.strat_creator.fee_percentage);
+        let percent = Percentage::from(self.admin_fees.strat_creator_fee);
         let strat_creator_amount = percent.apply_to(all_fees_amount);
         let treasury_amount = all_fees_amount - sentry_amount - strat_creator_amount;
 

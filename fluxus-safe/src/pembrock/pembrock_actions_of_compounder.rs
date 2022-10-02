@@ -76,7 +76,7 @@ impl Contract {
 
         compounder.last_reward_amount += remaining_amount;
 
-        compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
+        compounder.strat_creator_fee_amount += strat_creator_amount;
 
         // store sentry amount under contract account id to be used in the last step
         compounder
@@ -100,7 +100,7 @@ impl Contract {
 
         if protocol_amount > 0 {
             ext_reward_token::ft_transfer(
-                compounder.admin_fees.strat_creator.account_id.clone(),
+                compounder.admin_fees.strat_creator_account_id.clone(),
                 U128(strat_creator_amount),
                 Some("".to_string()),
                 compounder.reward_token.clone(),
@@ -108,6 +108,7 @@ impl Contract {
                 Gas(50_000_000_000_000),
             )
             .then(callback_pembrock::callback_pembrock_post_treasury_transfer(
+                strat_name.clone(),
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
@@ -116,7 +117,7 @@ impl Contract {
 
         if strat_creator_amount > 0 {
             ext_reward_token::ft_transfer(
-                compounder.admin_fees.strat_creator.account_id.clone(),
+                compounder.admin_fees.strat_creator_account_id.clone(),
                 U128(strat_creator_amount),
                 Some("".to_string()),
                 compounder.reward_token.clone(),
@@ -144,7 +145,6 @@ impl Contract {
     ) {
         match transfer_result {
             Ok(_) => {
-                // self.data_mut().treasury.current_amount = 0;
                 let compounder = self.pemb_get_strat_mut(&strat_name).pemb_get_mut();
                 compounder.treasury.current_amount = 0;
                 log!("Transfer to treasure succeeded")
@@ -166,7 +166,7 @@ impl Contract {
                 let compounder = self.pemb_get_strat_mut(&strat_name).pemb_get_mut();
 
                 // reset strat creator fees after successful transfer
-                compounder.admin_fees.strat_creator.current_amount = 0;
+                compounder.strat_creator_fee_amount = 0;
 
                 log!("Transfer to strategy creator succeeded")
             }

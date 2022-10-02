@@ -175,7 +175,9 @@ impl Contract {
             compounder.compute_fees(last_reward_amount);
 
         // storing the amount earned by the strat creator
-        compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
+        compounder
+            .get_mut_farm_info(&farm_id)
+            .strat_creator_fee_amount += strat_creator_amount;
 
         // store sentry amount under contract account id to be used in the last step
         compounder
@@ -266,19 +268,23 @@ impl Contract {
     pub fn stable_callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<(), PromiseError>,
-        seed_id: String,
+        farm_id_str: String,
     ) {
         if strat_creator_transfer_result.is_err() {
             log!(ERR09_TRANSFER_TO_CREATOR);
             return;
         }
 
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
         let compounder = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
 
         // what if a new value was added to this var during the completion of this execution?
         // tx0 (add strat_creator_fees) -> tx1 (send strat_creator fees) -> tx2 -> (add strat_creator_fees) -> tx3 (update current amount to 0, because value was already sent)
         // this means that the value from tx2 was never sent to the strat_creator, losing the earned tokens
-        compounder.admin_fees.strat_creator.current_amount = 0;
+        compounder
+            .get_mut_farm_info(&farm_id)
+            .strat_creator_fee_amount = 0;
 
         log!("Transfer fees to the creator of the strategy succeeded");
     }

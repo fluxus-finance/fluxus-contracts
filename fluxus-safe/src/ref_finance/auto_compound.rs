@@ -67,7 +67,7 @@ impl Contract {
 
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
-        let farm_info = compounder.get_mut_farm_info(farm_id);
+        let farm_info = compounder.get_mut_farm_info(&farm_id);
 
         for (token, amount) in rewards_map.iter() {
             log!("token: {} amount: {}", token, amount.0);
@@ -131,7 +131,7 @@ impl Contract {
         compounder.update_strats_by_seed(rewards_map);
 
         // store the amount of reward earned
-        let farm_info = compounder.get_mut_farm_info(farm_id);
+        let farm_info = compounder.get_mut_farm_info(&farm_id);
         farm_info.last_reward_amount += reward_amount.0;
 
         farm_info.next_cycle();
@@ -161,15 +161,16 @@ impl Contract {
             .expect(ERR42_TOKEN_NOT_REG)
             .get_compounder_mut();
 
-        let last_reward_amount = compounder
-            .get_mut_farm_info(farm_id.clone())
-            .last_reward_amount;
+        let last_reward_amount = compounder.get_mut_farm_info(&farm_id).last_reward_amount;
 
         let (remaining_amount, protocol_amount, sentry_amount, strat_creator_amount) =
             compounder.compute_fees(last_reward_amount);
 
         // storing the amount earned by the strat creator
-        compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
+        // compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
+        compounder
+            .get_mut_farm_info(&farm_id)
+            .strat_creator_fee_amount += strat_creator_amount;
 
         // store sentry amount under contract account id to be used in the last step
         compounder
@@ -179,14 +180,12 @@ impl Contract {
 
         // increase protocol amount to cover the case that the last transfer failed
         compounder
-            .get_mut_farm_info(farm_id.clone())
+            .get_mut_farm_info(&farm_id)
             .treasury
             .current_amount += protocol_amount;
 
         // remaining amount to reinvest
-        compounder
-            .get_mut_farm_info(farm_id.clone())
-            .last_reward_amount = remaining_amount;
+        compounder.get_mut_farm_info(&farm_id).last_reward_amount = remaining_amount;
 
         // amount sent to ref, both remaining value and treasury
         let amount = remaining_amount + protocol_amount;
@@ -196,7 +195,7 @@ impl Contract {
                 compounder.exchange_contract_id.clone(),
                 U128(amount), //Amount after withdraw the rewards
                 "".to_string(),
-                compounder.get_mut_farm_info(farm_id).reward_token.clone(),
+                compounder.get_mut_farm_info(&farm_id).reward_token.clone(),
                 1,
                 Gas(40_000_000_000_000),
             )
@@ -223,7 +222,7 @@ impl Contract {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder.get_mut_farm_info(&farm_id);
 
         farm_info_mut.next_cycle();
     }
@@ -244,7 +243,7 @@ impl Contract {
         }
 
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder.get_mut_farm_info(&farm_id);
         let amount = farm_info_mut.treasury.current_amount;
 
         // reset treasury amount earned since tx was successful
@@ -257,16 +256,20 @@ impl Contract {
     pub fn callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<(), PromiseError>,
-        seed_id: String,
+        farm_id_str: String,
     ) {
         if strat_creator_transfer_result.is_err() {
             log!(ERR09_TRANSFER_TO_CREATOR);
             return;
         }
 
+        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
-        compounder.admin_fees.strat_creator.current_amount = 0;
+        compounder
+            .get_mut_farm_info(&farm_id)
+            .strat_creator_fee_amount = 0;
 
         log!("Transfer fees to the creator of the strategy succeeded");
     }
@@ -421,7 +424,7 @@ impl Contract {
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
 
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         let pool_id_to_swap1 = farm_info_mut.pool_id_token1_reward;
         let pool_id_to_swap2 = farm_info_mut.pool_id_token2_reward;
@@ -515,7 +518,7 @@ impl Contract {
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
 
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
@@ -566,7 +569,7 @@ impl Contract {
     ) {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
@@ -687,7 +690,7 @@ impl Contract {
         // if farm is ended, there is no more actions to do
         if farm_info.state == AutoCompounderState::Ended {
             let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
-            let farm_info = compounder.get_mut_farm_info(farm_id);
+            let farm_info = compounder.get_mut_farm_info(&farm_id);
             farm_info.state = AutoCompounderState::Cleared;
 
             log!("There farm {} ended. Strategy is now Cleared.", farm_id_str);
@@ -743,7 +746,7 @@ impl Contract {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         // ensure that in the next run we won't have a balance unless previous steps succeeds
         farm_info_mut.available_balance[0] = 0u128;
@@ -786,7 +789,7 @@ impl Contract {
 
         compounder_mut.harvest_timestamp = env::block_timestamp_ms();
 
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         farm_info_mut.next_cycle();
 

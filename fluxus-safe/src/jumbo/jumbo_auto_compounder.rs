@@ -31,6 +31,9 @@ pub struct JumboStratFarmInfo {
     /// Fees earned by the DAO
     pub treasury: AccountFee,
 
+    /// Fees earned by the strategy creator
+    pub strat_creator_fee_amount: u128,
+
     /// Used to keep track of the owned amount from fee of the token reward
     /// This will be used to store owned amount if ft_transfer to treasure fails
     pub last_fee_amount: u128,
@@ -206,7 +209,7 @@ impl JumboAutoCompounder {
         let percent = Percentage::from(self.admin_fees.sentries_fee);
         let sentry_amount = percent.apply_to(all_fees_amount);
 
-        let percent = Percentage::from(self.admin_fees.strat_creator.fee_percentage);
+        let percent = Percentage::from(self.admin_fees.strat_creator_fee);
         let strat_creator_amount = percent.apply_to(all_fees_amount);
         let treasury_amount = all_fees_amount - sentry_amount - strat_creator_amount;
 
@@ -231,7 +234,7 @@ impl JumboAutoCompounder {
         panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
-    pub fn get_mut_jumbo_farm_info(&mut self, farm_id: String) -> &mut JumboStratFarmInfo {
+    pub fn get_mut_jumbo_farm_info(&mut self, farm_id: &str) -> &mut JumboStratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
                 return farm;
@@ -409,6 +412,7 @@ impl JumboAutoCompounder {
             )
             .then(
                 callback_jumbo_exchange::callback_jumbo_post_treasury_mft_transfer(
+                    farm_id_str.clone(),
                     env::current_account_id(),
                     0,
                     Gas(20_000_000_000_000),
@@ -416,11 +420,11 @@ impl JumboAutoCompounder {
             );
         }
 
-        let strat_creator_curr_amount = self.admin_fees.strat_creator.current_amount;
+        let strat_creator_curr_amount = farm_info.strat_creator_fee_amount;
         if strat_creator_curr_amount > 0 {
             // 40 TGAS
             ext_reward_token::ft_transfer(
-                self.admin_fees.strat_creator.account_id.clone(),
+                self.admin_fees.strat_creator_account_id.clone(),
                 U128(strat_creator_curr_amount),
                 Some("".to_string()),
                 farm_info.reward_token.clone(),
@@ -429,7 +433,7 @@ impl JumboAutoCompounder {
             )
             .then(
                 callback_jumbo_exchange::callback_jumbo_post_creator_ft_transfer(
-                    seed_id,
+                    farm_id_str.clone(),
                     env::current_account_id(),
                     0,
                     Gas(20_000_000_000_000),

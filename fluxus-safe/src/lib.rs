@@ -184,7 +184,6 @@ impl Contract {
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
                 /// List of all the pools.
-                /// TODO: with more exchanges, this should not exist
                 strategies: HashMap::new(),
             }),
         }
