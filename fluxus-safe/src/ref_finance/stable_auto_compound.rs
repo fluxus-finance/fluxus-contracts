@@ -7,7 +7,7 @@ const MIN_SLIPPAGE_ALLOWED: u128 = 1;
 #[near_bindgen]
 impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_list_farms_by_seed(
@@ -59,6 +59,9 @@ impl Contract {
         )
     }
 
+    /// Ensure that the get_rewards succeeded and call the claim.
+    /// # Parameters example: 
+    /// farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_get_unclaimed_reward(
         &mut self,
@@ -118,6 +121,11 @@ impl Contract {
         )
     }
 
+    /// Make sure that the reward was claimed and update the compounder cycle.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   reward_amount: U128(100000000),
+    ///   rewards_map: Hashmap{token1: U128(100000000)}
     #[private]
     pub fn stable_callback_post_claim_reward(
         &mut self,
@@ -143,6 +151,9 @@ impl Contract {
         reward_amount.0
     }
 
+    /// Make sure that the withdraw was ok, store the fees correctly and transfer the amount to the exchange contract.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_withdraw(
         &mut self,
@@ -204,6 +215,9 @@ impl Contract {
         )
     }
 
+    /// Make sure that the transfer succeeded and update the compounder cycle.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_ft_transfer(
         &mut self,
@@ -244,6 +258,9 @@ impl Contract {
         log!("Stable Transfer {} to treasure succeeded", amount)
     }
 
+    /// Make sure that the transfer to the creator succeeded.
+    /// # Parameters example: 
+    ///   seed_id: exchange@pool_id
     #[private]
     pub fn stable_callback_post_creator_ft_transfer(
         &mut self,
@@ -265,6 +282,9 @@ impl Contract {
         log!("Transfer fees to the creator of the strategy succeeded");
     }
 
+    /// Make sure that the swap is possible and call it.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_get_token_return(
         &mut self,
@@ -321,6 +341,9 @@ impl Contract {
         )
     }
 
+    /// Make sure that the swap succeeded and update compounder cycles.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_swap(
         &mut self,
@@ -352,6 +375,11 @@ impl Contract {
         farm_info_mut.next_cycle();
     }
 
+    /// Make sure that the caller is register, has balance and then transfer to sentry.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_acc_id: sentry.testnet
+    ///   reward_token: reward.testnet
     #[private]
     pub fn stable_callback_post_sentry(
         &mut self,
@@ -418,7 +446,11 @@ impl Contract {
         )
     }
 
-    /// Callback to verify that transfer to treasure succeeded
+    /// Make sure that the transfer succeeded and call add_liquidity.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_id: sentry.testnet
+    ///   amount_earned: 10000
     #[private]
     pub fn stable_callback_post_sentry_mft_transfer(
         &mut self,
@@ -483,6 +515,9 @@ impl Contract {
         )
     }
 
+    /// Call add_liquidity.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_add_stable_liquidity(
         &mut self,
@@ -532,8 +567,9 @@ impl Contract {
         )
     }
 
-    /// Receives shares from auto-compound and stake it
-    /// Change the user_balance and the auto_compounder balance of lps/shares
+    /// Receives shares from auto-compound and stake it.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_get_pool_shares(
         &mut self,

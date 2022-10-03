@@ -5,7 +5,7 @@ use crate::*;
 #[near_bindgen]
 impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_list_farms_by_seed(
@@ -53,6 +53,9 @@ impl Contract {
         )
     }
 
+    /// Check the reward amount earned and  claim reward by farm.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_get_unclaimed_reward(
         &mut self,
@@ -100,6 +103,9 @@ impl Contract {
         )
     }
 
+    /// Make sure that the reward was claimed and update the compounder cycle.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_claim_reward(
         &mut self,
@@ -115,6 +121,9 @@ impl Contract {
         farm_info.next_cycle();
     }
 
+    /// Make sure that the withdraw was ok, store the fees correctly and transfer the amount to the exchange contract.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_withdraw(
         &mut self,
@@ -186,6 +195,9 @@ impl Contract {
         )
     }
 
+    /// Make sure that the transfer succeeded and update the compounder cycle.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_ft_transfer(
         &mut self,
@@ -232,6 +244,9 @@ impl Contract {
         log!("Transfer {} to treasure succeeded", amount)
     }
 
+    /// Make sure that the transfer to the creator succeeded.
+    /// # Parameters example: 
+    ///   seed_id: exchange@pool_id
     #[private]
     pub fn callback_jumbo_post_creator_ft_transfer(
         &mut self,
@@ -250,6 +265,10 @@ impl Contract {
         log!("Transfer fees to the creator of the strategy succeeded");
     }
 
+    /// Make sure that the swap is possible and call it.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_token_1: U128(1000000)
     #[private]
     pub fn callback_jumbo_get_token1_return(
         &mut self,
@@ -298,6 +317,11 @@ impl Contract {
         )
     }
 
+    /// Make sure that the swap succeeded and update compounder cycles.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_in: U128(1000000)
+    ///   min_amount_out: U128(1000000)
     #[private]
     pub fn callback_jumbo_post_first_swap(
         &mut self,
@@ -328,6 +352,10 @@ impl Contract {
         min_amount_out
     }
 
+    /// Make sure that the swap is possible and call it.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_token_2: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_get_token2_return(
         &mut self,
@@ -376,6 +404,11 @@ impl Contract {
         )
     }
 
+    /// Make sure that the swap succeeded and update compounder cycles.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_in: U128(1000000)
+    ///   min_amount_out: U128(1000000)
     #[private]
     pub fn callback_jumbo_post_second_swap(
         &mut self,
@@ -407,6 +440,11 @@ impl Contract {
         min_amount_out
     }
 
+    /// Make sure that the caller is register, has balance and then transfer to sentry.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_acc_id: sentry.testnet
+    ///   reward_token: reward.testnet
     #[private]
     pub fn callback_jumbo_post_sentry(
         &mut self,
@@ -481,7 +519,11 @@ impl Contract {
         }
     }
 
-    /// Callback to verify that transfer to treasure succeeded
+    /// Make sure that the transfer succeeded and call add_liquidity.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_id: sentry.testnet
+    ///   amount_earned: 10000
     #[private]
     pub fn callback_jumbo_post_sentry_mft_transfer(
         &mut self,
@@ -508,6 +550,9 @@ impl Contract {
         PromiseOrValue::Promise(self.jumbo_harvest_add_liquidity(farm_id_str))
     }
 
+    /// Call jumbo's add_liquidity.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn jumbo_harvest_add_liquidity(&mut self, farm_id_str: String) -> Promise {
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -536,6 +581,9 @@ impl Contract {
         ))
     }
 
+    /// Make sure that the liquidity was added and get the new amount of pool shares.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_add_liquidity(
         &mut self,
@@ -571,6 +619,10 @@ impl Contract {
         )
     }
 
+    /// Update the amount of seed and the compounder cycle.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   shares_on_exchange: 100000
     #[private]
     pub fn update_shares_and_forward_cycle(
         &mut self,
@@ -626,8 +678,9 @@ impl Contract {
         new_seed_amount
     }
 
-    /// Receives shares from auto-compound and stake it
-    /// Change the user_balance and the auto_compounder balance of lps/shares
+    /// Receives shares from auto-compound and stake it.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_get_pool_shares(
         &mut self,
@@ -681,6 +734,9 @@ impl Contract {
         )
     }
 
+    /// Make sure that the stake succeeded.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_stake_from_harvest(
         &mut self,
