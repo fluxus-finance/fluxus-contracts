@@ -367,7 +367,7 @@ impl Contract {
             .data()
             .strategies
             .get(seed_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
             strat.upgrade()
@@ -384,7 +384,7 @@ impl Contract {
             .data_mut()
             .strategies
             .get_mut(seed_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
             strat.upgrade();
@@ -402,7 +402,7 @@ impl Contract {
             .data()
             .strategies
             .get(seed_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
             strat.upgrade()
@@ -419,7 +419,7 @@ impl Contract {
             .data_mut()
             .strategies
             .get_mut(seed_id)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         if strat.need_upgrade() {
             strat.upgrade();

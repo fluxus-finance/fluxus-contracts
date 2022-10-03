@@ -174,7 +174,7 @@ impl StableAutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     /// Return a mutable farm information.
@@ -187,7 +187,7 @@ impl StableAutoCompounder {
             }
         }
 
-        panic!("Farm does not exist")
+        panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
     /// Iterate through farms inside a compounder

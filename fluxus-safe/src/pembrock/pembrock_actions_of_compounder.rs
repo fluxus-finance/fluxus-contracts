@@ -17,7 +17,7 @@ impl Contract {
         shares: u128,
     ) -> String {
         if let Ok(amount) = transfer_result {
-            assert_ne!(amount.0, 0, "ERR_STAKE_FAILED");
+            assert_ne!(amount.0, 0, "{}", ERR16_STAKE_FAILED);
         }
 
         //Total fft_share
@@ -63,19 +63,19 @@ impl Contract {
         #[callback_result] claim_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> PromiseOrValue<u128> {
-        assert!(claim_result.is_ok(), "ERR: failed to claim");
+        assert!(claim_result.is_ok(), "{}", ERR03_CLAIM_FAILED);
 
         let claimed = claim_result.unwrap().0;
         log!("debug claim: {}", claimed);
 
-        assert!(claimed > 0, "ERR: claimed zero amount for {}", strat_name);
+        assert!(claimed > 0, "{}", ERR19_CLAIMED_ZERO_AMOUNT);
 
         let data_mut = self.data_mut();
 
         let strat = data_mut
             .strategies
             .get_mut(&strat_name)
-            .expect(ERR21_TOKEN_NOT_REG);
+            .expect(ERR42_TOKEN_NOT_REG);
 
         let compounder = strat.pemb_get_mut();
 
@@ -109,12 +109,12 @@ impl Contract {
                 Some("".to_string()),
                 compounder.reward_token.clone(),
                 1,
-                Gas(20_000_000_000_000),
+                Gas(50_000_000_000_000),
             )
             .then(callback_pembrock::callback_pembrock_post_treasury_transfer(
                 env::current_account_id(),
                 0,
-                Gas(10_000_000_000_000),
+                Gas(20_000_000_000_000),
             ));
         }
 
@@ -125,14 +125,14 @@ impl Contract {
                 Some("".to_string()),
                 compounder.reward_token.clone(),
                 1,
-                Gas(20_000_000_000_000),
+                Gas(50_000_000_000_000),
             )
             .then(
                 callback_pembrock::callback_pembrock_post_creator_ft_transfer(
                     strat_name,
                     env::current_account_id(),
                     0,
-                    Gas(10_000_000_000_000),
+                    Gas(20_000_000_000_000),
                 ),
             );
         }
@@ -152,7 +152,7 @@ impl Contract {
                 log!("Transfer to treasure succeeded")
             }
             Err(_) => {
-                log!("Transfer to strategy creator failed");
+                log!(ERR08_TRANSFER_TO_TREASURE);
             }
         }
     }
@@ -176,7 +176,7 @@ impl Contract {
                 log!("Transfer to strategy creator succeeded")
             }
             Err(_) => {
-                log!("Transfer to strategy creator failed");
+                log!(ERR09_TRANSFER_TO_CREATOR);
             }
         }
     }
@@ -200,7 +200,7 @@ impl Contract {
                 _ => {
                     let msg = format!(
                         "{}{:#?}",
-                        "ERR: callback_post_sentry - not enough balance on storage",
+                        ERR11_NOT_ENOUGH_BALANCE,
                         balance_op
                             .unwrap_or(StorageBalance {
                                 total: U128(0),
@@ -212,7 +212,7 @@ impl Contract {
                 }
             },
             Err(_) => env::panic_str(
-                "ERR: callback post Sentry - caller not registered to Reward token contract",
+                ERR12_CALLER_NOT_REGISTER,
             ),
         }
 
@@ -252,7 +252,7 @@ impl Contract {
             compounder.pool_id_token1_reward,
             compounder.reward_token.clone(),
             U128(compounder.last_reward_amount),
-            compounder.token1_address.clone(),
+            compounder.token_address.clone(),
             compounder.exchange_contract_id.clone(),
             0,
             Gas(10_000_000_000_000),
@@ -280,7 +280,7 @@ impl Contract {
     ) {
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
-            log!("Transfer to sentry failed".to_string());
+            log!(ERR13_TRANSFER_TO_SENTRY);
 
             let compounder = self.get_strat_mut(&strat_name).pemb_get_mut();
 
@@ -314,7 +314,7 @@ impl Contract {
 
         let token_min_out = percent.apply_to(amount_out.0);
 
-        let msg = format!("{{\"force\":0,\"actions\":[{{\"pool_id\":{},\"token_in\":\"{}\",\"token_out\":\"{}\",\"amount_in\":\"{}\",\"min_amount_out\":\"{}\"}}]}}", 461, compounder.reward_token, compounder.token1_address, compounder.last_reward_amount, token_min_out) ;
+        let msg = format!("{{\"force\":0,\"actions\":[{{\"pool_id\":{},\"token_in\":\"{}\",\"token_out\":\"{}\",\"amount_in\":\"{}\",\"min_amount_out\":\"{}\"}}]}}", 461, compounder.reward_token, compounder.token_address, compounder.last_reward_amount, token_min_out) ;
 
         ext_reward_token::ft_transfer_call(
             compounder.exchange_contract_id,
@@ -341,7 +341,7 @@ impl Contract {
         #[callback_result] swap_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> Promise {
-        assert!(swap_result.is_ok(), "ERR: failed to swap");
+        assert!(swap_result.is_ok(), "{}",ERR10_SWAP_TOKEN);
 
         let amount_to_transfer = swap_result.unwrap();
 
@@ -363,7 +363,7 @@ impl Contract {
             compounder.pembrock_contract_id.clone(),
             amount_to_transfer,
             "deposit".to_string(),
-            compounder.token1_address.clone(),
+            compounder.token_address.clone(),
             1,
             Gas(40_000_000_000_000),
         )
@@ -404,12 +404,12 @@ impl Contract {
     ///   amount_withdraw: U128(10000000) or None
     pub fn pembrock_unstake(
         &mut self,
-        token_name: String,
+        token_address: String,
         amount_withdrawal: Option<U128>,
     ) -> Promise {
         let (caller_id, contract_id) = get_predecessor_and_current_account();
 
-        let seed_id: String = format!("pembrock@{}", token_name);
+        let seed_id: String = format!("pembrock@{}", token_address);
 
         let fft_share_id = self.get_fft_share_id_from_seed(seed_id.clone());
         let mut user_fft_shares =
@@ -430,7 +430,7 @@ impl Contract {
             .data()
             .strategies
             .get(&seed_id)
-            .expect("ERR_TOKEN_ID_DOES_NOT_EXIST");
+            .expect(ERR20_SEED_ID_DOES_NOT_EXIST);
 
         let compounder = strat.clone().pemb_get();
 
@@ -454,7 +454,7 @@ impl Contract {
         log!("{} is trying to withdrawal {}", caller_id, amount.0);
 
         ext_pembrock::withdraw(
-            compounder.token1_address.clone(),
+            compounder.token_address.clone(),
             amount,
             compounder.pembrock_contract_id,
             1,
@@ -464,7 +464,7 @@ impl Contract {
             caller_id.clone(),
             amount,
             Some("".to_string()),
-            compounder.token1_address,
+            compounder.token_address,
             1,
             Gas(100_000_000_000_000),
         ))

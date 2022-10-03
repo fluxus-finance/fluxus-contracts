@@ -1,5 +1,4 @@
 use crate::*;
-use substring::Substring;
 
 const MAX_SLIPPAGE_ALLOWED: u128 = 20;
 
@@ -68,16 +67,7 @@ pub struct PembrockAutoCompounder {
     pub pembrock_reward_id: AccountId,
 
     /// Address of the first token used by pool
-    pub token1_address: AccountId,
-
-    /// Pool used to add liquidity and farming
-    pub token_name: String,
-
-    /// Min LP amount accepted by the farm for stake
-    // pub seed_min_deposit: U128,
-
-    /// Store all farms that were used to compound by some token_id
-    // pub farms: Vec<PembStratFarmInfo>,
+    pub token_address: AccountId,
 
     /// State is used to update the contract to a Paused/Running state
     pub state: PembAutoCompounderState,
@@ -171,8 +161,7 @@ impl PembrockAutoCompounder {
         exchange_contract_id: AccountId,
         pembrock_contract_id: AccountId,
         pembrock_reward_id: AccountId,
-        token1_address: AccountId,
-        token_name: String,
+        token_address: AccountId,
         pool_id: u64,
         reward_token: AccountId,
     ) -> Self {
@@ -183,15 +172,13 @@ impl PembrockAutoCompounder {
             exchange_contract_id,
             pembrock_contract_id,
             pembrock_reward_id,
-            token1_address,
-            token_name,
+            token_address,
             state: PembAutoCompounderState::Running,
             cycle_stage: PembAutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
             last_fee_amount: 0u128,
             pool_id_token1_reward: pool_id,
-            // TODO: pass as parameter
             reward_token,
             available_balance: 0u128,
             harvest_timestamp: 0u64,
@@ -237,7 +224,7 @@ impl PembrockAutoCompounder {
         strat_name: String,
     ) -> Promise {
         let farm_contract_id = self.pembrock_contract_id.clone();
-        let token_contract = self.token1_address.clone();
+        let token_contract = self.token_address.clone();
         log!(
             "Farm _contract_id is: {} current account is {} ",
             farm_contract_id,

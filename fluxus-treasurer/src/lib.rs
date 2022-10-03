@@ -16,6 +16,9 @@ mod external_contracts;
 use external_contracts::*;
 mod managed_tokens;
 mod stakeholders;
+mod errors;
+use errors::*;
+
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -103,7 +106,7 @@ impl Contract {
             Some(pool_id) => {
                 pool = *pool_id;
             }
-            _ => env::panic_str("TREASURER::TOKEN_NOT_REGISTERED"),
+            _ => env::panic_str(ERR01_TOKEN_NOT_REGISTERED),
         };
 
         ext_exchange::get_deposit(
@@ -136,10 +139,10 @@ impl Contract {
         token: AccountId,
         pool_id: u64,
     ) -> Promise {
-        assert!(token_balance.is_ok(), "TREASURER::COULD_NOT_GET_DEPOSITS");
+        assert!(token_balance.is_ok(), "{}",ERR02_GET_DEPOSITS);
 
         let amount_in: U128 = token_balance.unwrap();
-        assert_ne!(amount_in, U128(0), "TREASURER::NO_DEPOSIT_AVAILABLE");
+        assert_ne!(amount_in, U128(0), "{}",ERR03_NO_DEPOSIT_AVAILABLE);
 
         ext_exchange::get_return(
             pool_id,
@@ -171,7 +174,7 @@ impl Contract {
     ) -> Promise {
         assert!(
             amount_out.is_ok(),
-            "TREASURER::ERR_COULD_NOT_GET_TOKEN_RETURN"
+            "{}",ERR04_COULD_NOT_GET_RETURN_FOR_TOKEN
         );
 
         let mut min_amount_out: u128;
@@ -181,7 +184,7 @@ impl Contract {
             require!(val > 0u128);
             min_amount_out = val;
         } else {
-            env::panic_str("TREASURER::ERR_COULD_NOT_DESERIALIZE_TOKEN")
+            env::panic_str(ERR05_COULD_NOT_DESERIALIZE_TOKEN)
         }
 
         ext_exchange::swap(
@@ -204,7 +207,7 @@ impl Contract {
         &self,
         #[callback_result] deposit_result: Result<U128, PromiseError>,
     ) -> Promise {
-        assert!(deposit_result.is_ok(), "TREASURER::ERR_WITHDRAW_FAILED");
+        assert!(deposit_result.is_ok(), "{}",ERR06_SWAP_FAILED);
 
         let amount = deposit_result.unwrap();
 
@@ -230,7 +233,7 @@ impl Contract {
         #[callback_result] withdraw_result: Result<U128, PromiseError>,
         amount: U128,
     ) -> PromiseOrValue<String> {
-        assert!(withdraw_result.is_ok(), "TREASURER::ERR_CANNOT_GET_BALANCE");
+        assert!(withdraw_result.is_ok(), "{}",ERR07_COULD_NOT_GET_BALANCE);
 
         let total_amount: u128 = amount.into();
 
@@ -246,7 +249,7 @@ impl Contract {
 
             assert!(
                 amount_received > 0u128,
-                "TREASURER::ERR_CANNOT_GET_PERCENTAGE"
+                "{}",ERR08_GET_PERCENTAGE
             );
 
             total_distributed += amount_received.clone();
@@ -257,7 +260,7 @@ impl Contract {
         // TODO: if this goes wrong, the value was already withdraw and there is no way to distribute again
         assert!(
             total_distributed <= total_amount,
-            "TREASURER::ERR_TRIED_TO_DISTRIBUTE_HIGHER_AMOUNT"
+            "{}",ERR09_DISTRIBUTE_HIGHER
         );
 
         for (acc, amount) in stakeholders_amounts.clone() {
@@ -283,7 +286,7 @@ impl Contract {
 
         assert!(
             self.data().stakeholders_fees.contains_key(&caller_id),
-            "TREASURER::ERR_ACCOUNT_DOES_NOT_EXIST"
+            "{}",ERR10_ACCOUNT_DOES_NOT_EXIST
         );
 
         let amount: &u128 = self
@@ -292,7 +295,7 @@ impl Contract {
             .get(&caller_id)
             .unwrap();
 
-        assert_ne!(*amount, 0u128, "TREASURER::ERR_WITHDRAW_ZERO_AMOUNT");
+        assert_ne!(*amount, 0u128, "{}",ERR11_WITHDRAW_ZERO_AMOUNT);
 
         ext_input_token::ft_transfer(
             caller_id.clone(),
@@ -319,7 +322,7 @@ impl Contract {
     ) -> String {
         assert!(
             transfer_result.is_ok(),
-            "TREASURER::ERR_WITHDRAW_FROM_CONTRACT_FAILED"
+            "{}",ERR12_WITHDRAW_FAILED
         );
 
         self.data_mut()
@@ -335,7 +338,7 @@ impl Contract {
         let (caller_acc_id, contract_id) = self.get_predecessor_and_current_account();
         require!(
             caller_acc_id == contract_id || caller_acc_id == self.data().owner_id,
-            "TREASURER::ERR_NOT_ALLOWED"
+            ERR13_CALLER_NOT_ALLOWED
         );
     }
 

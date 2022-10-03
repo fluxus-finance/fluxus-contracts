@@ -19,9 +19,9 @@ impl Contract {
         shares: u128,
     ) -> String {
         if let Ok(amount) = transfer_result {
-            assert_eq!(amount.0, 0, "ERR_STAKE_FAILED");
+            assert_eq!(amount.0, 0, "{}", ERR16_STAKE_FAILED);
         } else {
-            panic!("ERR_STAKE_FAILED");
+            panic!("{}",ERR16_STAKE_FAILED);
         }
 
         //Total fft_share
@@ -73,10 +73,8 @@ impl Contract {
             self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
 
         assert!(
-            user_fft_shares > 0,
-            "err: {} does not have enough shares. Only has {} shares",
-            caller_id,
-            user_fft_shares
+            user_fft_shares > 0,"{}",
+            ERR04_WITHDRAW_FROM_FARM_FAILED
         );
 
         //Total fft_share
@@ -130,8 +128,8 @@ impl Contract {
         user_fft_shares: u128,
     ) -> Promise {
         assert!(
-            shares_result.is_ok(),
-            "ERR: failed to get shares from exchange"
+            shares_result.is_ok(),"{}",
+            ERR17_GET_POOL_SHARES
         );
 
         let compounder = self.get_strat(&seed_id).get_compounder();
@@ -209,8 +207,7 @@ impl Contract {
     ) {
         assert!(
             mft_transfer_result.is_ok(),
-            "ERR: failed to transfer shares to {}",
-            account_id
+            "{}",ERR04_WITHDRAW_FROM_FARM_FAILED
         );
 
         let data = self.data_mut();
@@ -249,7 +246,7 @@ impl Contract {
     ) -> Promise {
         assert!(
             shares_result.is_ok(),
-            "ERR: failed to get shares from exchange"
+            "{}",ERR17_GET_POOL_SHARES
         );
 
         let stable_compounder = self.get_strat(&seed_id).get_stable_compounder();
@@ -331,8 +328,7 @@ impl Contract {
     ) {
         assert!(
             mft_transfer_result.is_ok(),
-            "ERR: failed to transfer shares to {}",
-            account_id
+            "{}",ERR04_WITHDRAW_FROM_FARM_FAILED
         );
 
         let data = self.data_mut();
@@ -503,7 +499,7 @@ impl Contract {
     //         .data()
     //         .strategies
     //         .get(&token_id)
-    //         .expect(ERR21_TOKEN_NOT_REG);
+    //         .expect(ERR42_TOKEN_NOT_REG);
 
     //     let compounder = strat.get_ref();
 
