@@ -255,7 +255,7 @@ impl JumboAutoCompounder {
     /// Return a jumbo's mutable farm information.
     /// # Parameters example:
     /// farm_id: 1,
-    pub fn get_mut_jumbo_farm_info(&mut self, farm_id: String) -> &mut JumboStratFarmInfo {
+    pub fn get_mut_jumbo_farm_info(&mut self, farm_id: &str) -> &mut JumboStratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
                 return farm;
