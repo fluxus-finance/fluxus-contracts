@@ -40,6 +40,9 @@ pub trait RefExchangeAutoCompound {
     fn callback_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
     );
+    fn callback_register_lp(
+        #[callback_result] register_result: Result<(), PromiseError>,
+    );
     fn callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,
