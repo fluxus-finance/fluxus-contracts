@@ -157,9 +157,8 @@ impl VersionedContractData {}
 
 #[near_bindgen]
 impl Contract {
-
     /// Initialize the contract.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  owner_id: account.testnet,
     ///  treasure_contract_id: treasurer.testnet
     #[init]
@@ -197,7 +196,6 @@ impl Contract {
 }
 
 impl Contract {
-   
     /// Return the contract data.
     #[allow(unreachable_patterns)]
     fn data(&self) -> &ContractData {
@@ -226,7 +224,7 @@ impl Contract {
 
     /// Ensures that at least one strategy is running for given token_id
     /// # Parameters example:
-    ///   seed_id: exchange@seed_id
+    ///   seed_id: exchange@pool_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
 

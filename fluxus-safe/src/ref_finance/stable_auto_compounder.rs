@@ -103,7 +103,7 @@ pub struct StableAutoCompounder {
 /// Auto-compounder internal methods
 impl StableAutoCompounder {
     /// Initialize a new jumbo's compounder.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// strategy_fee: 5,
     /// strat_creator: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
     /// sentry_fee: 10,
@@ -112,7 +112,7 @@ impl StableAutoCompounder {
     /// token1_address: token1.testnet,
     /// token2_address: token2.testnet,
     /// pool_id: 17,
-    /// seed_id: exchange@seed_id,
+    /// seed_id: exchange@pool_id,
     /// seed_min_deposit: U128(1000000)
     pub(crate) fn new(
         strategy_fee: u128,
@@ -139,7 +139,7 @@ impl StableAutoCompounder {
     }
 
     /// Split reward into fees and reward_remaining.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// reward_amount: 100000000,
     pub(crate) fn compute_fees(&mut self, reward_amount: u128) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
@@ -165,7 +165,7 @@ impl StableAutoCompounder {
     }
 
     /// Return a farm information.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id: 1,
     pub fn get_farm_info(&self, farm_id: &str) -> StableStratFarmInfo {
         for farm in self.farms.iter() {
@@ -178,7 +178,7 @@ impl StableAutoCompounder {
     }
 
     /// Return a mutable farm information.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id: 1,
     pub fn get_mut_farm_info(&mut self, farm_id: &String) -> &mut StableStratFarmInfo {
         for farm in self.farms.iter_mut() {
@@ -205,9 +205,9 @@ impl StableAutoCompounder {
     }
 
     /// Transfer the amount of the token to the exchange and stake it.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// token_id: :1,
-    /// seed_id: exchange@seed_id,
+    /// seed_id: exchange@pool_id,
     /// account_id: account.testnet,
     /// shares: 1000000,
     pub fn stake(
@@ -242,9 +242,9 @@ impl StableAutoCompounder {
     }
 
     /// Get the pool shares and then call a function to unstake them.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// token_id: 1,
-    /// seed_id: exchange@seed_id,
+    /// seed_id: exchange@pool_id,
     /// receiver_id: receiver_account.testnet,
     /// withdraw_amount: 1000000,
     /// user_fft_shares: 1000000
@@ -279,7 +279,7 @@ impl StableAutoCompounder {
     }
 
     /// Claim the rewards earned.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn claim_reward(&self, farm_id_str: String) -> Promise {
         log!("claim_reward");
@@ -302,7 +302,7 @@ impl StableAutoCompounder {
     }
 
     /// Function to withdraw the reward earned and already claimed.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
     /// treasury_current_amount: 1000000
     pub fn withdraw_of_reward(
@@ -358,9 +358,8 @@ impl StableAutoCompounder {
         }
     }
 
-
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   treasure: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
     pub fn autocompounds_swap(
@@ -458,7 +457,7 @@ impl StableAutoCompounder {
 
     //TODO: this function just call another one. Maybe we need to join both.
     /// Get amount of tokens available then stake it
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
     pub fn autocompounds_liquidity_and_stake(&self, farm_id_str: String) -> Promise {
         log!("autocompounds_liquidity_and_stake");

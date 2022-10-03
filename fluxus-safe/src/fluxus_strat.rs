@@ -164,11 +164,10 @@ impl VersionedStrategy {
 }
 
 impl VersionedStrategy {
-
     /// Call the stake function for an auto_compounder.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// token_id: :1,
-    /// seed_id: exchange@seed_id,
+    /// seed_id: exchange@pool_id,
     ///  account_id: account.testnet,
     ///  shares: 100000000,
     pub fn stake(
@@ -196,8 +195,8 @@ impl VersionedStrategy {
     }
 
     /// Call the unstake function for an auto_compounder.
-    /// # Parameters example: 
-    ///  seed_id: exchange@seed_id,
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     ///  receiver_id: account.testnet,
     ///  withdraw_amount: 100000000,
     ///  user_fft_shares: 100000000,
@@ -241,7 +240,7 @@ impl VersionedStrategy {
     }
 
     /// Call the harvest function for some compounder based on it`s type (stable, jumbo...).
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
     ///  strat_name: pembrock@token_name,
     ///  treasure: { account_id: treasure.testnet, "fee_percentage": 5, "current_amount" : 0 },
@@ -358,10 +357,9 @@ impl VersionedStrategy {
 }
 
 impl Contract {
-       
     /// Return the VersionedStrategy structure.
-    /// # Parameters example: 
-    ///  seed_id: exchange@seed_id,
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn get_strat(&self, seed_id: &str) -> VersionedStrategy {
         let strat = self
             .data()
@@ -377,8 +375,8 @@ impl Contract {
     }
 
     /// Return the VersionedStrategy structure as a mutable reference.
-    /// # Parameters example: 
-    ///  seed_id: exchange@seed_id,
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
         let strat = self
             .data_mut()
@@ -395,8 +393,8 @@ impl Contract {
     }
 
     /// Return the Pembrock VersionedStrategy structure.
-    /// # Parameters example: 
-    ///  seed_id: exchange@seed_id,
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn pemb_get_strat(&self, seed_id: &str) -> VersionedStrategy {
         let strat = self
             .data()
@@ -410,10 +408,10 @@ impl Contract {
             strat.clone()
         }
     }
-    
+
     /// Return the Pembrock VersionedStrategy structure as a mutable reference.
-    /// # Parameters example: 
-    ///  seed_id: exchange@seed_id,
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn pemb_get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
         let strat = self
             .data_mut()

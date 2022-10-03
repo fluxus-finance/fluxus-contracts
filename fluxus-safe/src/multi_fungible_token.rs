@@ -29,7 +29,7 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 impl Contract {
     ///Return the FFT token to a seed_id TODO: enhance name of fft tokens they should be named fft_seed_{seed_id}.
     /// # Parameters example:
-    ///   seed_id: exchange@seed_id
+    ///   seed_id: exchange@pool_id
     pub fn fft_token_seed_id(&self, seed_id: String) -> String {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
@@ -57,7 +57,7 @@ impl Contract {
 
     /// Return the u128 amount a user has in seed_id.
     /// # Parameters example:
-    ///   seed_id: exchange@seed_id
+    ///   seed_id: exchange@pool_id
     ///   user: account.testnet
     pub fn user_share_seed_id(&self, seed_id: String, user: String) -> u128 {
         let data = self.data();
@@ -98,7 +98,7 @@ impl Contract {
 
     /// Return the total amount of a seed.
     /// # Parameters example:
-    ///   seed_id: exchange@seed_id
+    ///   seed_id: exchange@pool_id
     pub fn seed_total_amount(&self, seed_id: &String) -> u128 {
         self.data().seed_id_amount.get(seed_id).unwrap_or(0u128)
     }
@@ -115,7 +115,7 @@ impl Contract {
 
     ///Return the total_supply of an specific fft_share (ref lp token).
     /// # Parameters example:
-    ///   seed_id: exchange@seed_id
+    ///   seed_id: exchange@pool_id
     #[private]
     pub fn total_supply_by_pool_id(&mut self, seed_id: String) -> u128 {
         let fft_share_id = self
@@ -135,7 +135,7 @@ impl Contract {
 
     /// Return the correspondent fft_share of a seed.
     /// # Parameters example:
-    ///   seed_id: exchange@seed_id
+    ///   seed_id: exchange@pool_id
     pub fn get_fft_share_id_from_seed(&self, seed_id: String) -> String {
         let fft_share_id = self
             .data()
@@ -228,7 +228,7 @@ impl Contract {
     ///   token_id: fft_share_1,
     ///   receiver_id: account.testnet,
     ///   user: account.testnet,
-    ///   memo: None 
+    ///   memo: None
     #[payable]
     pub fn mft_transfer(
         &mut self,
@@ -255,7 +255,7 @@ impl Contract {
     ///   token_id: fft_share_1,
     ///   sender_id: account.testnet,
     ///   amount: 10000000,
-    ///   memo: None 
+    ///   memo: None
     fn internal_mft_transfer(
         &mut self,
         token_id: String,
@@ -339,7 +339,7 @@ impl Contract {
     ///   token_id: :17,
     ///   receiver_id: account.testnet,
     ///   amount: 10000000,
-    ///   memo: None, 
+    ///   memo: None,
     ///   msg: ""
     #[payable]
     pub fn mft_transfer_call(

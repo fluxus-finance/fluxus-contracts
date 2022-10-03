@@ -166,7 +166,7 @@ impl From<&JumboAutoCompounderCycle> for String {
 /// Auto-compounder internal methods
 impl JumboAutoCompounder {
     /// Initialize a new jumbo's compounder.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// strategy_fee: 5,
     /// strat_creator: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
     /// sentry_fee: 10,
@@ -175,7 +175,7 @@ impl JumboAutoCompounder {
     /// token1_address: token1.testnet,
     /// token2_address: token2.testnet,
     /// pool_id: 17,
-    /// seed_id: exchange@seed_id,
+    /// seed_id: exchange@pool_id,
     /// seed_min_deposit: U128(1000000)
     pub(crate) fn new(
         strategy_fee: u128,
@@ -206,7 +206,7 @@ impl JumboAutoCompounder {
     }
 
     /// Split reward into fees and reward_remaining.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// reward_amount: 100000000,
     pub(crate) fn compute_fees(&mut self, reward_amount: u128) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
@@ -234,7 +234,7 @@ impl JumboAutoCompounder {
     }
 
     /// Return a jumbo's farm information.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id: 1,
     pub fn get_jumbo_farm_info(&self, farm_id: &str) -> JumboStratFarmInfo {
         for farm in self.farms.iter() {
@@ -247,7 +247,7 @@ impl JumboAutoCompounder {
     }
 
     /// Return a jumbo's mutable farm information.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id: 1,
     pub fn get_mut_jumbo_farm_info(&mut self, farm_id: String) -> &mut JumboStratFarmInfo {
         for farm in self.farms.iter_mut() {
@@ -260,9 +260,9 @@ impl JumboAutoCompounder {
     }
 
     /// Transfer the amount of the token to the exchange and stake it.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// token_id: :1,
-    /// seed_id: exchange@seed_id,
+    /// seed_id: exchange@pool_id,
     /// account_id: account.testnet,
     /// shares: 1000000,
     pub fn stake(
@@ -295,9 +295,9 @@ impl JumboAutoCompounder {
     }
 
     /// Get the pool shares and then call a function to unstake them.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// token_id: 1,
-    /// seed_id: exchange@seed_id,
+    /// seed_id: exchange@pool_id,
     /// receiver_id: receiver_account.testnet,
     /// withdraw_amount: 1000000,
     /// user_fft_shares: 1000000
@@ -330,7 +330,7 @@ impl JumboAutoCompounder {
     }
 
     /// Claim the rewards earned.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
     pub fn claim_reward(&mut self, farm_id_str: String) -> Promise {
         // self.assert_strategy_not_cleared(&farm_id_str);
@@ -353,7 +353,7 @@ impl JumboAutoCompounder {
     }
 
     /// Function to withdraw the reward earned and already claimed.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
     /// treasury_current_amount: 1000000
     pub fn withdraw_of_reward(
@@ -408,7 +408,7 @@ impl JumboAutoCompounder {
     }
 
     /// Transfer reward token to exchange then swap the amount the contract has in the exchange
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
     /// treasure: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
     pub fn autocompounds_swap(&mut self, farm_id_str: String, treasure: AccountFee) -> Promise {
@@ -487,7 +487,7 @@ impl JumboAutoCompounder {
     }
 
     /// Transfer reward token to exchange then swap the amount the contract has in the exchange
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     pub fn autocompounds_swap_second_token(&mut self, farm_id_str: String) -> Promise {
         // TODO: take string as ref
@@ -520,7 +520,7 @@ impl JumboAutoCompounder {
 
     //TODO: this function just call another one. Maybe we need to join both.
     /// Get amount of tokens available then stake it
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
     pub fn autocompounds_liquidity_and_stake(&mut self, farm_id_str: String) -> Promise {
         // self.assert_strategy_not_cleared(&farm_id_str);
@@ -554,12 +554,10 @@ impl JumboAutoCompounder {
     }
 }
 
-
 #[near_bindgen]
 impl Contract {
-
     /// Check that the stake succeeded and mint fft_tokens.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// seed_id: exchange@pool_id
     /// account_id: account.testnet
     /// shares: 1000000
@@ -619,7 +617,7 @@ impl Contract {
     }
 
     /// Transfer the amount to the user (It is a part of the withdraw process).
-    /// # Parameters example: 
+    /// # Parameters example:
     /// token_id: :1
     /// seed_id: exchange@pool_id
     /// receiver_id: account.testnet
@@ -694,7 +692,7 @@ impl Contract {
     }
 
     /// Burn an amount of fft_share (It is the final part of the withdraw process).
-    /// # Parameters example: 
+    /// # Parameters example:
     /// seed_id: exchange@pool_id
     /// account_id: account.testnet
     /// amount: 1000000,
