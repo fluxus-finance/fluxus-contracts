@@ -3,12 +3,19 @@ use crate::*;
 /// Internal methods implementation.
 #[near_bindgen]
 impl Contract {
+
+    /// Update the contract state.
+    /// # Parameter example:
+    ///   state: Running
     pub fn update_contract_state(&mut self, state: RunningState) -> String {
         self.is_owner();
         self.data_mut().state = state;
         format!("{} is {:#?}", env::current_account_id(), self.data().state)
     }
 
+    /// Update the treasure contract address.
+    /// # Parameter example:
+    ///   contract_id: treasure.testnet
     pub fn update_treasure_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
         self.data_mut().treasure_contract_id = contract_id;
@@ -34,7 +41,7 @@ impl Contract {
         info
     }
 
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   state: Running, Ended, ...
     pub fn update_compounder_state(
@@ -57,6 +64,8 @@ impl Contract {
     }
 
     /// Extend guardians. Only can be called by owner.
+    /// # Parameter example:
+    ///   guardians: [account1.testnet, account2.testnet]
     #[payable]
     pub fn extend_guardians(&mut self, guardians: Vec<AccountId>) {
         assert_one_yocto();
@@ -67,6 +76,8 @@ impl Contract {
     }
 
     /// Remove guardians. Only can be called by owner.
+    /// # Parameter example:
+    ///   guardians: [account1.testnet, account2.testnet]
     #[payable]
     pub fn remove_guardians(&mut self, guardians: Vec<AccountId>) {
         assert_one_yocto();
@@ -76,6 +87,9 @@ impl Contract {
         }
     }
 
+    /// Return true if the caller is the owner or a guardian.
+    /// # Parameter example:
+    ///   guardians: [account1.testnet, account2.testnet]
     #[private]
     pub fn is_owner_or_guardians(&self) -> bool {
         env::predecessor_account_id() == self.data().owner_id
@@ -86,7 +100,7 @@ impl Contract {
     }
 
     /// Update slippage for given token_id
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   new_slippage: value between 80-100
     pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {
@@ -107,6 +121,8 @@ impl Contract {
     }
 
     /// Adds account_id to allowed_accounts if it is not already present
+    /// # Parameter example:
+    ///   account_id: account.testnet
     pub fn add_allowed_account(&mut self, account_id: AccountId) {
         self.is_owner();
 
@@ -118,6 +134,8 @@ impl Contract {
     }
 
     /// Removes account_id from allowed_accounts
+    /// # Parameter example:
+    ///   account_id: account.testnet
     pub fn remove_allowed_account(&mut self, account_id: AccountId) {
         self.is_owner();
 
@@ -132,7 +150,7 @@ impl Contract {
         );
     }
 
-    /// Checks if predecessor_account_id is either the contract or the owner of the contract
+    /// Checks if predecessor_account_id is either the contract or the owner of the contract.
     #[private]
     pub(crate) fn is_owner(&self) {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
@@ -143,6 +161,8 @@ impl Contract {
     }
 
     /// Checks if account_id is either the caller account or the contract
+    /// # Parameter example:
+    ///   account_id: account.testnet
     #[private]
     pub(crate) fn is_caller(&self, account_id: AccountId) {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
@@ -171,6 +191,8 @@ impl Contract {
     }
 
     /// Extend the whitelist of tokens.
+    /// # Parameter example:
+    ///   tokens: [token1.testnet, token2.testnet]
     #[payable]
     pub fn extend_whitelisted_tokens(&mut self, tokens: Vec<AccountId>) {
         assert_eq!(

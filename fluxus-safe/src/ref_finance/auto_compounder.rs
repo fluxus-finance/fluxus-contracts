@@ -148,6 +148,18 @@ impl From<&AutoCompounderCycle> for String {
 
 /// Auto-compounder internal methods
 impl AutoCompounder {
+    /// Initialize a new jumbo's compounder.
+    /// # Parameters example:
+    /// strategy_fee: 5,
+    /// strat_creator: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
+    /// sentry_fee: 10,
+    /// exchange_contract_id: exchange_contract.testnet,
+    /// farm_contract_id: farm_contract.testnet,
+    /// token1_address: token1.testnet,
+    /// token2_address: token2.testnet,
+    /// pool_id: 17,
+    /// seed_id: exchange@pool_id,
+    /// seed_min_deposit: U128(1000000)
     pub(crate) fn new(
         strategy_fee: u128,
         strat_creator: AccountFee,
@@ -176,6 +188,9 @@ impl AutoCompounder {
         }
     }
 
+    /// Split reward into fees and reward_remaining.
+    /// # Parameters example:
+    /// reward_amount: 100000000,
     pub(crate) fn compute_fees(&mut self, reward_amount: u128) -> (u128, u128, u128, u128) {
         // apply fees to reward amount
         let percent = Percentage::from(self.admin_fees.strategy_fee);
@@ -199,6 +214,9 @@ impl AutoCompounder {
         )
     }
 
+    /// Return a farm information.
+    /// # Parameters example:
+    /// farm_id: 1,
     pub(crate) fn get_farm_info(&self, farm_id: &str) -> StratFarmInfo {
         for farm in self.farms.iter() {
             if farm.id == farm_id {
@@ -209,6 +227,9 @@ impl AutoCompounder {
         panic!("{}", ERR44_FARM_INFO_DOES_NOT_EXIST)
     }
 
+    /// Return a mutable farm information.
+    /// # Parameters example:
+    /// farm_id: 1,
     pub(crate) fn get_mut_farm_info(&mut self, farm_id: &str) -> &mut StratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
@@ -233,6 +254,12 @@ impl AutoCompounder {
         }
     }
 
+    /// Transfer the amount of the token to the exchange and stake it.
+    /// # Parameters example:
+    /// token_id: :1,
+    /// seed_id: exchange@pool_id,
+    /// account_id: account.testnet,
+    /// shares: 1000000,
     pub(crate) fn stake(
         &self,
         token_id: String,
@@ -264,7 +291,13 @@ impl AutoCompounder {
         ))
     }
 
-    /// Withdraw user lps and send it to the contract.
+    /// Get the pool shares and then call a function to unstake them.
+    /// # Parameters example:
+    /// token_id: 1,
+    /// seed_id: exchange@pool_id,
+    /// receiver_id: receiver_account.testnet,
+    /// withdraw_amount: 1000000,
+    /// user_fft_shares: 1000000
     pub(crate) fn unstake(
         &self,
         token_id: String,
@@ -293,10 +326,9 @@ impl AutoCompounder {
         ))
     }
 
-    /// Step 1
-    /// Function to claim the reward from the farm contract
-    /// Args:
-    ///   farm_id_str: exchange@pool_id#farm_id
+    /// Claim the rewards earned.
+    /// # Parameters example:
+    /// farm_id_str: exchange@pool_id#farm_id
     pub(crate) fn claim_reward(&self, farm_id_str: String) -> Promise {
         log!("claim_reward");
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
@@ -315,10 +347,10 @@ impl AutoCompounder {
         ))
     }
 
-    /// Step 2
-    /// Function to claim the reward from the farm contract
-    /// Args:
-    ///   farm_id_str: exchange@pool_id#farm_id
+    /// Function to withdraw the reward earned and already claimed.
+    /// # Parameters example:
+    /// farm_id_str: exchange@pool_id#farm_id
+    /// treasury_current_amount: 1000000
     pub(crate) fn withdraw_of_reward(
         &self,
         farm_id_str: String,
@@ -370,14 +402,10 @@ impl AutoCompounder {
         }
     }
 
-    /// Step 3
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
-    /// Args:
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
-    pub(crate) fn autocompounds_swap(
-        &self,
-        farm_id_str: String, /* , treasure: AccountFee */
-    ) -> Promise {
+    pub(crate) fn autocompounds_swap(&self, farm_id_str: String) -> Promise {
         log!("autocompounds_swap");
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
@@ -473,6 +501,12 @@ impl AutoCompounder {
             ))
     }
 
+    /// Returns how many tokens will be received swapping given amount of token_in for token_out.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_token_1: U128(10000000),
+    ///   amount_token_2: U128(10000000),
+    ///   common_token: 1
     pub(crate) fn get_tokens_return(
         &self,
         farm_id_str: String,
@@ -546,13 +580,16 @@ impl AutoCompounder {
         }
     }
 
+    //TODO: this function just call another one. Maybe we need to join both.
+    /// Get amount of tokens available then stake it
+    /// # Parameters example:
+    /// farm_id_str: exchange@pool_id#farm_id
     pub(crate) fn autocompounds_liquidity_and_stake(&self, farm_id_str: String) -> Promise {
         log!("autocompounds_liquidity_and_stake");
 
         // send reward to contract caller
         self.send_reward_to_sentry(farm_id_str, env::predecessor_account_id())
     }
-
     pub(crate) fn send_reward_to_sentry(
         &self,
         farm_id_str: String,

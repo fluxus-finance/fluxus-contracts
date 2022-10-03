@@ -41,7 +41,7 @@ impl VersionedStrategy {
     //     }
     // }
 
-    /// update method in order to upgrade strategy
+    /// Update method in order to upgrade strategy
     #[allow(unreachable_patterns)]
     pub fn upgrade(&self) -> Self {
         match self {
@@ -61,7 +61,7 @@ impl VersionedStrategy {
         }
     }
 
-    /// update method in order to upgrade strategy
+    /// Return true if it is necessary to update the compounder.
     #[allow(unreachable_patterns)]
     pub fn need_upgrade(&self) -> bool {
         match self {
@@ -81,6 +81,7 @@ impl VersionedStrategy {
     //     }
     // }
 
+    /// Return the compounder structure.
     #[allow(unreachable_patterns)]
     pub fn get_compounder(self) -> AutoCompounder {
         match self {
@@ -89,6 +90,7 @@ impl VersionedStrategy {
         }
     }
 
+    /// Return the compounder structure as a reference.
     #[allow(unreachable_patterns)]
     pub fn get_compounder_ref(&self) -> &AutoCompounder {
         match self {
@@ -97,6 +99,7 @@ impl VersionedStrategy {
         }
     }
 
+    /// Return the compounder structure as a mutable reference.
     #[allow(unreachable_patterns)]
     pub fn get_compounder_mut(&mut self) -> &mut AutoCompounder {
         match self {
@@ -105,6 +108,7 @@ impl VersionedStrategy {
         }
     }
 
+    /// Return the Stable_compounder structure.
     #[allow(unreachable_patterns)]
     pub fn get_stable_compounder(self) -> StableAutoCompounder {
         match self {
@@ -113,6 +117,7 @@ impl VersionedStrategy {
         }
     }
 
+    /// Return the Stable_compounder structure as a reference.
     #[allow(unreachable_patterns)]
     pub fn get_stable_compounder_ref(&self) -> &StableAutoCompounder {
         match self {
@@ -121,6 +126,7 @@ impl VersionedStrategy {
         }
     }
 
+    /// Return the Stable_compounder structure as a mutable reference.
     #[allow(unreachable_patterns)]
     pub fn get_stable_compounder_mut(&mut self) -> &mut StableAutoCompounder {
         match self {
@@ -129,6 +135,7 @@ impl VersionedStrategy {
         }
     }
 
+    /// Return the Jumbo_compounder structure.
     #[allow(unreachable_patterns)]
     pub fn get_jumbo(self) -> JumboAutoCompounder {
         match self {
@@ -136,6 +143,8 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+
+    /// Return the Jumbo_compounder structure as a reference.
     #[allow(unreachable_patterns)]
     pub fn get_jumbo_ref(&self) -> &JumboAutoCompounder {
         match self {
@@ -143,6 +152,8 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+
+    /// Return the Jumbo_compounder structure as a mutable reference.
     #[allow(unreachable_patterns)]
     pub fn get_jumbo_mut(&mut self) -> &mut JumboAutoCompounder {
         match self {
@@ -153,6 +164,12 @@ impl VersionedStrategy {
 }
 
 impl VersionedStrategy {
+    /// Call the stake function for an auto_compounder.
+    /// # Parameters example:
+    /// token_id: :1,
+    /// seed_id: exchange@pool_id,
+    ///  account_id: account.testnet,
+    ///  shares: 100000000,
     pub fn stake(
         &self,
         token_id: String,
@@ -177,6 +194,12 @@ impl VersionedStrategy {
         }
     }
 
+    /// Call the unstake function for an auto_compounder.
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
+    ///  receiver_id: account.testnet,
+    ///  withdraw_amount: 100000000,
+    ///  user_fft_shares: 100000000,
     pub fn unstake(
         &self,
         seed_id: String,
@@ -216,6 +239,11 @@ impl VersionedStrategy {
         }
     }
 
+    /// Call the harvest function for some compounder based on it`s type (stable, jumbo...).
+    /// # Parameters example:
+    ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
+    ///  strat_name: pembrock@token_name,
+    ///  treasure: { account_id: treasure.testnet, "fee_percentage": 5, "current_amount" : 0 },
     pub fn harvest_proxy(
         &mut self,
         farm_id_str: String,
@@ -298,6 +326,7 @@ impl VersionedStrategy {
         }
     }
 
+    /// Return the Pembrock compounder structure.
     #[allow(unreachable_patterns)]
     pub fn pemb_get(self) -> PembrockAutoCompounder {
         match self {
@@ -305,6 +334,8 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+
+    /// Return the Pembrock compounder structure as a reference.
     #[allow(unreachable_patterns)]
     pub fn pemb_get_ref(&self) -> &PembrockAutoCompounder {
         match self {
@@ -312,6 +343,8 @@ impl VersionedStrategy {
             _ => unimplemented!(),
         }
     }
+
+    /// Return the Pembrock compounder structure as a mutable reference.
     #[allow(unreachable_patterns)]
     pub fn pemb_get_mut(&mut self) -> &mut PembrockAutoCompounder {
         match self {
@@ -322,6 +355,9 @@ impl VersionedStrategy {
 }
 
 impl Contract {
+    /// Return the VersionedStrategy structure.
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn get_strat(&self, seed_id: &str) -> VersionedStrategy {
         let strat = self
             .data()
@@ -336,6 +372,9 @@ impl Contract {
         }
     }
 
+    /// Return the VersionedStrategy structure as a mutable reference.
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
         let strat = self
             .data_mut()
@@ -351,6 +390,9 @@ impl Contract {
         }
     }
 
+    /// Return the Pembrock VersionedStrategy structure.
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn pemb_get_strat(&self, seed_id: &str) -> VersionedStrategy {
         let strat = self
             .data()
@@ -365,6 +407,9 @@ impl Contract {
         }
     }
 
+    /// Return the Pembrock VersionedStrategy structure as a mutable reference.
+    /// # Parameters example:
+    ///  seed_id: exchange@pool_id,
     pub fn pemb_get_strat_mut(&mut self, seed_id: &str) -> &mut VersionedStrategy {
         let strat = self
             .data_mut()

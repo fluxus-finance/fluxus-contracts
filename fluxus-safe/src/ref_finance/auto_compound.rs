@@ -7,7 +7,7 @@ const MIN_SLIPPAGE_ALLOWED: u128 = 1;
 #[near_bindgen]
 impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
-    /// Args:
+    /// # Parameters example: 
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_list_farms_by_seed(
@@ -53,6 +53,9 @@ impl Contract {
         )
     }
 
+    /// Ensure that the get_rewards succeeded and claim the rewards.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_get_unclaimed_reward(
         &mut self,
@@ -110,6 +113,11 @@ impl Contract {
         )
     }
 
+    /// Check if the claim succeeded and update the reward_amount variable.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   reward_amount: U128(10000000),
+    ///   rewards_map: Hashmap{token1: U128(100000000)}
     #[private]
     pub fn callback_post_claim_reward(
         &mut self,
@@ -139,6 +147,9 @@ impl Contract {
         reward_amount.0
     }
 
+    /// Ensure that the withdraw succeeded and then update balances earned.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_withdraw(
         &mut self,
@@ -208,6 +219,9 @@ impl Contract {
         )
     }
 
+    /// Ensure that the transfer was succeeded and update the compounder cycle.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_ft_transfer(
         &mut self,
@@ -252,6 +266,9 @@ impl Contract {
         log!("Transfer {} to treasure succeeded", amount)
     }
 
+    /// Ensure that the transfer was succeeded.
+    /// # Parameters example: 
+    ///   seed_id: exchange@pool_id
     #[private]
     pub fn callback_post_creator_ft_transfer(
         &mut self,
@@ -274,6 +291,12 @@ impl Contract {
         log!("Transfer fees to the creator of the strategy succeeded");
     }
 
+    /// Returns how many tokens will be received swapping given amount of token_in for token_out.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_token_1: U128(10000000),
+    ///   amount_token_2: U128(10000000),
+    ///   common_token: 1
     #[private]
     pub fn get_tokens_return(
         &self,
@@ -349,6 +372,10 @@ impl Contract {
         }
     }
 
+    /// Ensure that the get_token succeeded.
+    /// # Parameters example: 
+    ///   common_token: 1,
+    ///   amount_token: U128(10000000),
     #[private]
     pub fn callback_get_token_return(
         &self,
@@ -373,6 +400,7 @@ impl Contract {
         }
     }
 
+    /// Ensure that the get_tokens succeeded.
     #[private]
     pub fn callback_get_tokens_return(
         &self,
@@ -408,6 +436,11 @@ impl Contract {
     }
 
     /// Swap the auto-compound rewards
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_in_1: U128(10000000),
+    ///   amount_in_2: U128(10000000),
+    ///   common_token: 1
     #[private]
     pub fn swap_to_auto(
         &mut self,
@@ -504,6 +537,12 @@ impl Contract {
         }
     }
 
+    /// Ensure that the first swap succeeded and call the second one.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id,
+    ///   common_token: 1    
+    ///   amount_in: U128(10000000),
+    ///   token_min_out: U128(10000000),
     #[private]
     pub fn callback_post_first_swap(
         &mut self,
@@ -560,6 +599,12 @@ impl Contract {
         )
     }
 
+    /// Ensure that the second swap succeeded and update the compounder cycle.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id,
+    ///   common_token: 1    
+    ///   amount_in: U128(10000000),
+    ///   token_min_out: U128(10000000),
     #[private]
     pub fn callback_post_swap(
         &mut self,
@@ -599,6 +644,11 @@ impl Contract {
         farm_info_mut.next_cycle();
     }
 
+    /// Make sure that the caller is register, has balance and then transfer to sentry.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_acc_id: sentry.testnet
+    ///   reward_token: reward.testnet
     #[private]
     pub fn callback_post_sentry(
         &mut self,
@@ -658,7 +708,11 @@ impl Contract {
         ))
     }
 
-    /// Callback to verify that transfer to treasure succeeded
+    /// Make sure that the transfer succeeded and call add_liquidity.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_id: sentry.testnet
+    ///   amount_earned: 10000    
     #[private]
     pub fn callback_post_sentry_mft_transfer(
         &mut self,
@@ -735,6 +789,9 @@ impl Contract {
         )
     }
 
+    /// Call add_liquidity.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_add_liquidity(
         &mut self,
@@ -771,8 +828,9 @@ impl Contract {
         U128(shares_received)
     }
 
-    /// Receives shares from auto-compound and stake it
-    /// Change the user_balance and the auto_compounder balance of lps/shares
+    /// Receives shares from auto-compound and stake it.
+    /// # Parameters example: 
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_get_pool_shares(
         &mut self,

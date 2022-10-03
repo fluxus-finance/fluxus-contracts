@@ -157,6 +157,10 @@ impl VersionedContractData {}
 
 #[near_bindgen]
 impl Contract {
+    /// Initialize the contract.
+    /// # Parameters example:
+    ///  owner_id: account.testnet,
+    ///  treasure_contract_id: treasurer.testnet
     #[init]
     pub fn new(owner_id: AccountId, treasure_contract_id: AccountId) -> Self {
         assert!(!env::state_exists(), "Already initialized");
@@ -191,6 +195,7 @@ impl Contract {
 }
 
 impl Contract {
+    /// Return the contract data.
     #[allow(unreachable_patterns)]
     fn data(&self) -> &ContractData {
         match &self.data {
@@ -198,6 +203,8 @@ impl Contract {
             _ => unimplemented!(),
         }
     }
+
+    /// Return the contract data as mutable.
     #[allow(unreachable_patterns)]
     fn data_mut(&mut self) -> &mut ContractData {
         match &mut self.data {
@@ -206,6 +213,7 @@ impl Contract {
         }
     }
 
+    /// Ensure that the contract is running.
     fn assert_contract_running(&self) {
         match self.data().state {
             RunningState::Running => (),
@@ -214,6 +222,8 @@ impl Contract {
     }
 
     /// Ensures that at least one strategy is running for given token_id
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
 

@@ -44,6 +44,8 @@ impl Contract {
     // }
 
     /// Returns the minimum value accepted for given token_id
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     pub fn get_seed_min_deposit(self, seed_id: String) -> U128 {
         let strat = self.get_strat(&seed_id);
 
@@ -174,6 +176,7 @@ impl Contract {
         info
     }
 
+    /// Return the registered strategies for ref finance.
     pub fn get_strategies_info_for_ref_finance(&self) -> Vec<StratFarmInfo> {
         let mut info: Vec<StratFarmInfo> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
@@ -187,6 +190,7 @@ impl Contract {
         info
     }
 
+    /// Return the registered stable strategies for ref finance.
     pub fn get_strategies_info_for_stable_ref_finance(&self) -> Vec<StableStratFarmInfo> {
         let mut info: Vec<StableStratFarmInfo> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
@@ -201,6 +205,7 @@ impl Contract {
         info
     }
 
+    /// Return the registered strategies for Jumbo.
     pub fn get_strategies_info_for_jumbo(&self) -> Vec<JumboStratFarmInfo> {
         let mut info: Vec<JumboStratFarmInfo> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
@@ -214,6 +219,7 @@ impl Contract {
         info
     }
 
+    /// Return the registered strategies for Pembrock.
     pub fn get_strategies_info_for_pembrock(&self) -> Vec<PembrockAutoCompounder> {
         let mut info: Vec<PembrockAutoCompounder> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
@@ -237,6 +243,9 @@ impl Contract {
     //     farm_info.reward_token.into()
     // }
 
+    /// Return some ref finance strategy structure.
+    /// # Parameter example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     pub fn get_strategy_for_ref_finance(self, farm_id_str: String) -> AutoCompounderState {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -257,7 +266,9 @@ impl Contract {
         }
     }
 
-    // TODO
+    /// Return some Jumbo strategy structure.
+    /// # Parameter example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     pub fn get_strategy_for_jumbo(self, farm_id_str: String) -> JumboAutoCompounderState {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -267,6 +278,9 @@ impl Contract {
         farm_info.state
     }
 
+    /// Return some Pembrock strategy structure.
+    /// # Parameter example:
+    ///   farm_id_str: pembrock@token_name
     pub fn get_strategy_for_pembrock(self, strat_name: String) -> PembAutoCompounderState {
         let compounder = self.get_strat(&strat_name).pemb_get();
 
@@ -289,6 +303,8 @@ impl Contract {
     }
 
     ///Return the u128 number of strategies that we have for a specific seed_id.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn number_of_strategies_by_seed(&self, seed_id: String) -> String {
         let strat = self.get_strat(&seed_id);
 
@@ -324,6 +340,9 @@ impl Contract {
         U128(count)
     }
 
+    /// Return the fee for some specific strategy.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn check_fee_by_strategy(&self, seed_id: String) -> String {
         // let compounder = self.get_strat(&seed_id).get_compounder();
 
@@ -345,6 +364,9 @@ impl Contract {
         format!("{}%", fee)
     }
 
+    /// Return true if the strategy is active.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn is_strategy_active(&self, seed_id: String) -> bool {
         let strat = self.get_strat(&seed_id);
 
@@ -380,6 +402,10 @@ impl Contract {
         false
     }
 
+    /// Return the current harvest step for some strategy.
+    /// # Parameter example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   strat_name: "" or pembrock@token_name
     pub fn current_strat_step(&self, farm_id_str: String, strat_name: String) -> String {
         match strat_name.is_empty() {
             false => String::from(&self.get_strat(&strat_name).pemb_get().cycle_stage),
@@ -422,6 +448,9 @@ impl Contract {
     //     strats
     // }
 
+    /// Return the harvest time_stamp for some strategy.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn get_harvest_timestamp(&self, seed_id: String) -> String {
         let strat = self.get_strat(&seed_id);
 
@@ -441,6 +470,9 @@ impl Contract {
         }
     }
 
+    /// Return the strategy kind.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn get_strategy_kind(&self, seed_id: String) -> String {
         self.get_strat(&seed_id).kind()
     }
