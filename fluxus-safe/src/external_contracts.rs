@@ -157,7 +157,7 @@ pub trait RefExchange {
     ) -> PromiseOrValue<U128>;
     fn mft_register(
         token_id: String,
-        contract_id: AccountId,
+        account_id: AccountId,
     );
 }
 
