@@ -50,18 +50,18 @@ near call $pembrock_reward_token storage_deposit '{"account_id": "'$CONTRACT_NAM
 near call $ref_exchange_id register_tokens '{ "token_ids" : [ "'$pembrock_reward_token'" ] }' --accountId $CONTRACT_NAME  --gas 300000000000000 --depositYocto 1
 
 
-# ### create stable strategies
-# export token_address="dai.fakes.testnet"
-# export token_position=2
-# export reward_token="ref.fakes.testnet"
-# export pool_id_token_reward=811
-# export farm_id=0
-# export pool_id=218
-# export token_id=":$pool_id"
-# export seed_id="$ref_exchange_id@$pool_id"
-# export farm_id_str="$seed_id#$farm_id"
-# # find min_deposit in views.sh
-# export seed_min_deposit="1000000000000000000"
+### create stable strategies
+export token_address="dai.fakes.testnet"
+export token_position=2
+export reward_token="ref.fakes.testnet"
+export pool_id_token_reward=811
+export farm_id=0
+export pool_id=218
+export token_id=":$pool_id"
+export seed_id="$ref_exchange_id@$pool_id"
+export farm_id_str="$seed_id#$farm_id"
+# find min_deposit in views.sh
+export seed_min_deposit="1000000000000000000"
 
 # # echo "creating stable"
 
@@ -87,7 +87,7 @@ near call $ref_exchange_id register_tokens '{ "token_ids" : [ "'$pembrock_reward
 # }' --accountId $CONTRACT_NAME --gas $total_gas
 # #near call $ref_exchange_id mft_register '{ "token_id" : ":'$pool_id'", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
 # #register at token reward
-# near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --gas 300000000000000 --deposit 0.00125
+ near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --gas 300000000000000 --deposit 0.00125
 
 
 # ### create ref strategies
@@ -100,12 +100,12 @@ near call $ref_exchange_id register_tokens '{ "token_ids" : [ "'$pembrock_reward
 # # near call $CONTRACT_NAME add_farm_to_strategy '{"seed_id": "'$seed_id'", "pool_id_token1_reward": 114, "pool_id_token2_reward": 9999, "reward_token": "ref.fakes.testnet","farm_id": "0" }' --accountId $username --gas 300000000000000
 
 # #ref - near (17)
-# # export seed_id="$exchange_contract_id@17"
-# # near call $exchange_contract_id mft_register '{ "token_id" : ":17", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
-# # near call $CONTRACT_NAME create_strategy '{"_strategy": "","strategy_fee": 5,"strat_creator": { "account_id": "'$username'", "fee_percentage": 5, "current_amount" : 0 },"sentry_fee": 10, "exchange_contract_id": "'$ref_exchange_id'", "farm_contract_id": "'$ref_farming_id'", "token1_address": "ref.fakes.testnet", "token2_address": "wrap.testnet", "pool_id": 17, "seed_min_deposit": "1000000000000000000" }' --accountId $username --gas $total_gas
-# # near call $CONTRACT_NAME add_farm_to_strategy '{"seed_id": "'$seed_id'", "pool_id_token1_reward": 9999, "pool_id_token2_reward": 17, "reward_token": "ref.fakes.testnet","farm_id": "0" }' --accountId $username --gas 300000000000000
-# # near call $CONTRACT_NAME add_farm_to_strategy '{"seed_id": "'$seed_id'", "pool_id_token1_reward": 9999, "pool_id_token2_reward": 17, "reward_token": "ref.fakes.testnet","farm_id": "1" }' --accountId $username --gas 300000000000000
-# # near call $CONTRACT_NAME add_farm_to_strategy '{"seed_id": "'$seed_id'", "pool_id_token1_reward": 811, "pool_id_token2_reward": 49, "reward_token": "dai.fakes.testnet","farm_id": "2" }' --accountId $username --gas 300000000000000
+export seed_id="$exchange_contract_id@17"
+#near call $exchange_contract_id mft_register '{ "token_id" : ":17", "account_id": "'$CONTRACT_NAME'" }' --accountId $CONTRACT_NAME --deposit 1
+near call $CONTRACT_NAME create_strategy '{"_strategy": "","strategy_fee": 5,"strat_creator": { "account_id": "'$username'", "fee_percentage": 5, "current_amount" : 0 },"sentry_fee": 10, "exchange_contract_id": "'$ref_exchange_id'", "farm_contract_id": "'$ref_farming_id'", "token1_address": "ref.fakes.testnet", "token2_address": "wrap.testnet", "pool_id": 17, "seed_min_deposit": "1000000000000000000" }' --accountId $username --gas $total_gas
+near call $CONTRACT_NAME add_farm_to_strategy '{"seed_id": "'$seed_id'", "pool_id_token1_reward": 9999, "pool_id_token2_reward": 17, "reward_token": "ref.fakes.testnet","farm_id": "0" }' --accountId $username --gas 300000000000000
+near call $CONTRACT_NAME add_farm_to_strategy '{"seed_id": "'$seed_id'", "pool_id_token1_reward": 9999, "pool_id_token2_reward": 17, "reward_token": "ref.fakes.testnet","farm_id": "1" }' --accountId $username --gas 300000000000000
+near call $CONTRACT_NAME add_farm_to_strategy '{"seed_id": "'$seed_id'", "pool_id_token1_reward": 811, "pool_id_token2_reward": 49, "reward_token": "dai.fakes.testnet","farm_id": "2" }' --accountId $username --gas 300000000000000
 
 # # #DBIO-NEAR (53)
 # export seed_id="$exchange_contract_id@53"
@@ -122,27 +122,27 @@ near call $ref_exchange_id register_tokens '{ "token_ids" : [ "'$pembrock_reward
 
 
 
-# # #### create pembrock strategies
-# # export token_name="wrap"
-# # export token_address="wrap.testnet"
-# # export seed_id="pembrock@wrap"
-# # export pembrock_pool_id=461
+#### create pembrock strategies
+export token_name="wrap"
+export token_address="wrap.testnet"
+export seed_id="pembrock@wrap"
+export pembrock_pool_id=461
 
-# # echo "creating pembrock"
+# echo "creating pembrock"
 
-# near call $token_address storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.1
-# near call $CONTRACT_NAME pembrock_create_strategy '{
-#     "strategy_fee": 5,
-#     "strat_creator": { "account_id": "'$username'", "fee_percentage": 5, "current_amount" : 0 },
-#     "sentry_fee": 10,
-#     "exchange_contract_id": "'$ref_exchange_id'", 
-#     "pembrock_contract_id": "'$pembrock_contract_id'",
-#     "pembrock_reward_id": "'$pembrock_reward_id'",
-#     "token1_address": "'$token_address'", 
-#     "token_name": "'$token_name'", 
-#     "pool_id": '$pembrock_pool_id',
-#     "reward_token": "'$pembrock_reward_token'"
-#     }' --accountId $CONTRACT_NAME --gas $total_gas
+near call $token_address storage_deposit '{"account_id": "'$CONTRACT_NAME'", "registration_only": false}' --accountId $CONTRACT_NAME --deposit 0.1
+near call $CONTRACT_NAME pembrock_create_strategy '{
+    "strategy_fee": 5,
+    "strat_creator": { "account_id": "'$username'", "fee_percentage": 5, "current_amount" : 0 },
+    "sentry_fee": 10,
+    "exchange_contract_id": "'$ref_exchange_id'", 
+    "pembrock_contract_id": "'$pembrock_contract_id'",
+    "pembrock_reward_id": "'$pembrock_reward_id'",
+    "token1_address": "'$token_address'", 
+    "token_name": "'$token_name'", 
+    "pool_id": '$pembrock_pool_id',
+    "reward_token": "'$pembrock_reward_token'"
+    }' --accountId $CONTRACT_NAME --gas $total_gas
 
 
 ### create jumbo strategies
@@ -203,17 +203,17 @@ near call $reward_token storage_deposit '{"account_id": "'$CONTRACT_NAME'", "reg
 #     "receiver_id": "'$CONTRACT_NAME'",
 #     "amount": "100000000000000000000000",
 #     "msg": "deposit"}' --accountId $username --gas 300000000000000 --depositYocto 1
-# near call $exchange_contract_id mft_transfer_call '{"token_id": ":17", "receiver_id": "'$CONTRACT_NAME'", "amount": "1000000000000000000", "msg": "" }' --accountId $username --gas $total_gas --depositYocto 1
+near call $exchange_contract_id mft_transfer_call '{"token_id": ":17", "receiver_id": "'$CONTRACT_NAME'", "amount": "1000000000000000000", "msg": "" }' --accountId $username --gas $total_gas --depositYocto 1
 
 
 
 # near call $CONTRACT_NAME harvest '{"farm_id_str": "", "strat_name":"pembrock@wrap"}' --accountId $username --gas 300000000000000
 # near call $CONTRACT_NAME harvest '{"farm_id_str": "", "strat_name":"pembrock@wrap"}' --accountId $username --gas 300000000000000
 
-# near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
-# near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
-# near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
-# near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
+near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
+near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
+near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
+near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#0", "strat_name":""}' --accountId $username --gas 300000000000000
 
 # near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#1", "strat_name":""}' --accountId $username --gas 300000000000000
 # near call $CONTRACT_NAME harvest '{"farm_id_str": "ref-finance-101.testnet@17#1", "strat_name":""}' --accountId $username --gas 300000000000000
