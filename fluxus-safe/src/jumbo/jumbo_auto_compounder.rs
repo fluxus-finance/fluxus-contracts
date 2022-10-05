@@ -361,16 +361,10 @@ impl JumboAutoCompounder {
     /// Function to withdraw the reward earned and already claimed.
     /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
-    /// treasury_current_amount: 1000000
-    pub fn withdraw_of_reward(
-        &mut self,
-        farm_id_str: String,
-        // treasury_current_amount: u128,
-    ) -> Promise {
-        // self.assert_strategy_not_cleared(&farm_id_str);
+    pub fn withdraw_of_reward(&mut self, farm_id_str: String) -> Promise {
         log!("withdraw_of_reward");
 
-        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let farm_info = self.get_jumbo_farm_info(&farm_id);
 
@@ -421,7 +415,7 @@ impl JumboAutoCompounder {
         // self.assert_strategy_not_cleared(&farm_id_str);
         log!("autocompounds_swap");
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
         let farm_info = self.get_jumbo_farm_info(&farm_id);
 
         let treasury_acc: AccountId = farm_info.treasury.account_id;
@@ -500,7 +494,7 @@ impl JumboAutoCompounder {
         // self.assert_strategy_not_cleared(&farm_id_str);
         log!("autocompounds_swap_second_token");
 
-        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
         let farm_info = self.get_jumbo_farm_info(&farm_id);
 
         let reward_amount_left = farm_info.last_reward_amount;
@@ -540,7 +534,7 @@ impl JumboAutoCompounder {
         farm_id_str: String,
         sentry_acc_id: AccountId,
     ) -> Promise {
-        let (_, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let farm_info = self.get_jumbo_farm_info(&farm_id);
 
         ext_reward_token::storage_balance_of(

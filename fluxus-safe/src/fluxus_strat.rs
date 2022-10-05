@@ -243,12 +243,10 @@ impl VersionedStrategy {
     /// # Parameters example:
     ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
     ///  strat_name: pembrock@token_name,
-    ///  treasure: { account_id: treasure.testnet, "fee_percentage": 5, "current_amount" : 0 },
     pub fn harvest_proxy(
         &mut self,
         farm_id_str: String,
         strat_name: String,
-        // treasure: AccountFee,
     ) -> PromiseOrValue<u128> {
         let mut farm_id: String = "".to_string();
         if farm_id_str != *"" {

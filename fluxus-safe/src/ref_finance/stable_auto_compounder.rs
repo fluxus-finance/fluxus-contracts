@@ -310,12 +310,7 @@ impl StableAutoCompounder {
     /// Function to withdraw the reward earned and already claimed.
     /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
-    /// treasury_current_amount: 1000000
-    pub fn withdraw_of_reward(
-        &self,
-        farm_id_str: String,
-        // treasury_current_amount: u128,
-    ) -> Promise {
+    pub fn withdraw_of_reward(&self, farm_id_str: String) -> Promise {
         log!("withdraw_of_reward");
 
         let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -367,15 +362,10 @@ impl StableAutoCompounder {
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
     /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
-    ///   treasure: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
-    pub fn autocompounds_swap(
-        &mut self,
-        farm_id_str: String,
-        // treasure: AccountFee,
-    ) -> PromiseOrValue<u128> {
+    pub fn autocompounds_swap(&mut self, farm_id_str: String) -> PromiseOrValue<u128> {
         log!("autocompounds_swap");
 
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
 
         let exchange_id = self.exchange_contract_id.clone();
         let strat_creator_account_id = self.admin_fees.strat_creator_account_id.clone();

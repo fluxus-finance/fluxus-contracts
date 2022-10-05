@@ -5,7 +5,7 @@ use crate::*;
 #[near_bindgen]
 impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_list_farms_by_seed(
@@ -15,7 +15,7 @@ impl Contract {
     ) -> PromiseOrValue<String> {
         assert!(farms_result.is_ok(), "{}", ERR01_LIST_FARMS_FAILED);
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let farms = farms_result.unwrap();
 
@@ -54,7 +54,7 @@ impl Contract {
     }
 
     /// Check the reward amount earned and  claim reward by farm.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_get_unclaimed_reward(
@@ -66,7 +66,7 @@ impl Contract {
 
         let reward_amount = reward_amount_result.unwrap();
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let strat = self.get_strat_mut(&seed_id);
 
@@ -104,7 +104,7 @@ impl Contract {
     }
 
     /// Make sure that the reward was claimed and update the compounder cycle.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_claim_reward(
@@ -114,7 +114,7 @@ impl Contract {
     ) {
         assert!(claim_reward_result.is_ok(), "{}", ERR03_CLAIM_FAILED);
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let compounder = self.get_strat_mut(&seed_id).get_jumbo_mut();
         let farm_info = compounder.get_mut_jumbo_farm_info(&farm_id);
@@ -122,7 +122,7 @@ impl Contract {
     }
 
     /// Make sure that the withdraw was ok, store the fees correctly and transfer the amount to the exchange contract.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_withdraw(
@@ -136,7 +136,7 @@ impl Contract {
             ERR04_WITHDRAW_FROM_FARM_FAILED
         );
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let data_mut = self.data_mut();
 
@@ -202,7 +202,7 @@ impl Contract {
     }
 
     /// Make sure that the transfer succeeded and update the compounder cycle.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_ft_transfer(
@@ -215,7 +215,7 @@ impl Contract {
             return;
         }
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let data_mut = self.data_mut();
         let strat = data_mut
@@ -235,9 +235,7 @@ impl Contract {
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         farm_id_str: String,
     ) {
-        // let data_mut = self.data_mut();
-
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
@@ -262,7 +260,7 @@ impl Contract {
     }
 
     /// Make sure that the transfer to the creator succeeded.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   seed_id: exchange@pool_id
     #[private]
     pub fn callback_jumbo_post_creator_ft_transfer(
@@ -276,7 +274,7 @@ impl Contract {
             return;
         }
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let strat = self.get_strat_mut(&seed_id);
         let compounder = strat.get_jumbo_mut();
@@ -288,7 +286,7 @@ impl Contract {
     }
 
     /// Make sure that the swap is possible and call it.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   amount_token_1: U128(1000000)
     #[private]
@@ -298,7 +296,7 @@ impl Contract {
         farm_id_str: String,
         amount_token_1: U128,
     ) -> PromiseOrValue<u128> {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         if min_amount_out.is_err() {
             log!(ERR10_SWAP_TOKEN);
@@ -340,7 +338,7 @@ impl Contract {
     }
 
     /// Make sure that the swap succeeded and update compounder cycles.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   amount_in: U128(1000000)
     ///   min_amount_out: U128(1000000)
@@ -352,7 +350,7 @@ impl Contract {
         amount_in: U128,
         min_amount_out: U128,
     ) -> U128 {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
         let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(&farm_id);
 
@@ -375,7 +373,7 @@ impl Contract {
     }
 
     /// Make sure that the swap is possible and call it.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   amount_token_2: exchange@pool_id#farm_id
     #[private]
@@ -385,7 +383,7 @@ impl Contract {
         farm_id_str: String,
         amount_token_2: U128,
     ) -> PromiseOrValue<u128> {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         if min_amount_out.is_err() {
             log!(ERR10_SWAP_TOKEN);
@@ -427,7 +425,7 @@ impl Contract {
     }
 
     /// Make sure that the swap succeeded and update compounder cycles.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   amount_in: U128(1000000)
     ///   min_amount_out: U128(1000000)
@@ -439,7 +437,7 @@ impl Contract {
         amount_in: U128,
         min_amount_out: U128,
     ) -> U128 {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
         let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(&farm_id);
 
@@ -463,7 +461,7 @@ impl Contract {
     }
 
     /// Make sure that the caller is register, has balance and then transfer to sentry.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   sentry_acc_id: sentry.testnet
     ///   reward_token: reward.testnet
@@ -497,7 +495,7 @@ impl Contract {
             Err(_) => env::panic_str(ERR12_CALLER_NOT_REGISTER),
         }
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         let compounder = self.get_strat_mut(&seed_id).get_jumbo_mut();
 
         // reset default sentry address and get last earned amount
@@ -542,7 +540,7 @@ impl Contract {
     }
 
     /// Make sure that the transfer succeeded and call add_liquidity.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   sentry_id: sentry.testnet
     ///   amount_earned: 10000
@@ -554,7 +552,7 @@ impl Contract {
         sentry_id: AccountId,
         amount_earned: u128,
     ) -> PromiseOrValue<u64> {
-        let (seed_id, token_id, _) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
 
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
@@ -573,11 +571,11 @@ impl Contract {
     }
 
     /// Call jumbo's add_liquidity.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn jumbo_harvest_add_liquidity(&mut self, farm_id_str: String) -> Promise {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let compounder = self.get_strat(&seed_id).get_jumbo();
         let farm_info = compounder.get_jumbo_farm_info(&farm_id);
@@ -604,7 +602,7 @@ impl Contract {
     }
 
     /// Make sure that the liquidity was added and get the new amount of pool shares.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_add_liquidity(
@@ -614,7 +612,7 @@ impl Contract {
     ) -> Promise {
         assert!(shares_result.is_ok(), "{}", ERR14_ADD_LIQUIDITY);
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
         let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(&farm_id);
@@ -642,7 +640,7 @@ impl Contract {
     }
 
     /// Update the amount of seed and the compounder cycle.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   shares_on_exchange: 100000
     #[private]
@@ -651,7 +649,7 @@ impl Contract {
         farm_id_str: String,
         shares_on_exchange: u128,
     ) -> u128 {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let total_seed = self.seed_total_amount(&seed_id);
 
@@ -701,7 +699,7 @@ impl Contract {
     }
 
     /// Receives shares from auto-compound and stake it.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_get_pool_shares(
@@ -757,7 +755,7 @@ impl Contract {
     }
 
     /// Make sure that the stake succeeded.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_jumbo_post_stake_from_harvest(
@@ -767,7 +765,7 @@ impl Contract {
     ) {
         assert!(stake_result.is_ok());
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
         let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(&farm_id);

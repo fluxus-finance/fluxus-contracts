@@ -166,13 +166,6 @@ impl Contract {
         assert!(!env::state_exists(), "Already initialized");
         let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
-        // let pub treasury: AccountFee, = AccountFee {
-        //     account_id: treasure_contract_id,
-        //     fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
-        //     // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
-        //     current_amount: 0u128,
-        // };
-
         Self {
             data: VersionedContractData::V0001(ContractData {
                 owner_id,
@@ -187,7 +180,6 @@ impl Contract {
                 total_supply_by_fft_share: LookupMap::new(StorageKey::TotalSupplyByShare),
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
-                /// List of all the pools.
                 strategies: HashMap::new(),
             }),
         }

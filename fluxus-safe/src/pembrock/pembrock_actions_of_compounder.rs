@@ -2,12 +2,11 @@ use crate::*;
 
 #[near_bindgen]
 impl Contract {
-
     /// Make sure that the stake succeeded and mint the correct amount to the user.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   seed_id: exchange@pool_id
     ///   account_id: account.testnet
-    ///   shares: 10000000 
+    ///   shares: 10000000
     #[private]
     pub fn callback_pembrock_stake_result(
         &mut self,
@@ -55,7 +54,7 @@ impl Contract {
     }
 
     /// Make sure that the claim succeeded and transfer some amount to the strategy creator.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_rewards(
@@ -66,7 +65,6 @@ impl Contract {
         assert!(claim_result.is_ok(), "{}", ERR03_CLAIM_FAILED);
 
         let claimed = claim_result.unwrap().0;
-        log!("debug claim: {}", claimed);
 
         assert!(claimed > 0, "{}", ERR19_CLAIMED_ZERO_AMOUNT);
 
@@ -92,12 +90,7 @@ impl Contract {
             .sentries
             .insert(env::current_account_id(), sentry_amount);
 
-        // increase protocol amount to cover the case that the last transfer failed
-        // data_mut.treasury.current_amount += protocol_amount;
         compounder.treasury.current_amount += protocol_amount;
-        // compounder.p
-
-        // compounder.pemb_get
 
         compounder.next_cycle();
         log!(
@@ -165,7 +158,7 @@ impl Contract {
     }
 
     /// Ensure that the transfer to the creator succeeded.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_post_creator_ft_transfer(
@@ -189,7 +182,7 @@ impl Contract {
     }
 
     /// Transfer an amount of tokens to the sentry contract.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     ///   sentry_acc_id: sentry_account.testnet
     ///   reward_token: reward_account.testnet
@@ -271,7 +264,7 @@ impl Contract {
     }
 
     /// Ensure that the transfer succeeded and store the amount earned.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     ///   sentry_id: sentry_account.testnet
     ///   amount earned: 10000000
@@ -300,7 +293,7 @@ impl Contract {
     }
 
     /// Swap the tokens and then call a function to lend the new amount of tokens.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_swap(
@@ -338,7 +331,7 @@ impl Contract {
     }
 
     /// Ensure that the swap succeeded and lend the amount of tokens.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_lend(
@@ -382,7 +375,7 @@ impl Contract {
     }
 
     /// Update the harvest available amount to stake.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     ///   amount: 10000000
     #[private]
@@ -403,8 +396,8 @@ impl Contract {
         }
     }
 
-    /// Withdraw an amount that was being lent and transfer to the caller. 
-    /// # Parameters example: 
+    /// Withdraw an amount that was being lent and transfer to the caller.
+    /// # Parameters example:
     ///   token_name: wrap
     ///   amount_withdraw: U128(10000000) or None
     pub fn pembrock_unstake(

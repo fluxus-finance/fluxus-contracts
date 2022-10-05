@@ -7,7 +7,7 @@ const MIN_SLIPPAGE_ALLOWED: u128 = 1;
 #[near_bindgen]
 impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_list_farms_by_seed(
@@ -60,7 +60,7 @@ impl Contract {
     }
 
     /// Ensure that the get_rewards succeeded and call the claim.
-    /// # Parameters example: 
+    /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_get_unclaimed_reward(
@@ -122,7 +122,7 @@ impl Contract {
     }
 
     /// Make sure that the reward was claimed and update the compounder cycle.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   reward_amount: U128(100000000),
     ///   rewards_map: Hashmap{token1: U128(100000000)}
@@ -156,7 +156,7 @@ impl Contract {
     }
 
     /// Make sure that the withdraw was ok, store the fees correctly and transfer the amount to the exchange contract.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_withdraw(
@@ -229,7 +229,7 @@ impl Contract {
     }
 
     /// Make sure that the transfer succeeded and update the compounder cycle.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_ft_transfer(
@@ -257,14 +257,11 @@ impl Contract {
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         farm_id_str: String,
     ) {
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
             log!(ERR08_TRANSFER_TO_TREASURE);
             return;
         }
-
-        // let data_mut = self.data_mut();
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -279,7 +276,7 @@ impl Contract {
     }
 
     /// Make sure that the transfer to the creator succeeded.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   seed_id: exchange@pool_id
     #[private]
     pub fn stable_callback_post_creator_ft_transfer(
@@ -292,7 +289,7 @@ impl Contract {
             return;
         }
 
-        let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let compounder = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
 
@@ -307,7 +304,7 @@ impl Contract {
     }
 
     /// Make sure that the swap is possible and call it.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_get_token_return(
@@ -370,7 +367,7 @@ impl Contract {
     }
 
     /// Make sure that the swap succeeded and update compounder cycles.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_swap(
@@ -404,7 +401,7 @@ impl Contract {
     }
 
     /// Make sure that the caller is register, has balance and then transfer to sentry.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   sentry_acc_id: sentry.testnet
     ///   reward_token: reward.testnet
@@ -470,7 +467,7 @@ impl Contract {
     }
 
     /// Make sure that the transfer succeeded and call add_liquidity.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   sentry_id: sentry.testnet
     ///   amount_earned: 10000
@@ -539,7 +536,7 @@ impl Contract {
     }
 
     /// Call add_liquidity.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_add_stable_liquidity(
@@ -588,7 +585,7 @@ impl Contract {
     }
 
     /// Receives shares from auto-compound and stake it.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn stable_callback_post_get_pool_shares(

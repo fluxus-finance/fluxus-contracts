@@ -75,13 +75,13 @@ impl StratFarmInfo {
 #[derive(Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AutoCompounder {
-    // /// Fees struct to be distribute at each round of compound
+    /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
     // Contract address of the exchange used
     pub exchange_contract_id: AccountId,
 
-    // Contract address of the farm used
+    /// Contract address of the farm used
     pub farm_contract_id: AccountId,
 
     /// Address of the first token used by pool
@@ -350,12 +350,7 @@ impl AutoCompounder {
     /// Function to withdraw the reward earned and already claimed.
     /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
-    /// treasury_current_amount: 1000000
-    pub(crate) fn withdraw_of_reward(
-        &self,
-        farm_id_str: String,
-        // treasury_current_amount: u128,
-    ) -> Promise {
+    pub(crate) fn withdraw_of_reward(&self, farm_id_str: String) -> Promise {
         log!("withdraw_of_reward");
 
         let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -408,7 +403,7 @@ impl AutoCompounder {
     pub(crate) fn autocompounds_swap(&self, farm_id_str: String) -> Promise {
         log!("autocompounds_swap");
 
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
 
         let farm_info = self.get_farm_info(&farm_id);
         let treasury_acc: AccountId = farm_info.treasury.account_id;
@@ -514,7 +509,7 @@ impl AutoCompounder {
         amount_token_2: U128,
         common_token: u64,
     ) -> Promise {
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let farm_info = self.get_farm_info(&farm_id);
 
@@ -595,7 +590,7 @@ impl AutoCompounder {
         farm_id_str: String,
         sentry_acc_id: AccountId,
     ) -> Promise {
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let farm_info = self.get_farm_info(&farm_id);
 
