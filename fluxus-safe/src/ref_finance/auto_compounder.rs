@@ -78,7 +78,7 @@ pub struct AutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
-    // Contract address of the exchange used
+    /// Contract address of the exchange used
     pub exchange_contract_id: AccountId,
 
     /// Contract address of the farm used
