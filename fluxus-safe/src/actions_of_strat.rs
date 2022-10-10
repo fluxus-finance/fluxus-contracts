@@ -426,44 +426,64 @@ impl Contract {
         strat.harvest_proxy(farm_id_str, strat_name, treasury)
     }
 
-    /// Delete some strategy created for a farm_id.
+    /// Delete some strategy created for some farm_id or strat_name.
     /// # Parameters example: 
-    ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
-    pub fn delete_strategy_by_farm_id(&mut self, farm_id_str: String) {
+    ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id or None,
+    ///  strat_name: pembrock@token_name or None,
+    pub fn delete_strategy(&mut self, farm_id_str: Option<String>, strat_name: Option<String>) {
         self.is_owner_or_guardians();
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
-        let strat = self.get_strat_mut(&seed_id);
-
-        match strat {
-            VersionedStrategy::AutoCompounder(compounder) => {
-                for (i, farm) in compounder.farms.iter().enumerate() {
-                    println!("{} - {}", farm_id_str, farm.id);
-                    if farm_id == farm.id {
-                        compounder.farms.remove(i);
-                        break;
-                    }
-                }
-            }
-            VersionedStrategy::StableAutoCompounder(compounder) => {
-                for (i, farm) in compounder.farms.iter().enumerate() {
-                    println!("{} - {}", farm_id_str, farm.id);
-                    if farm_id == farm.id {
-                        compounder.farms.remove(i);
-                        break;
-                    }
-                }
-            }
-            VersionedStrategy::JumboAutoCompounder(compounder) => {
-                for (i, farm) in compounder.farms.iter().enumerate() {
-                    println!("{} - {}", farm_id_str, farm.id);
-                    if farm_id == farm.id {
-                        compounder.farms.remove(i);
-                        break;
-                    }
-                }
-            }
-            _ => unimplemented!(),
+        if farm_id_str.is_none() && strat_name.is_none(){
+            panic!("{}", ERR46_NO_ARGUMENTS);
         }
+        else if let Some(farm_id_str_unwrapped) = farm_id_str{
+
+            let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str_unwrapped.clone());
+            let strat = self.get_strat_mut(&seed_id);
+
+            match strat {
+                VersionedStrategy::AutoCompounder(compounder) => {
+                    for (i, farm) in compounder.farms.iter().enumerate() {
+                        println!("{} - {}", farm_id_str_unwrapped, farm.id);
+                        if farm_id == farm.id {
+                            compounder.farms.remove(i);
+                            break;
+                        }
+                    }
+                }
+                VersionedStrategy::StableAutoCompounder(compounder) => {
+                    for (i, farm) in compounder.farms.iter().enumerate() {
+                        println!("{} - {}", farm_id_str_unwrapped, farm.id);
+                        if farm_id == farm.id {
+                            compounder.farms.remove(i);
+                            break;
+                        }
+                    }
+                }
+                VersionedStrategy::JumboAutoCompounder(compounder) => {
+                    for (i, farm) in compounder.farms.iter().enumerate() {
+                        println!("{} - {}", farm_id_str_unwrapped, farm.id);
+                        if farm_id == farm.id {
+                            compounder.farms.remove(i);
+                            break;
+                        }
+                    }
+                }
+                _ => unimplemented!(),
+
+            }
+        }
+        else if let Some(strat_name_unwrapped) = strat_name{
+            self.is_owner_or_guardians();
+            let strategies = &mut self.data_mut().strategies;
+
+            if strategies.get(&strat_name_unwrapped).is_some(){
+                strategies.remove(&strat_name_unwrapped);
+            }
+        }
+
+
+
+        
     }
 
     /// Delete some strategy created for a strat_name.

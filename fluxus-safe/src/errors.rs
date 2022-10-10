@@ -58,3 +58,4 @@ pub const ERR41_STRATEGY_ENDED: &str = "E51: The strategy is Ended.";
 pub const ERR42_TOKEN_NOT_REG: &str = "E42: token not registered";
 pub const ERR43_TOKEN_NOT_REG: &str = "E43: transfer to self";
 pub const ERR44_FARM_INFO_DOES_NOT_EXIST: &str = "E44: There is no strategy for this farm_id";
+pub const ERR46_NO_ARGUMENTS: &str = "E44: Can't delete strategies because no argument was passed.";
