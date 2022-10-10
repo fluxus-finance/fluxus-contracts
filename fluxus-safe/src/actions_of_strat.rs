@@ -617,6 +617,6 @@ impl Contract {
         &mut self,
         #[callback_result] register_result: Result<(), PromiseError>,
     ) {
-        assert!(register_result.is_ok(), "{}", ERR14_ADD_LIQUIDITY); //TODO: change this error.
+        assert!(register_result.is_ok(), "{}", ERR45_ACCOUNT_NOT_REGISTER);
     }
 }
