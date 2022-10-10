@@ -701,7 +701,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     assert!(
         round2_owner_shares > round1_owner_shares,
-        "ERR_AUTO_COMPOUND_DOES_NOT_WORK. Expected {} and received {}",
+        "ERR_AUTO_COMPOUND_DOES_NOT_WORK. Expected {} to be greater than received {}",
         round1_owner_shares,
         round2_owner_shares
     );
@@ -715,7 +715,7 @@ async fn simulate_stake_and_withdraw() -> anyhow::Result<()> {
 
     assert!(
         round2_account1_shares > account1_initial_shares,
-        "ERR_AUTO_COMPOUND_DOES_NOT_WORK. Expected {} and received {}",
+        "ERR_AUTO_COMPOUND_DOES_NOT_WORK. Expected {} to be greater than received {}",
         account1_initial_shares,
         round2_account1_shares
     );

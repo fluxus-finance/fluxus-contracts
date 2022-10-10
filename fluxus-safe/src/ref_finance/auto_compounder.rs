@@ -18,6 +18,12 @@ pub struct StratFarmInfo {
     /// Used to keep track of the rewards received from the farm during auto-compound cycle
     pub last_reward_amount: u128,
 
+    /// Fees earned by the DAO
+    pub treasury: AccountFee,
+
+    /// Fees earned by the strategy creator
+    pub strat_creator_fee_amount: u128,
+
     /// Used to keep track of the owned amount from fee of the token reward
     /// This will be used to store owned amount if ft_transfer to treasure fails
     pub last_fee_amount: u128,
@@ -72,10 +78,10 @@ pub struct AutoCompounder {
     /// Fees struct to be distribute at each round of compound
     pub admin_fees: AdminFees,
 
-    // Contract address of the exchange used
+    /// Contract address of the exchange used
     pub exchange_contract_id: AccountId,
 
-    // Contract address of the farm used
+    /// Contract address of the farm used
     pub farm_contract_id: AccountId,
 
     /// Address of the first token used by pool
@@ -193,7 +199,7 @@ impl AutoCompounder {
         let percent = Percentage::from(self.admin_fees.sentries_fee);
         let sentry_amount = percent.apply_to(all_fees_amount);
 
-        let percent = Percentage::from(self.admin_fees.strat_creator.fee_percentage);
+        let percent = Percentage::from(self.admin_fees.strat_creator_fee);
         let strat_creator_amount = percent.apply_to(all_fees_amount);
         let treasury_amount = all_fees_amount - sentry_amount - strat_creator_amount;
 
@@ -224,7 +230,7 @@ impl AutoCompounder {
     /// Return a mutable farm information.
     /// # Parameters example:
     /// farm_id: 1,
-    pub(crate) fn get_mut_farm_info(&mut self, farm_id: String) -> &mut StratFarmInfo {
+    pub(crate) fn get_mut_farm_info(&mut self, farm_id: &str) -> &mut StratFarmInfo {
         for farm in self.farms.iter_mut() {
             if farm.id == farm_id {
                 return farm;
@@ -344,12 +350,7 @@ impl AutoCompounder {
     /// Function to withdraw the reward earned and already claimed.
     /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
-    /// treasury_current_amount: 1000000
-    pub(crate) fn withdraw_of_reward(
-        &self,
-        farm_id_str: String,
-        treasury_current_amount: u128,
-    ) -> Promise {
+    pub(crate) fn withdraw_of_reward(&self, farm_id_str: String) -> Promise {
         log!("withdraw_of_reward");
 
         let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
@@ -381,7 +382,7 @@ impl AutoCompounder {
             // the withdraw succeeded but not the transfer
             ext_reward_token::ft_transfer_call(
                 self.exchange_contract_id.clone(),
-                U128(farm_info.last_reward_amount + treasury_current_amount), //Amount after withdraw the rewards
+                U128(farm_info.last_reward_amount + farm_info.treasury.current_amount), //Amount after withdraw the rewards
                 "".to_string(),
                 farm_info.reward_token,
                 1,
@@ -399,16 +400,14 @@ impl AutoCompounder {
     /// Transfer reward token to ref-exchange then swap the amount the contract has in the exchange
     /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
-    ///   treasure: { "account_id": "creator_account.testnet", "fee_percentage": 5, "current_amount" : 0 },
-    pub(crate) fn autocompounds_swap(&self, farm_id_str: String, treasure: AccountFee) -> Promise {
+    pub(crate) fn autocompounds_swap(&self, farm_id_str: String) -> Promise {
         log!("autocompounds_swap");
 
-        let treasury_acc: AccountId = treasure.account_id;
-        let treasury_curr_amount: u128 = treasure.current_amount;
-
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
 
         let farm_info = self.get_farm_info(&farm_id);
+        let treasury_acc: AccountId = farm_info.treasury.account_id;
+        let treasury_curr_amount: u128 = farm_info.treasury.current_amount;
 
         let token1 = self.token1_address.clone();
         let token2 = self.token2_address.clone();
@@ -460,16 +459,17 @@ impl AutoCompounder {
                 Gas(20_000_000_000_000),
             )
             .then(callback_ref_finance::callback_post_treasury_mft_transfer(
+                farm_id_str.clone(),
                 env::current_account_id(),
                 0,
                 Gas(20_000_000_000_000),
             ));
         }
 
-        let strat_creator_curr_amount = self.admin_fees.strat_creator.current_amount;
+        let strat_creator_curr_amount = farm_info.strat_creator_fee_amount;
         if strat_creator_curr_amount > 0 {
             ext_reward_token::ft_transfer(
-                self.admin_fees.strat_creator.account_id.clone(),
+                self.admin_fees.strat_creator_account_id.clone(),
                 U128(strat_creator_curr_amount),
                 Some("".to_string()),
                 farm_info.reward_token,
@@ -477,7 +477,7 @@ impl AutoCompounder {
                 Gas(20_000_000_000_000),
             )
             .then(callback_ref_finance::callback_post_creator_ft_transfer(
-                seed_id,
+                farm_id_str.clone(),
                 env::current_account_id(),
                 0,
                 Gas(10_000_000_000_000),
@@ -509,7 +509,7 @@ impl AutoCompounder {
         amount_token_2: U128,
         common_token: u64,
     ) -> Promise {
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let farm_info = self.get_farm_info(&farm_id);
 
@@ -590,7 +590,7 @@ impl AutoCompounder {
         farm_id_str: String,
         sentry_acc_id: AccountId,
     ) -> Promise {
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+        let (_, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
         let farm_info = self.get_farm_info(&farm_id);
 
@@ -624,7 +624,7 @@ impl AutoCompounder {
 //     #[allow(dead_code)]
 //     pub(crate) fn new(
 //         strategy_fee: u128,
-//         treasury: AccountFee,
+//         pub treasury: AccountFee,,
 //         strat_creator: AccountFee,
 //         sentry_fee: u128,
 //         exchange_contract_id: AccountId,
