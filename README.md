@@ -453,7 +453,7 @@ near call $CONTRACT_NAME get_stakeholders '{}' --accountId $CONTRACT_NAME
         let treasury = self.data().treasury.clone();
 
         let strat = if !strat_name.is_empty() {
-            self.pemb_get_strat_mut(&strat_name)
+            self.get_strat_mut(&strat_name)
         } else {
             let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
             self.get_strat_mut(&seed_id)

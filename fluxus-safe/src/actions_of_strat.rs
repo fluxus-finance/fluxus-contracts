@@ -3,7 +3,7 @@ use crate::*;
 
 #[near_bindgen]
 impl Contract {
-    // TODO: thi&s method should register in the correct pool/farm
+    // TODO: this method should register in the correct pool/farm
     /// Create a new strategy for ref-finance.
     /// # Parameters example:
     ///  _strategy: "",
@@ -33,13 +33,28 @@ impl Contract {
 
         let token_id = wrap_mft_token_id(&pool_id.to_string());
 
-        let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
+        let seed_id: String = format!("{}@{}", exchange_contract_id.clone(), pool_id);
 
         // TODO: update to seed
         return if self.data().strategies.contains_key(&seed_id) {
             ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
             // OK
+
+            //Registering lp for the contract.
+            let (_caller_acc_id, contract_id) = get_predecessor_and_current_account();
+            ext_ref_exchange::mft_register(
+                token_id.clone(),
+                contract_id,
+                exchange_contract_id.clone(),
+                970000000000000000000,
+                Gas(40_000_000_000_000))
+            .then(callback_ref_finance::callback_register_lp(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000)));
+            
+
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
@@ -179,6 +194,19 @@ impl Contract {
 
             let data_mut = self.data_mut();
 
+            //Registering lp for the contract.
+            let (_caller_acc_id, contract_id) = get_predecessor_and_current_account();
+            ext_ref_exchange::mft_register(
+                token_id.clone(),
+                contract_id,
+                exchange_contract_id.clone(),
+                970000000000000000000,
+                Gas(40_000_000_000_000))
+            .then(callback_ref_finance::callback_register_lp(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000)));
+            
             let strat: VersionedStrategy =
                 VersionedStrategy::StableAutoCompounder(StableAutoCompounder::new(
                     strategy_fee,
@@ -317,6 +345,19 @@ impl Contract {
 
             let data_mut = self.data_mut();
 
+            //Registering lp for the contract.
+            let (_caller_acc_id, contract_id) = get_predecessor_and_current_account();
+            ext_ref_exchange::mft_register(
+                token_id.clone(),
+                contract_id,
+                exchange_contract_id.clone(),
+                970000000000000000000,
+                Gas(40_000_000_000_000))
+            .then(callback_ref_finance::callback_register_lp(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000)));
+            
             let strat: VersionedStrategy =
                 VersionedStrategy::JumboAutoCompounder(JumboAutoCompounder::new(
                     strategy_fee,
@@ -445,7 +486,7 @@ impl Contract {
     ///  strat_name: pembrock@token_name,
     pub fn harvest(&mut self, farm_id_str: String, strat_name: String) -> PromiseOrValue<u128> {
         let strat = if !strat_name.is_empty() {
-            self.pemb_get_strat_mut(&strat_name)
+            self.get_strat_mut(&strat_name)
         } else {
             let (seed_id, _, _) = get_ids_from_farm(farm_id_str.to_string());
             self.get_strat_mut(&seed_id)
@@ -583,5 +624,13 @@ impl Contract {
                 token_address
             )
         };
+    }
+
+    #[private]
+    pub fn callback_register_lp(
+        &mut self,
+        #[callback_result] register_result: Result<(), PromiseError>,
+    ) {
+        assert!(register_result.is_ok(), "{}", ERR45_ACCOUNT_NOT_REGISTER);
     }
 }

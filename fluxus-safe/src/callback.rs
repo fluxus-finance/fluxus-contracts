@@ -41,6 +41,9 @@ pub trait RefExchangeAutoCompound {
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
         farm_id_str: String,
     );
+    fn callback_register_lp(
+        #[callback_result] register_result: Result<(), PromiseError>,
+    );
     fn callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,

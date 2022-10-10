@@ -155,6 +155,10 @@ pub trait RefExchange {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128>;
+    fn mft_register(
+        token_id: String,
+        account_id: AccountId,
+    );
 }
 
 // Wrap.testnet functions that we need to call inside the auto_compounder.

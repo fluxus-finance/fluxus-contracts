@@ -75,7 +75,7 @@ impl Contract {
             .get_mut(&strat_name)
             .expect(ERR42_TOKEN_NOT_REG);
 
-        let compounder = strat.pemb_get_mut();
+        let compounder = strat.get_pemb_mut();
 
         let (remaining_amount, protocol_amount, sentry_amount, strat_creator_amount) =
             compounder.compute_fees(claimed);
@@ -168,7 +168,7 @@ impl Contract {
     ) {
         match transfer_result {
             Ok(_) => {
-                let compounder = self.pemb_get_strat_mut(&strat_name).pemb_get_mut();
+                let compounder = self.get_strat_mut(&strat_name).get_pemb_mut();
 
                 // reset strat creator fees after successful transfer
                 compounder.strat_creator_fee_amount = 0;
@@ -214,7 +214,7 @@ impl Contract {
             Err(_) => env::panic_str(ERR12_CALLER_NOT_REGISTER),
         }
 
-        let compounder = self.get_strat_mut(&strat_name).pemb_get_mut();
+        let compounder = self.get_strat_mut(&strat_name).get_pemb_mut();
 
         // reset default sentry address and get last earned amount
         let amount = compounder
@@ -280,7 +280,7 @@ impl Contract {
         if ft_transfer_result.is_err() {
             log!(ERR13_TRANSFER_TO_SENTRY);
 
-            let compounder = self.get_strat_mut(&strat_name).pemb_get_mut();
+            let compounder = self.get_strat_mut(&strat_name).get_pemb_mut();
 
             // store amount earned by sentry to be redeemed
             compounder
@@ -301,9 +301,9 @@ impl Contract {
         #[callback_result] get_return_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> Promise {
-        let strat = self.pemb_get_strat(&strat_name);
+        let strat = self.get_strat(&strat_name);
 
-        let compounder = strat.pemb_get();
+        let compounder = strat.get_pemb();
 
         let amount_out = get_return_result.unwrap();
 
@@ -350,9 +350,9 @@ impl Contract {
             .seed_id_amount
             .insert(&strat_name, &(total_seed_amount + amount_to_transfer.0));
 
-        let strat = self.pemb_get_strat_mut(&strat_name);
+        let strat = self.get_strat_mut(&strat_name);
 
-        let compounder = strat.pemb_get_mut();
+        let compounder = strat.get_pemb_mut();
 
         // after the swap, there's no more reward available to swap
         compounder.last_reward_amount = 0;
@@ -385,9 +385,9 @@ impl Contract {
         strat_name: String,
         amount: u128,
     ) {
-        let strat = self.pemb_get_strat_mut(&strat_name);
+        let strat = self.get_strat_mut(&strat_name);
 
-        let compounder = strat.pemb_get_mut();
+        let compounder = strat.get_pemb_mut();
 
         if let Ok(_amount) = post_lend_result {
             compounder.harvest_value_available_to_stake = 0;
@@ -430,7 +430,7 @@ impl Contract {
             .get(&seed_id)
             .expect(ERR20_SEED_ID_DOES_NOT_EXIST);
 
-        let compounder = strat.clone().pemb_get();
+        let compounder = strat.clone().get_pemb();
 
         let amount: U128;
         if let Some(amount_withdrawal) = amount_withdrawal {

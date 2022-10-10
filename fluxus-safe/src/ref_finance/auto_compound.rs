@@ -228,7 +228,8 @@ impl Contract {
         #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) {
-        if exchange_transfer_result.is_err() {
+
+        if exchange_transfer_result.is_err() || exchange_transfer_result.unwrap().0 == 0 {
             log!(ERR07_TRANSFER_TO_EXCHANGE);
             return;
         }
