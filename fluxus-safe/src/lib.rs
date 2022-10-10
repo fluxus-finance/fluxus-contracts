@@ -257,7 +257,7 @@ impl Contract {
                 }
             }
             VersionedStrategy::PembrockAutoCompounder(_) => {
-                let compounder = strat.pemb_get_ref();
+                let compounder = strat.get_pemb_ref();
                 if compounder.state == PembAutoCompounderState::Running {
                     return;
                 }
