@@ -48,12 +48,13 @@ impl Contract {
                 contract_id,
                 exchange_contract_id.clone(),
                 970000000000000000000,
-                Gas(40_000_000_000_000))
+                Gas(40_000_000_000_000),
+            )
             .then(callback_ref_finance::callback_register_lp(
                 env::current_account_id(),
                 0,
-                Gas(20_000_000_000_000)));
-            
+                Gas(20_000_000_000_000),
+            ));
 
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
@@ -201,12 +202,14 @@ impl Contract {
                 contract_id,
                 exchange_contract_id.clone(),
                 970000000000000000000,
-                Gas(40_000_000_000_000))
+                Gas(40_000_000_000_000),
+            )
             .then(callback_ref_finance::callback_register_lp(
                 env::current_account_id(),
                 0,
-                Gas(20_000_000_000_000)));
-            
+                Gas(20_000_000_000_000),
+            ));
+
             let strat: VersionedStrategy =
                 VersionedStrategy::StableAutoCompounder(StableAutoCompounder::new(
                     strategy_fee,
@@ -340,6 +343,7 @@ impl Contract {
         return if self.data().strategies.contains_key(&seed_id) {
             ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
+            let token_id: String = format!(":{}", pool_id);
             let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
@@ -352,12 +356,14 @@ impl Contract {
                 contract_id,
                 exchange_contract_id.clone(),
                 970000000000000000000,
-                Gas(40_000_000_000_000))
+                Gas(40_000_000_000_000),
+            )
             .then(callback_ref_finance::callback_register_lp(
                 env::current_account_id(),
                 0,
-                Gas(20_000_000_000_000)));
-            
+                Gas(20_000_000_000_000),
+            ));
+
             let strat: VersionedStrategy =
                 VersionedStrategy::JumboAutoCompounder(JumboAutoCompounder::new(
                     strategy_fee,

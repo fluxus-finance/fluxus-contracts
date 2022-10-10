@@ -147,7 +147,7 @@ impl Contract {
     ) {
         match transfer_result {
             Ok(_) => {
-                let compounder = self.pemb_get_strat_mut(&strat_name).pemb_get_mut();
+                let compounder = self.get_strat_mut(&strat_name).get_pemb_mut();
                 compounder.treasury.current_amount = 0;
                 log!("Transfer to treasure succeeded")
             }
