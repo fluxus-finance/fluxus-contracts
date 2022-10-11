@@ -225,7 +225,7 @@ impl PembrockAutoCompounder {
                 strat_name,
                 env::current_account_id(),
                 0,
-                Gas(120_000_000_000_000),
+                Gas(150_000_000_000_000),
             ),
         )
     }
