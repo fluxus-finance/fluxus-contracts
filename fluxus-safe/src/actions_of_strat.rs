@@ -1,3 +1,5 @@
+//use core::num::flt2dec::strategy;
+
 use crate::*;
 //const pembrock_token = "token.pembrock.testnet";
 
@@ -435,6 +437,9 @@ impl Contract {
         if farm_id_str.is_none() && strat_name.is_none(){
             panic!("{}", ERR46_NO_ARGUMENTS);
         }
+        else if farm_id_str.is_some() && strat_name.is_some(){
+            panic!("{}", ERR47_DELETE_TWO_STRATEGIES);
+        }
         else if let Some(farm_id_str_unwrapped) = farm_id_str{
 
             let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str_unwrapped.clone());
@@ -486,13 +491,6 @@ impl Contract {
         
     }
 
-    /// Delete some strategy created for a strat_name.
-    /// # Parameters example: 
-    ///  strat_name: pembrock@token_name,
-    pub fn delete_strategy_by_strat_name(&mut self, strat_name: String) {
-        self.is_owner_or_guardians();
-        self.data_mut().strategies.remove(&strat_name);
-    }
 
     /// Create a new strategy for pembrock.
     /// # Parameters example: 
