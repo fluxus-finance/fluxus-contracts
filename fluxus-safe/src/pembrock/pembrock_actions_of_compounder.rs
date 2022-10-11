@@ -106,13 +106,13 @@ impl Contract {
                 Some("".to_string()),
                 compounder.reward_token.clone(),
                 1,
-                Gas(50_000_000_000_000),
+                Gas(40_000_000_000_000),
             )
             .then(callback_pembrock::callback_pembrock_post_treasury_transfer(
                 strat_name.clone(),
                 env::current_account_id(),
                 0,
-                Gas(20_000_000_000_000),
+                Gas(10_000_000_000_000),
             ));
         }
 
@@ -123,14 +123,14 @@ impl Contract {
                 Some("".to_string()),
                 compounder.reward_token.clone(),
                 1,
-                Gas(50_000_000_000_000),
+                Gas(40_000_000_000_000),
             )
             .then(
                 callback_pembrock::callback_pembrock_post_creator_ft_transfer(
                     strat_name,
                     env::current_account_id(),
                     0,
-                    Gas(20_000_000_000_000),
+                    Gas(10_000_000_000_000),
                 ),
             );
         }
@@ -394,6 +394,8 @@ impl Contract {
         } else {
             compounder.harvest_value_available_to_stake += amount;
         }
+
+        compounder.next_cycle()
     }
 
     /// Withdraw an amount that was being lent and transfer to the caller.
