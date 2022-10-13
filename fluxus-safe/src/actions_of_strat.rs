@@ -1,7 +1,4 @@
-//use core::num::flt2dec::strategy;
-
 use crate::*;
-//const pembrock_token = "token.pembrock.testnet";
 
 #[near_bindgen]
 impl Contract {
@@ -485,8 +482,6 @@ impl Contract {
                 strategies.remove(&strat_name_unwrapped);
             }
         }
-
-
 
         
     }
