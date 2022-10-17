@@ -474,7 +474,8 @@ impl Contract {
 
             }
         }
-        else if let Some(strat_name_unwrapped) = strat_name{
+        else {
+            let strat_name_unwrapped = strat_name.unwrap();
             self.is_owner_or_guardians();
             let strategies = &mut self.data_mut().strategies;
 
