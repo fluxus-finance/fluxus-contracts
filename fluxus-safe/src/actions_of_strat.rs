@@ -2,18 +2,18 @@ use crate::*;
 
 #[near_bindgen]
 impl Contract {
-    // TODO: thi&s method should register in the correct pool/farm
+    // TODO: this method should register in the correct pool/farm
     /// Create a new strategy for ref-finance.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  _strategy: "",
     ///  strategy_fee: 5,
     ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
     ///  sentry_fee: 10,
-    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  exchange_contract_id: exchange_contract.testnet,
     ///  farm_contract_id: farm_contract.testnet,
-    ///  token1_address: token1.testnet, 
-    ///  token2_address: token2.testnet, 
-    ///  pool_id: 17, 
+    ///  token1_address: token1.testnet,
+    ///  token2_address: token2.testnet,
+    ///  pool_id: 17,
     ///  seed_min_deposit: U128(1000000000000000000)
     pub fn create_strategy(
         &mut self,
@@ -32,13 +32,29 @@ impl Contract {
 
         let token_id = wrap_mft_token_id(&pool_id.to_string());
 
-        let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
+        let seed_id: String = format!("{}@{}", exchange_contract_id.clone(), pool_id);
 
         // TODO: update to seed
         return if self.data().strategies.contains_key(&seed_id) {
-            format!("{}", ERR24_VERSIONED_STRATEGY_ALREADY_EXIST)
+            ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
             // OK
+
+            //Registering lp for the contract.
+            let (_caller_acc_id, contract_id) = get_predecessor_and_current_account();
+            ext_ref_exchange::mft_register(
+                token_id.clone(),
+                contract_id,
+                exchange_contract_id.clone(),
+                970000000000000000000,
+                Gas(40_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_register_lp(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ));
+
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
@@ -86,7 +102,7 @@ impl Contract {
     }
 
     /// Add farm to the strategy already cerated.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  seed_id: exchange@pool_id,
     ///  pool_id_token1_reward: 5,
     ///  pool_id_token2_reward: 6,
@@ -101,6 +117,7 @@ impl Contract {
         farm_id: String,
     ) -> String {
         self.is_owner_or_guardians();
+        let treasure_contract_id = self.data_mut().treasure_contract_id.clone();
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
         for farm in compounder.farms.clone() {
@@ -108,12 +125,20 @@ impl Contract {
                 ERR25_FARM_ID_ALREADY_EXIST_FOR_SEED.to_string();
             }
         }
+        let treasury: AccountFee = AccountFee {
+            account_id: treasure_contract_id,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
 
         let farm_info: StratFarmInfo = StratFarmInfo {
             state: AutoCompounderState::Running,
             cycle_stage: AutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
+            treasury,
+            strat_creator_fee_amount: 0u128,
             last_fee_amount: 0u128,
             pool_id_token1_reward,
             pool_id_token2_reward,
@@ -131,16 +156,16 @@ impl Contract {
     }
 
     /// Create a new stable strategy for ref-finance.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  _strategy: "",
     ///  strategy_fee: 5,
     ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
     ///  sentry_fee: 10,
-    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  exchange_contract_id: exchange_contract.testnet,
     ///  farm_contract_id: farm_contract.testnet,
-    ///  token1_address: token1.testnet, 
-    ///  token2_address: token2.testnet, 
-    ///  pool_id: 17, 
+    ///  token1_address: token1.testnet,
+    ///  token2_address: token2.testnet,
+    ///  pool_id: 17,
     ///  seed_min_deposit: U128(1000000000000000000)
     pub fn create_stable_strategy(
         &mut self,
@@ -168,6 +193,21 @@ impl Contract {
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
+
+            //Registering lp for the contract.
+            let (_caller_acc_id, contract_id) = get_predecessor_and_current_account();
+            ext_ref_exchange::mft_register(
+                token_id.clone(),
+                contract_id,
+                exchange_contract_id.clone(),
+                970000000000000000000,
+                Gas(40_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_register_lp(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ));
 
             let strat: VersionedStrategy =
                 VersionedStrategy::StableAutoCompounder(StableAutoCompounder::new(
@@ -211,7 +251,7 @@ impl Contract {
     }
 
     /// Add farm to the stable strategy already cerated.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  seed_id: exchange@pool_id,
     ///  token_address: token.testnet,
     ///  pool_id_token_reward: 6,
@@ -230,6 +270,7 @@ impl Contract {
         farm_id: String,
     ) -> String {
         self.is_owner_or_guardians();
+        let treasury_account_id = self.data().treasure_contract_id.clone();
         let stable_compounder = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
 
         for farm in stable_compounder.farms.clone() {
@@ -238,11 +279,20 @@ impl Contract {
             }
         }
 
+        let treasury: AccountFee = AccountFee {
+            account_id: treasury_account_id,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
+
         let farm_info: StableStratFarmInfo = StableStratFarmInfo {
             state: AutoCompounderState::Running,
             cycle_stage: AutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
+            treasury,
+            strat_creator_fee_amount: 0u128,
             last_fee_amount: 0u128,
             token_address,
             pool_id_token_reward,
@@ -261,16 +311,16 @@ impl Contract {
     }
 
     /// Create a new jumbo strategy for ref-finance.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  _strategy: "",
     ///  strategy_fee: 5,
     ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
     ///  sentry_fee: 10,
-    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  exchange_contract_id: exchange_contract.testnet,
     ///  farm_contract_id: farm_contract.testnet,
-    ///  token1_address: token1.testnet, 
-    ///  token2_address: token2.testnet, 
-    ///  pool_id: 17, 
+    ///  token1_address: token1.testnet,
+    ///  token2_address: token2.testnet,
+    ///  pool_id: 17,
     ///  seed_min_deposit: U128(1000000000000000000)
     pub fn create_jumbo_strategy(
         &mut self,
@@ -287,15 +337,31 @@ impl Contract {
     ) -> String {
         self.is_owner_or_guardians();
 
-        let token_id = wrap_mft_token_id(&pool_id.to_string());
+        let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
 
-        return if self.data().strategies.contains_key(&token_id) {
+        return if self.data().strategies.contains_key(&seed_id) {
             ERR24_VERSIONED_STRATEGY_ALREADY_EXIST.to_string()
         } else {
+            let token_id: String = format!(":{}", pool_id);
             let seed_id: String = format!("{}@{}", exchange_contract_id, pool_id);
             let uxu_share_id = self.new_fft_share(seed_id.clone());
 
             let data_mut = self.data_mut();
+
+            //Registering lp for the contract.
+            let (_caller_acc_id, contract_id) = get_predecessor_and_current_account();
+            ext_ref_exchange::mft_register(
+                token_id.clone(),
+                contract_id,
+                exchange_contract_id.clone(),
+                970000000000000000000,
+                Gas(40_000_000_000_000),
+            )
+            .then(callback_ref_finance::callback_register_lp(
+                env::current_account_id(),
+                0,
+                Gas(20_000_000_000_000),
+            ));
 
             let strat: VersionedStrategy =
                 VersionedStrategy::JumboAutoCompounder(JumboAutoCompounder::new(
@@ -340,7 +406,7 @@ impl Contract {
     }
 
     /// Add farm to the jumbo strategy already cerated.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  seed_id: exchange@pool_id,
     ///  pool_id_token1_reward: 5,
     ///  pool_id_token2_reward: 6,
@@ -355,6 +421,8 @@ impl Contract {
         farm_id: String,
     ) -> String {
         self.is_owner_or_guardians();
+
+        let treasury_account_id = self.data().treasure_contract_id.clone();
         let compounder = self.get_strat_mut(&seed_id).get_jumbo_mut();
 
         for farm in compounder.farms.clone() {
@@ -363,12 +431,21 @@ impl Contract {
             }
         }
 
+        let treasury: AccountFee = AccountFee {
+            account_id: treasury_account_id,
+            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
+            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
+            current_amount: 0u128,
+        };
+
         let farm_info: JumboStratFarmInfo = JumboStratFarmInfo {
             state: JumboAutoCompounderState::Running,
             cycle_stage: JumboAutoCompounderCycle::ClaimReward,
             slippage: 99u128,
             last_reward_amount: 0u128,
             current_shares_to_stake: 0u128,
+            treasury,
+            strat_creator_fee_amount: 0u128,
             last_fee_amount: 0u128,
             pool_id_token1_reward,
             pool_id_token2_reward,
@@ -386,7 +463,7 @@ impl Contract {
     }
 
     /// Create a fft_share to a seed_id.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  seed_id: exchange@pool_id,
     #[private]
     fn new_fft_share(&mut self, seed_id: String) -> Option<String> {
@@ -409,12 +486,10 @@ impl Contract {
     }
 
     /// Call the harvest for some compounder.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id,
     ///  strat_name: pembrock@token_name,
     pub fn harvest(&mut self, farm_id_str: String, strat_name: String) -> PromiseOrValue<u128> {
-        let treasury = self.data().treasury.clone();
-
         let strat = if !strat_name.is_empty() {
             self.get_strat_mut(&strat_name)
         } else {
@@ -422,7 +497,7 @@ impl Contract {
             self.get_strat_mut(&seed_id)
         };
 
-        strat.harvest_proxy(farm_id_str, strat_name, treasury)
+        strat.harvest_proxy(farm_id_str, strat_name)
     }
 
     /// Delete some strategy created for some farm_id or strat_name.
@@ -489,23 +564,24 @@ impl Contract {
 
 
     /// Create a new strategy for pembrock.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  _strategy: "",
     ///  strategy_fee: 5,
     ///  strat_creator: { account_id: account.testnet, "fee_percentage": 5, "current_amount" : 0 },
     ///  sentry_fee: 10,
-    ///  exchange_contract_id: exchange_contract.testnet, 
+    ///  exchange_contract_id: exchange_contract.testnet,
     ///  pembrock_contract_id: pembrock_contract.testnet,/////
-    ///  pembrock_reward_id: reward_pembrock.testnet, 
-    ///  token_name: token1, 
+    ///  pembrock_reward_id: reward_pembrock.testnet,
+    ///  token_name: token1,
     ///  token1_address: token1.testnet
-    ///  pool_id: 17, 
+    ///  pool_id: 17,
     ///  reward_token: token_pembrock.testnet
     pub fn pembrock_create_strategy(
         &mut self,
         strategy_fee: u128,
         strat_creator: AccountFee,
         sentry_fee: u128,
+        treasure_contract_id: AccountId,
         exchange_contract_id: AccountId,
         pembrock_contract_id: AccountId,
         pembrock_reward_id: AccountId,
@@ -530,6 +606,7 @@ impl Contract {
                     strategy_fee,
                     strat_creator,
                     sentry_fee,
+                    treasure_contract_id,
                     exchange_contract_id,
                     pembrock_contract_id,
                     pembrock_reward_id,
@@ -560,28 +637,20 @@ impl Contract {
                     .insert(&share_id, &0_u128);
             }
 
-            data_mut
-                .strategies
-                .insert(strat_name.clone(), strat.clone());
-
-            // let farm_info: PembStratFarmInfo = PembStratFarmInfo {
-            //     state: PembAutoCompounderState::Running,
-            //     cycle_stage: PembAutoCompounderCycle::ClaimReward,
-            //     slippage: 99u128,
-            //     last_reward_amount: 0u128,
-            //     last_fee_amount: 0u128,
-            //     pool_id_token1_reward: pool_id,
-            //     // TODO: pass as parameter
-            //     reward_token: "token.pembrock.testnet".parse().unwrap(),
-            //     available_balance: vec![0u128, 0u128],
-            // };
-
-            // strat.pemb_get_mut().farms.push(farm_info);
+            data_mut.strategies.insert(strat_name, strat);
 
             format!(
                 "VersionedStrategy for {} created successfully",
                 token_address
             )
         };
+    }
+
+    #[private]
+    pub fn callback_register_lp(
+        &mut self,
+        #[callback_result] register_result: Result<(), PromiseError>,
+    ) {
+        assert!(register_result.is_ok(), "{}", ERR45_ACCOUNT_NOT_REGISTER);
     }
 }

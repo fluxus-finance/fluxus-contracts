@@ -56,7 +56,8 @@ pub const ERR40_STORAGE_UNREGISTER_TOKENS_NOT_EMPTY: &str =
     "E40: The token amount is not empty. Cannot unregister it.";
 pub const ERR41_STRATEGY_ENDED: &str = "E51: The strategy is Ended.";
 pub const ERR42_TOKEN_NOT_REG: &str = "E42: token not registered";
-pub const ERR43_TOKEN_NOT_REG: &str = "E43: transfer to self";
+pub const ERR43_TRANSFER_TO_SELF: &str = "E43: Trying to transfer to the same account (sender = receiver).";
 pub const ERR44_FARM_INFO_DOES_NOT_EXIST: &str = "E44: There is no strategy for this farm_id";
+pub const ERR45_ACCOUNT_NOT_REGISTER: &str = "E45: The contract account is not registered in the exchange.";
 pub const ERR46_NO_ARGUMENTS: &str = "E46: Can't delete strategies because no argument was passed.";
 pub const ERR47_DELETE_TWO_STRATEGIES: &str = "E47: It is not possible to delete a farm_id and a strat_name in the same call.";

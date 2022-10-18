@@ -2,12 +2,11 @@ use crate::*;
 
 #[near_bindgen]
 impl Contract {
-
     /// Make sure that the stake succeeded and mint the correct amount to the user.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   seed_id: exchange@pool_id
     ///   account_id: account.testnet
-    ///   shares: 10000000 
+    ///   shares: 10000000
     #[private]
     pub fn callback_pembrock_stake_result(
         &mut self,
@@ -55,7 +54,7 @@ impl Contract {
     }
 
     /// Make sure that the claim succeeded and transfer some amount to the strategy creator.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_rewards(
@@ -66,7 +65,6 @@ impl Contract {
         assert!(claim_result.is_ok(), "{}", ERR03_CLAIM_FAILED);
 
         let claimed = claim_result.unwrap().0;
-        log!("debug claim: {}", claimed);
 
         assert!(claimed > 0, "{}", ERR19_CLAIMED_ZERO_AMOUNT);
 
@@ -84,7 +82,7 @@ impl Contract {
 
         compounder.last_reward_amount += remaining_amount;
 
-        compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
+        compounder.strat_creator_fee_amount += strat_creator_amount;
 
         // store sentry amount under contract account id to be used in the last step
         compounder
@@ -92,8 +90,7 @@ impl Contract {
             .sentries
             .insert(env::current_account_id(), sentry_amount);
 
-        // increase protocol amount to cover the case that the last transfer failed
-        data_mut.treasury.current_amount += protocol_amount;
+        compounder.treasury.current_amount += protocol_amount;
 
         compounder.next_cycle();
         log!(
@@ -104,35 +101,36 @@ impl Contract {
 
         if protocol_amount > 0 {
             ext_reward_token::ft_transfer(
-                compounder.admin_fees.strat_creator.account_id.clone(),
+                compounder.admin_fees.strat_creator_account_id.clone(),
                 U128(strat_creator_amount),
                 Some("".to_string()),
                 compounder.reward_token.clone(),
                 1,
-                Gas(50_000_000_000_000),
+                Gas(40_000_000_000_000),
             )
             .then(callback_pembrock::callback_pembrock_post_treasury_transfer(
+                strat_name.clone(),
                 env::current_account_id(),
                 0,
-                Gas(20_000_000_000_000),
+                Gas(10_000_000_000_000),
             ));
         }
 
         if strat_creator_amount > 0 {
             ext_reward_token::ft_transfer(
-                compounder.admin_fees.strat_creator.account_id.clone(),
+                compounder.admin_fees.strat_creator_account_id.clone(),
                 U128(strat_creator_amount),
                 Some("".to_string()),
                 compounder.reward_token.clone(),
                 1,
-                Gas(50_000_000_000_000),
+                Gas(40_000_000_000_000),
             )
             .then(
                 callback_pembrock::callback_pembrock_post_creator_ft_transfer(
                     strat_name,
                     env::current_account_id(),
                     0,
-                    Gas(20_000_000_000_000),
+                    Gas(10_000_000_000_000),
                 ),
             );
         }
@@ -145,10 +143,12 @@ impl Contract {
     pub fn callback_pembrock_post_treasury_transfer(
         &mut self,
         #[callback_result] transfer_result: Result<(), PromiseError>,
+        strat_name: String,
     ) {
         match transfer_result {
             Ok(_) => {
-                self.data_mut().treasury.current_amount = 0;
+                let compounder = self.get_strat_mut(&strat_name).get_pemb_mut();
+                compounder.treasury.current_amount = 0;
                 log!("Transfer to treasure succeeded")
             }
             Err(_) => {
@@ -158,7 +158,7 @@ impl Contract {
     }
 
     /// Ensure that the transfer to the creator succeeded.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_post_creator_ft_transfer(
@@ -171,7 +171,7 @@ impl Contract {
                 let compounder = self.get_strat_mut(&strat_name).get_pemb_mut();
 
                 // reset strat creator fees after successful transfer
-                compounder.admin_fees.strat_creator.current_amount = 0;
+                compounder.strat_creator_fee_amount = 0;
 
                 log!("Transfer to strategy creator succeeded")
             }
@@ -182,7 +182,7 @@ impl Contract {
     }
 
     /// Transfer an amount of tokens to the sentry contract.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     ///   sentry_acc_id: sentry_account.testnet
     ///   reward_token: reward_account.testnet
@@ -211,9 +211,7 @@ impl Contract {
                     env::panic_str(msg.as_str());
                 }
             },
-            Err(_) => env::panic_str(
-                ERR12_CALLER_NOT_REGISTER,
-            ),
+            Err(_) => env::panic_str(ERR12_CALLER_NOT_REGISTER),
         }
 
         let compounder = self.get_strat_mut(&strat_name).get_pemb_mut();
@@ -266,7 +264,7 @@ impl Contract {
     }
 
     /// Ensure that the transfer succeeded and store the amount earned.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     ///   sentry_id: sentry_account.testnet
     ///   amount earned: 10000000
@@ -295,7 +293,7 @@ impl Contract {
     }
 
     /// Swap the tokens and then call a function to lend the new amount of tokens.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_swap(
@@ -333,7 +331,7 @@ impl Contract {
     }
 
     /// Ensure that the swap succeeded and lend the amount of tokens.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     #[private]
     pub fn callback_pembrock_lend(
@@ -341,7 +339,7 @@ impl Contract {
         #[callback_result] swap_result: Result<U128, PromiseError>,
         strat_name: String,
     ) -> Promise {
-        assert!(swap_result.is_ok(), "{}",ERR10_SWAP_TOKEN);
+        assert!(swap_result.is_ok(), "{}", ERR10_SWAP_TOKEN);
 
         let amount_to_transfer = swap_result.unwrap();
 
@@ -377,7 +375,7 @@ impl Contract {
     }
 
     /// Update the harvest available amount to stake.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   strat_name: pembrock@token_name
     ///   amount: 10000000
     #[private]
@@ -396,10 +394,12 @@ impl Contract {
         } else {
             compounder.harvest_value_available_to_stake += amount;
         }
+
+        compounder.next_cycle()
     }
 
-    /// Withdraw an amount that was being lent and transfer to the caller. 
-    /// # Parameters example: 
+    /// Withdraw an amount that was being lent and transfer to the caller.
+    /// # Parameters example:
     ///   token_name: wrap
     ///   amount_withdraw: U128(10000000) or None
     pub fn pembrock_unstake(
