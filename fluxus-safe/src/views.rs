@@ -491,7 +491,7 @@ impl Contract {
                             farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
                             is_active: strat_farm.state == AutoCompounderState::Running,
                             reward_tokens: strat_farm.reward_token.to_string(),
-                            fees: Some(compounder.admin_fees.clone()),
+                            fees: compounder.admin_fees.clone(),
                         })
                     }
                 }
@@ -504,7 +504,7 @@ impl Contract {
                             farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
                             is_active: strat_farm.state == AutoCompounderState::Running,
                             reward_tokens: strat_farm.reward_token.to_string(),
-                            fees: Some(stable.admin_fees.clone()),
+                            fees: stable.admin_fees.clone(),
                         })
                     }
                 }
@@ -517,7 +517,7 @@ impl Contract {
                             farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
                             is_active: strat_farm.state == JumboAutoCompounderState::Running,
                             reward_tokens: strat_farm.reward_token.to_string(),
-                            fees: Some(jumbo.admin_fees.clone()),
+                            fees: jumbo.admin_fees.clone(),
                         })
                     }
                 }
@@ -529,7 +529,7 @@ impl Contract {
                         farm_id_str: None,
                         is_active: pembrock.state == PembAutoCompounderState::Running,
                         reward_tokens: pembrock.reward_token.to_string(),
-                        fees: Some(pembrock.admin_fees.clone()),
+                        fees: pembrock.admin_fees.clone(),
                     })
                 }
             }
@@ -548,7 +548,7 @@ pub struct StrategyInfo {
     pub farm_id_str: Option<String>,
     pub is_active: bool,
     pub reward_tokens: String,
-    pub fees: Option<AdminFees>,
+    pub fees: AdminFees,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
