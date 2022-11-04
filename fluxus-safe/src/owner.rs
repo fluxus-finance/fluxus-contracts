@@ -46,77 +46,21 @@ impl Contract {
     ///   state: Running, Ended, ...
     pub fn update_compounder_state(
         &mut self,
-        farm_id_str: Option<String>,
-        state: &String,
-        strat_name: Option<String>,
+        farm_id_str: String,
+        state: AutoCompounderState,
     ) -> String {
         self.is_owner_or_guardians();
 
-        //If we want a pembrock_strategy state:
-        if  let Some(strat_name) = strat_name {
-            let compounder_mut = self.get_strat_mut(&strat_name).get_pemb_mut();
-            let state = &compounder_mut.state;
-            format!("The current state is {:#?}", state);
-        }
-        //If we want a ref-finance_strategy state:
-        if let Some(farm_id_str) = farm_id_str  { 
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+        // TODO: stable version
+        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
-            let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-
-            let kind = self.get_strategy_kind(seed_id.clone());
-            if kind == "REF_REGULAR"{
-                let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-                let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
-
-                if farm_info_mut.state != AutoCompounderState::Running && state == "Running"{
-                    farm_info_mut.state = AutoCompounderState::Running;
-                }
-                if farm_info_mut.state != AutoCompounderState::Ended && state == "Ended"{
-                    farm_info_mut.state = AutoCompounderState::Ended;
-                }
-                if farm_info_mut.state != AutoCompounderState::Cleared && state == "Cleared"{
-                    farm_info_mut.state = AutoCompounderState::Cleared;
-                }
-
-                return format!("The current state is {:#?}", farm_info_mut.state);
-                
-            }
-            if kind == "JUMBO_REGULAR" { 
-                let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
-                let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(&farm_id);
-
-                if farm_info_mut.state != JumboAutoCompounderState::Running && state == "Running"{
-                    farm_info_mut.state = JumboAutoCompounderState::Running;
-                }
-                if farm_info_mut.state != JumboAutoCompounderState::Ended && state == "Ended"{
-                    farm_info_mut.state = JumboAutoCompounderState::Ended;
-                }
-                if farm_info_mut.state != JumboAutoCompounderState::Cleared && state == "Cleared"{
-                    farm_info_mut.state = JumboAutoCompounderState::Cleared;
-                }
-                format!("The current state is {:#?}", farm_info_mut.state)
-            }
-            else { 
-                let compounder_mut = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
-                let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
-
-                if farm_info_mut.state != AutoCompounderState::Running && state == "Running"{
-                    farm_info_mut.state = AutoCompounderState::Running;
-                }
-                if farm_info_mut.state != AutoCompounderState::Ended && state == "Ended"{
-                    farm_info_mut.state = AutoCompounderState::Ended;
-                }
-                if farm_info_mut.state != AutoCompounderState::Cleared && state == "Cleared"{
-                    farm_info_mut.state = AutoCompounderState::Cleared;
-                }
-            
-                format!("The current state is {:#?}", farm_info_mut.state)
-            }
-        }
-        else {
-            "".to_string()
+        if farm_info_mut.state != state {
+            farm_info_mut.state = state;
         }
 
+        format!("The current state is {:#?}", farm_info_mut.state)
     }
 
     /// Extend guardians. Only can be called by owner.
