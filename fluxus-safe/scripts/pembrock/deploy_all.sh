@@ -1,4 +1,4 @@
-# rm -r neardev
+ # rm -r neardev
 
 export treasure_contract_id=dev-1656420526638-61041719201929
 export ref_farming_id="boostfarm.ref-finance.testnet"
@@ -223,11 +223,11 @@ near view $CONTRACT_NAME get_strategies '{}'
 
 
 
-# #Removing strategies.
-near call $CONTRACT_NAME delete_strategy '{"farm_id_str": "ref-finance-101.testnet@114#0"}' --accountId $CONTRACT_NAME --gas 300000000000000
-near call $CONTRACT_NAME delete_strategy '{"farm_id_str": "ref-finance-101.testnet@218#0"}' --accountId $CONTRACT_NAME --gas 300000000000000
-near call $CONTRACT_NAME delete_strategy '{"farm_id_str": "dev-1660920856823-70071820486313@0#2"}' --accountId $CONTRACT_NAME --gas 300000000000000
-near call $CONTRACT_NAME delete_strategy '{"strat_name": "pembrock@wrap.testnet"}' --accountId $CONTRACT_NAME --gas 300000000000000
+# # #Removing strategies.
+# near call $CONTRACT_NAME delete_strategy '{"farm_id_str": "ref-finance-101.testnet@114#0"}' --accountId $CONTRACT_NAME --gas 300000000000000
+# near call $CONTRACT_NAME delete_strategy '{"farm_id_str": "ref-finance-101.testnet@218#0"}' --accountId $CONTRACT_NAME --gas 300000000000000
+# near call $CONTRACT_NAME delete_strategy '{"farm_id_str": "dev-1660920856823-70071820486313@0#2"}' --accountId $CONTRACT_NAME --gas 300000000000000
+# near call $CONTRACT_NAME delete_strategy '{"strat_name": "pembrock@wrap.testnet"}' --accountId $CONTRACT_NAME --gas 300000000000000
 
 
 
@@ -236,4 +236,21 @@ near call $CONTRACT_NAME delete_strategy '{"strat_name": "pembrock@wrap.testnet"
 
 
 
-near view $CONTRACT_NAME get_strategies '{}'
+# near view $CONTRACT_NAME get_strategies '{}'
+
+
+
+
+
+# near call $CONTRACT_NAME update_compounder_state '{"farm_id_str": "dev-1660920856823-70071820486313@0#2",
+# "state": "Running"}' --accountId theleo.testnet  
+
+# near call $CONTRACT_NAME update_compounder_state '{"farm_id_str": "ref-finance-101.testnet@218#0",
+# "state": "Running"}' --accountId theleo.testnet  
+
+# near call $CONTRACT_NAME update_compounder_state '{"farm_id_str": "ref-finance-101.testnet@114#0",
+# "state": "Running"}' --accountId theleo.testnet  
+
+# near view $CONTRACT_NAME get_strategy_for_jumbo '{"farm_id_str": "dev-1660920856823-70071820486313@0#2"}'
+# near view $CONTRACT_NAME get_strategy_for_ref_finance '{"farm_id_str": "ref-finance-101.testnet@218#0"}'
+# near view $CONTRACT_NAME get_strategy_for_ref_finance '{"farm_id_str": "ref-finance-101.testnet@114#0"}'
