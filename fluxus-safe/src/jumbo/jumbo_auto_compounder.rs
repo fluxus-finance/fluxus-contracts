@@ -738,7 +738,7 @@ impl Contract {
         fft_shares: Balance,
     ) {
         match mft_transfer_result {
-            Ok(_) => log!("Nice!"),
+            Ok(_) => log!("withdraw succeeded!"),
             Err(err) => {
                 panic!("{}", ERR18_JUMBO_WITHDRAW)
             }

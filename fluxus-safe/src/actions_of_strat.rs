@@ -354,7 +354,7 @@ impl Contract {
                 token_id.clone(),
                 contract_id,
                 exchange_contract_id.clone(),
-                970000000000000000000,
+                980000000000000000000,
                 Gas(40_000_000_000_000),
             )
             .then(callback_ref_finance::callback_register_lp(
@@ -501,19 +501,16 @@ impl Contract {
     }
 
     /// Delete some strategy created for some farm_id or strat_name.
-    /// # Parameters example: 
+    /// # Parameters example:
     ///  farm_id_str: exchange_contract.testnet@pool_id#farm_id or None,
     ///  strat_name: pembrock@token_name or None,
     pub fn delete_strategy(&mut self, farm_id_str: Option<String>, strat_name: Option<String>) {
         self.is_owner_or_guardians();
-        if farm_id_str.is_none() && strat_name.is_none(){
+        if farm_id_str.is_none() && strat_name.is_none() {
             panic!("{}", ERR46_NO_ARGUMENTS);
-        }
-        else if farm_id_str.is_some() && strat_name.is_some(){
+        } else if farm_id_str.is_some() && strat_name.is_some() {
             panic!("{}", ERR47_DELETE_TWO_STRATEGIES);
-        }
-        else if let Some(farm_id_str_unwrapped) = farm_id_str{
-
+        } else if let Some(farm_id_str_unwrapped) = farm_id_str {
             let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str_unwrapped.clone());
             let strat = self.get_strat_mut(&seed_id);
 
@@ -546,22 +543,17 @@ impl Contract {
                     }
                 }
                 _ => unimplemented!(),
-
             }
-        }
-        else {
+        } else {
             let strat_name_unwrapped = strat_name.unwrap();
             self.is_owner_or_guardians();
             let strategies = &mut self.data_mut().strategies;
 
-            if strategies.get(&strat_name_unwrapped).is_some(){
+            if strategies.get(&strat_name_unwrapped).is_some() {
                 strategies.remove(&strat_name_unwrapped);
             }
         }
-
-        
     }
-
 
     /// Create a new strategy for pembrock.
     /// # Parameters example:

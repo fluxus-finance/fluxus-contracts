@@ -439,16 +439,16 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     let token_id: String = format!(":{}", pool_token1_token2);
 
-    let _res = safe_contract
-        .as_account()
-        .call(&worker, exchange.id(), "mft_register")
-        .args_json(serde_json::json!({
-            "token_id": token_id.clone(),
-            "account_id": safe_contract.id() }))?
-        .deposit(parse_near!("1 N"))
-        .transact()
-        .await?;
-    println!("mft_register {:#?}", _res);
+    // let _res = safe_contract
+    //     .as_account()
+    //     .call(&worker, exchange.id(), "mft_register")
+    //     .args_json(serde_json::json!({
+    //         "token_id": token_id.clone(),
+    //         "account_id": safe_contract.id() }))?
+    //     .deposit(parse_near!("1 N"))
+    //     .transact()
+    //     .await?;
+    // println!("mft_register {:#?}", _res);
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 5: Start interacting with Safe
@@ -688,10 +688,22 @@ async fn test_jumbo() -> anyhow::Result<()> {
     let (farm_str1, farm_id1) =
         utils::jumbo_create_farm(&owner, &farm, &seed_id1, &token_reward_2, &worker).await?;
 
+    // common tokens 1
+    // create farm with (token1, token2) pair and token1 as reward
+    let (farm_str2, farm_id2) =
+        utils::jumbo_create_farm(&owner, &farm, &seed_id1, &token_1, &worker).await?;
+
+    // common tokens 2
+    // create farm with (token1, token2) pair and token2 as reward
+    let (farm_str3, farm_id3) =
+        utils::jumbo_create_farm(&owner, &farm, &seed_id1, &token_2, &worker).await?;
+
     // create farms map to iterate over
     let mut farms: HashMap<String, u64> = HashMap::new();
     farms.insert(farm_str0, farm_id0);
     farms.insert(farm_str1, farm_id1);
+    farms.insert(farm_str2, farm_id2);
+    farms.insert(farm_str3, farm_id3);
 
     // Adds new strategy to safe
     utils::add_strategy(
@@ -705,6 +717,34 @@ async fn test_jumbo() -> anyhow::Result<()> {
         &worker,
     )
     .await?;
+
+    // (token1, token2) -> token1
+    utils::add_strategy(
+        &safe_contract,
+        &token_1,
+        seed_id1.clone(),
+        utils::POOL_ID_PLACEHOLDER,
+        pool_token1_token2,
+        farm_id2,
+        "add_farm_to_jumbo_strategy",
+        &worker,
+    )
+    .await?;
+
+    // (token1, token2) -> token2
+    utils::add_strategy(
+        &safe_contract,
+        &token_2,
+        seed_id1.clone(),
+        pool_token1_token2,
+        utils::POOL_ID_PLACEHOLDER,
+        farm_id3,
+        "add_farm_to_jumbo_strategy",
+        &worker,
+    )
+    .await?;
+
+    // TODO: add farms with common tokens
 
     let mut farmers_map: HashMap<AccountId, u128> = HashMap::new();
 

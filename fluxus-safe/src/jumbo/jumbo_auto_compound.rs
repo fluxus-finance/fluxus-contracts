@@ -590,7 +590,7 @@ impl Contract {
             vec![U128(token1_amount), U128(token2_amount)],
             None,
             compounder.exchange_contract_id,
-            970000000000000000000,
+            980000000000000000000,
             Gas(80_000_000_000_000),
         )
         .then(callback_jumbo_exchange::callback_jumbo_post_add_liquidity(
