@@ -6,7 +6,7 @@ mod utils;
 use near_units::parse_near;
 use percentage::Percentage;
 use workspaces::{
-    network::{DevAccountDeployer, Sandbox},
+    network::{Sandbox},
     Account, AccountId, Contract, Network, Worker,
 };
 
@@ -45,10 +45,10 @@ async fn jumbo_do_auto_compound_with_fast_forward(
 
     for i in 0..5 {
         let _res = sentry_acc
-            .call(worker, contract.id(), "harvest")
+            .call(contract.id(), "harvest")
             .args_json(
                 serde_json::json!({ "farm_id_str": farm_id_str, "strat_name": "".to_string() }),
-            )?
+            )
             .gas(TOTAL_GAS)
             .transact()
             .await?;
@@ -72,7 +72,7 @@ async fn get_user_shares(
     .to_string()
     .into_bytes();
 
-    let account_shares = contract.view(worker, "user_share_seed_id", args).await?;
+    let account_shares = contract.view("user_share_seed_id", args).await?;
 
     println!("debug: {:#?}", account_shares.logs);
 
@@ -88,7 +88,7 @@ async fn get_seed_total_amount(
         .to_string()
         .into_bytes();
 
-    let res = contract.view(worker, "seed_total_amount", args).await?;
+    let res = contract.view("seed_total_amount", args).await?;
     let seed_total_amount: u128 = res.json()?;
     println!("seed total amount {:#?}\n", seed_total_amount);
 
@@ -116,9 +116,8 @@ async fn create_ready_account(
     )
     .await?;
     // register accounts into exchange and transfer tokens
-    utils::register_into_contracts(worker, &new_account, vec![exchange.id()]).await?;
+    utils::register_into_contracts(&new_account, vec![exchange.id()]).await?;
     utils::deposit_tokens(
-        worker,
         &new_account,
         exchange,
         maplit::hashmap! {
@@ -142,11 +141,11 @@ async fn stake_into_safe(
 ) -> anyhow::Result<u128> {
     // add liquidity to pool
     let _res = account
-        .call(worker, exchange.id(), "add_liquidity")
+        .call(exchange.id(), "add_liquidity")
         .args_json(serde_json::json!({
             "pool_id": pool_id.clone(),
             "amounts": vec![parse_near!("20 N").to_string(), parse_near!("20 N").to_string()],
-        }))?
+        }))
         .gas(TOTAL_GAS)
         .deposit(parse_near!("1 N"))
         .transact()
@@ -159,13 +158,13 @@ async fn stake_into_safe(
 
     /* Stake */
     let _res = account
-        .call(worker, exchange.id(), "mft_transfer_call")
+        .call(exchange.id(), "mft_transfer_call")
         .args_json(serde_json::json!({
             "token_id": token_id.clone(),
             "receiver_id": safe_contract.id().to_string(),
             "amount": initial_shares,
             "msg": ""
-        }))?
+        }))
         .gas(TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
@@ -225,7 +224,7 @@ async fn deploy_aux_contracts(
 #[tokio::test]
 async fn test_jumbo() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
-    let owner = worker.root_account();
+    let owner = worker.root_account().expect("");
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 1: Deploy relevant contracts
@@ -272,7 +271,6 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     // Register contracts into exchange
     utils::register_into_contracts(
-        &worker,
         exchange.as_account(),
         vec![
             token_1.id(),
@@ -285,7 +283,6 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     // Register Sentry into tokens
     utils::register_into_contracts(
-        &worker,
         &sentry_acc,
         vec![
             exchange.id(),
@@ -299,7 +296,6 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     // Register Strat creator into tokens
     utils::register_into_contracts(
-        &worker,
         &strat_creator_acc,
         vec![
             exchange.id(),
@@ -312,7 +308,6 @@ async fn test_jumbo() -> anyhow::Result<()> {
     .await?;
 
     utils::register_into_contracts(
-        &worker,
         treasury.as_account(),
         vec![
             exchange.id(),
@@ -325,10 +320,9 @@ async fn test_jumbo() -> anyhow::Result<()> {
     .await?;
 
     // register accounts into exchange and transfer tokens
-    utils::register_into_contracts(&worker, &farmer1, vec![exchange.id()]).await?;
+    utils::register_into_contracts(&&farmer1, vec![exchange.id()]).await?;
 
     utils::deposit_tokens(
-        &worker,
         &farmer1,
         &exchange,
         maplit::hashmap! {
@@ -415,8 +409,8 @@ async fn test_jumbo() -> anyhow::Result<()> {
     /* Register into farm contract */
     let _res = safe_contract
         .as_account()
-        .call(&worker, farm.id(), "storage_deposit")
-        .args_json(serde_json::json!({ "account_id": safe_contract.id() }))?
+        .call(&farm.id(), "storage_deposit")
+        .args_json(serde_json::json!({ "account_id": safe_contract.id() }))
         .deposit(parse_near!("1 N"))
         .transact()
         .await?;
@@ -425,7 +419,6 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     /* Register contract into tokens */
     utils::register_into_contracts(
-        &worker,
         safe_contract.as_account(),
         vec![
             exchange.id(),
@@ -441,10 +434,10 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     // let _res = safe_contract
     //     .as_account()
-    //     .call(&worker, exchange.id(), "mft_register")
+    //     .call(&exchange.id(), "mft_register")
     //     .args_json(serde_json::json!({
     //         "token_id": token_id.clone(),
-    //         "account_id": safe_contract.id() }))?
+    //         "account_id": safe_contract.id() }))
     //     .deposit(parse_near!("1 N"))
     //     .transact()
     //     .await?;
@@ -459,13 +452,13 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     /* Stake */
     let res = owner
-        .call(&worker, exchange.id(), "mft_transfer_call")
+        .call(&exchange.id(), "mft_transfer_call")
         .args_json(serde_json::json!({
             "token_id": token_id,
             "receiver_id": safe_contract.id().to_string(),
             "amount": initial_owner_shares.clone(),
             "msg": ""
-        }))?
+        }))
         .gas(TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
@@ -536,11 +529,11 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     // add liquidity for account 1
     let res = farmer1
-        .call(&worker, exchange.id(), "add_liquidity")
+        .call(&exchange.id(), "add_liquidity")
         .args_json(serde_json::json!({
             "pool_id": pool_token1_token2.clone(),
             "amounts": vec![parse_near!("20 N").to_string(), parse_near!("20 N").to_string()],
-        }))?
+        }))
         .gas(TOTAL_GAS)
         .deposit(parse_near!("1 N"))
         .transact()
@@ -556,13 +549,13 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     /* Stake */
     let res = farmer1
-        .call(&worker, exchange.id(), "mft_transfer_call")
+        .call(&exchange.id(), "mft_transfer_call")
         .args_json(serde_json::json!({
             "token_id": pool_id.clone(),
             "receiver_id": safe_contract.id().to_string(),
             "amount": account1_initial_shares,
             "msg": ""
-        }))?
+        }))
         .gas(TOTAL_GAS)
         .deposit(parse_near!("1 yN"))
         .transact()
@@ -629,15 +622,15 @@ async fn test_jumbo() -> anyhow::Result<()> {
     ///////////////////////////////////////////////////////////////////////////
 
     let _res = owner
-        .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
+        .call(&safe_contract.id(), "unstake")
+        .args_json(serde_json::json!({ "seed_id": seed_id1 }))
         .gas(TOTAL_GAS)
         .transact()
         .await?;
 
     let _res = farmer1
-        .call(&worker, safe_contract.id(), "unstake")
-        .args_json(serde_json::json!({ "seed_id": seed_id1 }))?
+        .call(&safe_contract.id(), "unstake")
+        .args_json(serde_json::json!({ "seed_id": seed_id1 }))
         .gas(TOTAL_GAS)
         .transact()
         .await?;
