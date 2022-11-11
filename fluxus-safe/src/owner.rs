@@ -3,7 +3,6 @@ use crate::*;
 /// Internal methods implementation.
 #[near_bindgen]
 impl Contract {
-
     /// Update the contract state.
     /// # Parameter example:
     ///   state: Running
@@ -41,26 +40,76 @@ impl Contract {
         info
     }
 
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   state: Running, Ended, ...
     pub fn update_compounder_state(
         &mut self,
-        farm_id_str: String,
-        state: AutoCompounderState,
+        farm_id_str: Option<String>,
+        state: &String,
+        strat_name: Option<String>,
     ) -> String {
         self.is_owner_or_guardians();
 
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-        // TODO: stable version
-        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
-
-        if farm_info_mut.state != state {
-            farm_info_mut.state = state;
+        //If we want a pembrock_strategy state:
+        if let Some(strat_name) = strat_name {
+            let compounder_mut = self.get_strat_mut(&strat_name).get_pemb_mut();
+            let state = &compounder_mut.state;
+            return format!("The current state is {:#?}", state);
         }
+        //If we want a ref-finance_strategy state:
+        if let Some(farm_id_str) = farm_id_str {
+            let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        format!("The current state is {:#?}", farm_info_mut.state)
+            let kind = self.get_strategy_kind(seed_id.clone());
+
+            if kind == "REF_REGULAR" {
+                let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
+                let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
+
+                if farm_info_mut.state != AutoCompounderState::Running && state == "Running" {
+                    farm_info_mut.state = AutoCompounderState::Running;
+                } else if farm_info_mut.state != AutoCompounderState::Ended && state == "Ended" {
+                    farm_info_mut.state = AutoCompounderState::Ended;
+                } else if farm_info_mut.state != AutoCompounderState::Cleared && state == "Cleared"
+                {
+                    farm_info_mut.state = AutoCompounderState::Cleared;
+                }
+
+                format!("The current state is {:#?}", farm_info_mut.state)
+            } else if kind == "JUMBO_REGULAR" {
+                let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
+                let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(&farm_id);
+
+                if farm_info_mut.state != JumboAutoCompounderState::Running && state == "Running" {
+                    farm_info_mut.state = JumboAutoCompounderState::Running;
+                } else if farm_info_mut.state != JumboAutoCompounderState::Ended && state == "Ended"
+                {
+                    farm_info_mut.state = JumboAutoCompounderState::Ended;
+                } else if farm_info_mut.state != JumboAutoCompounderState::Cleared
+                    && state == "Cleared"
+                {
+                    farm_info_mut.state = JumboAutoCompounderState::Cleared;
+                }
+                format!("The current state is {:#?}", farm_info_mut.state)
+            } else {
+                let compounder_mut = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
+                let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
+
+                if farm_info_mut.state != AutoCompounderState::Running && state == "Running" {
+                    farm_info_mut.state = AutoCompounderState::Running;
+                } else if farm_info_mut.state != AutoCompounderState::Ended && state == "Ended" {
+                    farm_info_mut.state = AutoCompounderState::Ended;
+                } else if farm_info_mut.state != AutoCompounderState::Cleared && state == "Cleared"
+                {
+                    farm_info_mut.state = AutoCompounderState::Cleared;
+                }
+
+                format!("The current state is {:#?}", farm_info_mut.state)
+            }
+        } else {
+            "No strategy available for this seed".to_string()
+        }
     }
 
     /// Extend guardians. Only can be called by owner.
@@ -100,7 +149,7 @@ impl Contract {
     }
 
     /// Update slippage for given token_id
-    /// # Parameters example: 
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   new_slippage: value between 80-100
     pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {
