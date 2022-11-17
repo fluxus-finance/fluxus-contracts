@@ -301,11 +301,11 @@ impl VersionedStrategy {
                         PromiseOrValue::Promise(jumbo_compounder.withdraw_of_reward(farm_id_str))
                     }
                     JumboAutoCompounderCycle::SwapToken1 => {
-                        PromiseOrValue::Promise(jumbo_compounder.autocompounds_swap(farm_id_str))
+                        jumbo_compounder.autocompounds_swap(farm_id_str)
                     }
-                    JumboAutoCompounderCycle::SwapToken2 => PromiseOrValue::Promise(
-                        jumbo_compounder.autocompounds_swap_second_token(farm_id_str),
-                    ),
+                    JumboAutoCompounderCycle::SwapToken2 => {
+                        jumbo_compounder.autocompounds_swap_second_token(farm_id_str)
+                    }
                     JumboAutoCompounderCycle::Stake => PromiseOrValue::Promise(
                         jumbo_compounder.autocompounds_liquidity_and_stake(farm_id_str),
                     ),
@@ -387,5 +387,4 @@ impl Contract {
             strat
         }
     }
-
 }

@@ -410,7 +410,7 @@ impl JumboAutoCompounder {
     /// Transfer reward token to exchange then swap the amount the contract has in the exchange
     /// # Parameters example:
     /// farm_id_str: exchange@pool_id#farm_id
-    pub fn autocompounds_swap(&mut self, farm_id_str: String) -> Promise {
+    pub fn autocompounds_swap(&mut self, farm_id_str: String) -> PromiseOrValue<u128> {
         // TODO: take string as ref
         // self.assert_strategy_not_cleared(&farm_id_str);
         log!("autocompounds_swap");
@@ -467,29 +467,44 @@ impl JumboAutoCompounder {
             );
         }
 
+        // if this is the case, there is no need to swap
+        if self.token1_address.clone() == farm_info.reward_token {
+            let farm_info_mut = self.get_mut_jumbo_farm_info(&farm_id);
+
+            farm_info_mut.available_balance[0] = amount_in.0;
+
+            farm_info_mut.last_reward_amount -= amount_in.0;
+
+            farm_info_mut.next_cycle();
+
+            return PromiseOrValue::Value(0);
+        }
+
         // 130 TGAS
-        ext_jumbo_exchange::get_return(
-            farm_info.pool_id_token1_reward,
-            farm_info.reward_token,
-            amount_in,
-            self.token1_address.clone(),
-            self.exchange_contract_id.clone(),
-            0,
-            Gas(10_000_000_000_000),
+        PromiseOrValue::Promise(
+            ext_jumbo_exchange::get_return(
+                farm_info.pool_id_token1_reward,
+                farm_info.reward_token,
+                amount_in,
+                self.token1_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .then(callback_jumbo_exchange::callback_jumbo_get_token1_return(
+                farm_id_str,
+                amount_in,
+                env::current_account_id(),
+                0,
+                Gas(120_000_000_000_000),
+            )),
         )
-        .then(callback_jumbo_exchange::callback_jumbo_get_token1_return(
-            farm_id_str,
-            amount_in,
-            env::current_account_id(),
-            0,
-            Gas(120_000_000_000_000),
-        ))
     }
 
     /// Transfer reward token to exchange then swap the amount the contract has in the exchange
     /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
-    pub fn autocompounds_swap_second_token(&mut self, farm_id_str: String) -> Promise {
+    pub fn autocompounds_swap_second_token(&mut self, farm_id_str: String) -> PromiseOrValue<u128> {
         // TODO: take string as ref
         // self.assert_strategy_not_cleared(&farm_id_str);
         log!("autocompounds_swap_second_token");
@@ -497,25 +512,41 @@ impl JumboAutoCompounder {
         let (_, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
         let farm_info = self.get_jumbo_farm_info(&farm_id);
 
+        // if this is the case, no need to swap
+        // just take what is left
+        if self.token2_address.clone() == farm_info.reward_token {
+            let farm_info_mut = self.get_mut_jumbo_farm_info(&farm_id);
+            farm_info_mut.available_balance[1] = farm_info_mut.last_reward_amount;
+
+            // First swap succeeded, thus decrement the last reward_amount
+            farm_info_mut.last_reward_amount = 0;
+
+            // after both swaps succeeded, it's ready to stake
+            farm_info_mut.next_cycle();
+            return PromiseOrValue::Value(0);
+        }
+
         let reward_amount_left = farm_info.last_reward_amount;
 
         // 130 TGAS
-        ext_jumbo_exchange::get_return(
-            farm_info.pool_id_token2_reward,
-            farm_info.reward_token,
-            U128(reward_amount_left),
-            self.token2_address.clone(),
-            self.exchange_contract_id.clone(),
-            0,
-            Gas(10_000_000_000_000),
+        PromiseOrValue::Promise(
+            ext_jumbo_exchange::get_return(
+                farm_info.pool_id_token2_reward,
+                farm_info.reward_token,
+                U128(reward_amount_left),
+                self.token2_address.clone(),
+                self.exchange_contract_id.clone(),
+                0,
+                Gas(10_000_000_000_000),
+            )
+            .then(callback_jumbo_exchange::callback_jumbo_get_token2_return(
+                farm_id_str,
+                U128(reward_amount_left),
+                env::current_account_id(),
+                0,
+                Gas(120_000_000_000_000),
+            )),
         )
-        .then(callback_jumbo_exchange::callback_jumbo_get_token2_return(
-            farm_id_str,
-            U128(reward_amount_left),
-            env::current_account_id(),
-            0,
-            Gas(120_000_000_000_000),
-        ))
     }
 
     //TODO: this function just call another one. Maybe we need to join both.
@@ -707,7 +738,7 @@ impl Contract {
         fft_shares: Balance,
     ) {
         match mft_transfer_result {
-            Ok(_) => log!("Nice!"),
+            Ok(_) => log!("withdraw succeeded!"),
             Err(err) => {
                 panic!("{}", ERR18_JUMBO_WITHDRAW)
             }
