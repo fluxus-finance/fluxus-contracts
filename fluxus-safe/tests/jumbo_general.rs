@@ -224,7 +224,7 @@ async fn deploy_aux_contracts(
 #[tokio::test]
 async fn test_jumbo() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
-    let owner = worker.root_account().expect("");
+    let owner = worker.root_account().expect("Didnt get any account.");
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 1: Deploy relevant contracts
@@ -432,16 +432,6 @@ async fn test_jumbo() -> anyhow::Result<()> {
 
     let token_id: String = format!(":{}", pool_token1_token2);
 
-    // let _res = safe_contract
-    //     .as_account()
-    //     .call(&exchange.id(), "mft_register")
-    //     .args_json(serde_json::json!({
-    //         "token_id": token_id.clone(),
-    //         "account_id": safe_contract.id() }))
-    //     .deposit(parse_near!("1 N"))
-    //     .transact()
-    //     .await?;
-    // println!("mft_register {:#?}", _res);
 
     ///////////////////////////////////////////////////////////////////////////
     // Stage 5: Start interacting with Safe
