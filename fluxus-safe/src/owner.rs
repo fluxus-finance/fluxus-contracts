@@ -3,15 +3,21 @@ use crate::*;
 /// Internal methods implementation.
 #[near_bindgen]
 impl Contract {
+    /// Update the contract state.
+    /// # Parameter example:
+    ///   state: Running
     pub fn update_contract_state(&mut self, state: RunningState) -> String {
         self.is_owner();
         self.data_mut().state = state;
         format!("{} is {:#?}", env::current_account_id(), self.data().state)
     }
 
+    /// Update the treasure contract address.
+    /// # Parameter example:
+    ///   contract_id: treasure.testnet
     pub fn update_treasure_contract(&mut self, contract_id: AccountId) {
         self.is_owner();
-        self.data_mut().treasury.account_id = contract_id;
+        self.data_mut().treasure_contract_id = contract_id;
     }
 
     /// Returns allowed_accounts
@@ -34,29 +40,81 @@ impl Contract {
         info
     }
 
-    /// Args:
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   state: Running, Ended, ...
     pub fn update_compounder_state(
         &mut self,
-        farm_id_str: String,
-        state: AutoCompounderState,
+        farm_id_str: Option<String>,
+        state: &String,
+        strat_name: Option<String>,
     ) -> String {
         self.is_owner_or_guardians();
 
-        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
-        // TODO: stable version
-        let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
-
-        if farm_info_mut.state != state {
-            farm_info_mut.state = state;
+        //If we want a pembrock_strategy state:
+        if let Some(strat_name) = strat_name {
+            let compounder_mut = self.get_strat_mut(&strat_name).get_pemb_mut();
+            let state = &compounder_mut.state;
+            return format!("The current state is {:#?}", state);
         }
+        //If we want a ref-finance_strategy state:
+        if let Some(farm_id_str) = farm_id_str {
+            let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
-        format!("The current state is {:#?}", farm_info_mut.state)
+            let kind = self.get_strategy_kind(seed_id.clone());
+
+            if kind == "REF_REGULAR" {
+                let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
+                let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
+
+                if farm_info_mut.state != AutoCompounderState::Running && state == "Running" {
+                    farm_info_mut.state = AutoCompounderState::Running;
+                } else if farm_info_mut.state != AutoCompounderState::Ended && state == "Ended" {
+                    farm_info_mut.state = AutoCompounderState::Ended;
+                } else if farm_info_mut.state != AutoCompounderState::Cleared && state == "Cleared"
+                {
+                    farm_info_mut.state = AutoCompounderState::Cleared;
+                }
+
+                format!("The current state is {:#?}", farm_info_mut.state)
+            } else if kind == "JUMBO_REGULAR" {
+                let compounder_mut = self.get_strat_mut(&seed_id).get_jumbo_mut();
+                let farm_info_mut = compounder_mut.get_mut_jumbo_farm_info(&farm_id);
+
+                if farm_info_mut.state != JumboAutoCompounderState::Running && state == "Running" {
+                    farm_info_mut.state = JumboAutoCompounderState::Running;
+                } else if farm_info_mut.state != JumboAutoCompounderState::Ended && state == "Ended"
+                {
+                    farm_info_mut.state = JumboAutoCompounderState::Ended;
+                } else if farm_info_mut.state != JumboAutoCompounderState::Cleared
+                    && state == "Cleared"
+                {
+                    farm_info_mut.state = JumboAutoCompounderState::Cleared;
+                }
+                format!("The current state is {:#?}", farm_info_mut.state)
+            } else {
+                let compounder_mut = self.get_strat_mut(&seed_id).get_stable_compounder_mut();
+                let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
+
+                if farm_info_mut.state != AutoCompounderState::Running && state == "Running" {
+                    farm_info_mut.state = AutoCompounderState::Running;
+                } else if farm_info_mut.state != AutoCompounderState::Ended && state == "Ended" {
+                    farm_info_mut.state = AutoCompounderState::Ended;
+                } else if farm_info_mut.state != AutoCompounderState::Cleared && state == "Cleared"
+                {
+                    farm_info_mut.state = AutoCompounderState::Cleared;
+                }
+
+                format!("The current state is {:#?}", farm_info_mut.state)
+            }
+        } else {
+            "No strategy available for this seed".to_string()
+        }
     }
 
     /// Extend guardians. Only can be called by owner.
+    /// # Parameter example:
+    ///   guardians: [account1.testnet, account2.testnet]
     #[payable]
     pub fn extend_guardians(&mut self, guardians: Vec<AccountId>) {
         assert_one_yocto();
@@ -67,6 +125,8 @@ impl Contract {
     }
 
     /// Remove guardians. Only can be called by owner.
+    /// # Parameter example:
+    ///   guardians: [account1.testnet, account2.testnet]
     #[payable]
     pub fn remove_guardians(&mut self, guardians: Vec<AccountId>) {
         assert_one_yocto();
@@ -76,6 +136,9 @@ impl Contract {
         }
     }
 
+    /// Return true if the caller is the owner or a guardian.
+    /// # Parameter example:
+    ///   guardians: [account1.testnet, account2.testnet]
     #[private]
     pub fn is_owner_or_guardians(&self) -> bool {
         env::predecessor_account_id() == self.data().owner_id
@@ -86,18 +149,18 @@ impl Contract {
     }
 
     /// Update slippage for given token_id
-    /// Args:
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     ///   new_slippage: value between 80-100
     pub fn update_strat_slippage(&mut self, farm_id_str: String, new_slippage: u128) -> String {
-        assert!(self.is_owner_or_guardians(), "ERR: not allowed");
+        assert!(self.is_owner_or_guardians(), "{}", ERR34_NOT_ALLOWED);
         // TODO: what maximum slippage should be accepted?
         // Should not accept, say, 0 slippage
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         // TODO: stable versions
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
         farm_info_mut.slippage = 100 - new_slippage;
 
         format!(
@@ -107,17 +170,21 @@ impl Contract {
     }
 
     /// Adds account_id to allowed_accounts if it is not already present
+    /// # Parameter example:
+    ///   account_id: account.testnet
     pub fn add_allowed_account(&mut self, account_id: AccountId) {
         self.is_owner();
 
         require!(
             !self.data().allowed_accounts.contains(&account_id),
-            "ERR_ACCOUNT_ALREADY_EXIST"
+            ERR35_ALREADY_ALLOWED
         );
         self.data_mut().allowed_accounts.push(account_id)
     }
 
     /// Removes account_id from allowed_accounts
+    /// # Parameter example:
+    ///   account_id: account.testnet
     pub fn remove_allowed_account(&mut self, account_id: AccountId) {
         self.is_owner();
 
@@ -128,27 +195,30 @@ impl Contract {
             accounts
                 .iter()
                 .position(|x| *x == account_id)
-                .expect("ERR_ACCOUNT_DOES_NOT_EXIST"),
+                .expect(ERR36_ACCOUNT_DOES_NOT_EXIST),
         );
     }
 
-    /// Checks if predecessor_account_id is either the contract or the owner of the contract
+    /// Checks if predecessor_account_id is either the contract or the owner of the contract.
     #[private]
     pub(crate) fn is_owner(&self) {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
         require!(
             caller_acc_id == contract_id || caller_acc_id == self.data().owner_id,
-            "ERR_NOT_ALLOWED"
+            ERR34_NOT_ALLOWED
         );
     }
 
     /// Checks if account_id is either the caller account or the contract
+    /// # Parameter example:
+    ///   account_id: account.testnet
     #[private]
     pub(crate) fn is_caller(&self, account_id: AccountId) {
         let (caller_acc_id, contract_id) = get_predecessor_and_current_account();
         assert!(
             (caller_acc_id == account_id) || (caller_acc_id == contract_id),
-            "ERR_NOT_ALLOWED"
+            "{}",
+            ERR34_NOT_ALLOWED
         );
     }
 
@@ -166,16 +236,19 @@ impl Contract {
             }
         }
 
-        assert!(is_allowed, "ERR_NOT_ALLOWED");
+        assert!(is_allowed, "{}", ERR34_NOT_ALLOWED);
     }
 
     /// Extend the whitelist of tokens.
+    /// # Parameter example:
+    ///   tokens: [token1.testnet, token2.testnet]
     #[payable]
     pub fn extend_whitelisted_tokens(&mut self, tokens: Vec<AccountId>) {
         assert_eq!(
             env::predecessor_account_id(),
             self.data().owner_id,
-            "ERR_NOT_ALLOWED"
+            "{}",
+            ERR34_NOT_ALLOWED
         );
         for token in tokens {
             self.data_mut().whitelisted_tokens.insert(&token);
@@ -196,7 +269,7 @@ impl Contract {
                     env::log_str("Check_promise successful");
                     true
                 }
-                PromiseResult::Failed => env::panic_str("ERR_CALL_FAILED"),
+                PromiseResult::Failed => env::panic_str(ERR37_PROMISE_FAILED),
                 _ => false,
             },
             _ => false,

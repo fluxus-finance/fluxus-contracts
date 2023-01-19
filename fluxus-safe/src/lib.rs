@@ -101,7 +101,7 @@ pub struct ContractData {
     guardians: UnorderedSet<AccountId>,
 
     /// Fees earned by the DAO
-    treasury: AccountFee,
+    treasure_contract_id: AccountId,
 
     // Keeps tracks of accounts that send coins to this contract
     accounts: LookupMap<AccountId, VAccount>,
@@ -157,23 +157,20 @@ impl VersionedContractData {}
 
 #[near_bindgen]
 impl Contract {
+    /// Initialize the contract.
+    /// # Parameters example:
+    ///  owner_id: account.testnet,
+    ///  treasure_contract_id: treasurer.testnet
     #[init]
     pub fn new(owner_id: AccountId, treasure_contract_id: AccountId) -> Self {
         assert!(!env::state_exists(), "Already initialized");
         let allowed_accounts: Vec<AccountId> = vec![env::current_account_id()];
 
-        let treasury: AccountFee = AccountFee {
-            account_id: treasure_contract_id,
-            fee_percentage: 10, //TODO: the treasury fee_percentage can be removed from here as the treasury contract will receive all the fees amount that won't be sent to strat_creator or sentry
-            // The breakdown of amount for Stakers, operations and treasury will be dealt with inside the treasury contract
-            current_amount: 0u128,
-        };
-
         Self {
             data: VersionedContractData::V0001(ContractData {
                 owner_id,
                 guardians: UnorderedSet::new(StorageKey::Guardian),
-                treasury,
+                treasure_contract_id,
                 accounts: LookupMap::new(StorageKey::Accounts),
                 allowed_accounts,
                 whitelisted_tokens: UnorderedSet::new(StorageKey::Whitelist),
@@ -183,8 +180,6 @@ impl Contract {
                 total_supply_by_fft_share: LookupMap::new(StorageKey::TotalSupplyByShare),
                 fft_share_by_seed_id: HashMap::new(),
                 seed_id_amount: LookupMap::new(StorageKey::SeedIdAmount),
-                /// List of all the pools.
-                /// TODO: with more exchanges, this should not exist
                 strategies: HashMap::new(),
             }),
         }
@@ -192,6 +187,7 @@ impl Contract {
 }
 
 impl Contract {
+    /// Return the contract data.
     #[allow(unreachable_patterns)]
     fn data(&self) -> &ContractData {
         match &self.data {
@@ -199,6 +195,8 @@ impl Contract {
             _ => unimplemented!(),
         }
     }
+
+    /// Return the contract data as mutable.
     #[allow(unreachable_patterns)]
     fn data_mut(&mut self) -> &mut ContractData {
         match &mut self.data {
@@ -207,6 +205,7 @@ impl Contract {
         }
     }
 
+    /// Ensure that the contract is running.
     fn assert_contract_running(&self) {
         match self.data().state {
             RunningState::Running => (),
@@ -215,6 +214,8 @@ impl Contract {
     }
 
     /// Ensures that at least one strategy is running for given token_id
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     fn assert_strategy_is_running(&self, seed_id: &str) {
         let strat = self.get_strat(seed_id);
 
@@ -247,13 +248,13 @@ impl Contract {
                 }
             }
             VersionedStrategy::PembrockAutoCompounder(_) => {
-                let compounder = strat.pemb_get_ref();
+                let compounder = strat.get_pemb_ref();
                 if compounder.state == PembAutoCompounderState::Running {
                     return;
                 }
             }
         }
 
-        panic!("There is no running strategy for this pool")
+        panic!("{}", ERR30_NO_RUNNING_STRATEGIES)
     }
 }

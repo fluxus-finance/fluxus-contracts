@@ -44,6 +44,8 @@ impl Contract {
     // }
 
     /// Returns the minimum value accepted for given token_id
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     pub fn get_seed_min_deposit(self, seed_id: String) -> U128 {
         let strat = self.get_strat(&seed_id);
 
@@ -174,6 +176,7 @@ impl Contract {
         info
     }
 
+    /// Return the registered strategies for ref finance.
     pub fn get_strategies_info_for_ref_finance(&self) -> Vec<StratFarmInfo> {
         let mut info: Vec<StratFarmInfo> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
@@ -187,6 +190,7 @@ impl Contract {
         info
     }
 
+    /// Return the registered stable strategies for ref finance.
     pub fn get_strategies_info_for_stable_ref_finance(&self) -> Vec<StableStratFarmInfo> {
         let mut info: Vec<StableStratFarmInfo> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
@@ -201,6 +205,7 @@ impl Contract {
         info
     }
 
+    /// Return the registered strategies for Jumbo.
     pub fn get_strategies_info_for_jumbo(&self) -> Vec<JumboStratFarmInfo> {
         let mut info: Vec<JumboStratFarmInfo> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
@@ -214,11 +219,12 @@ impl Contract {
         info
     }
 
+    /// Return the registered strategies for Pembrock.
     pub fn get_strategies_info_for_pembrock(&self) -> Vec<PembrockAutoCompounder> {
         let mut info: Vec<PembrockAutoCompounder> = Vec::new();
         for (_, strat) in self.data().strategies.iter() {
             if strat.kind() == *"PEMBROCK_AUTO_COMPOUNDER" {
-                info.push(strat.pemb_get_ref().clone());
+                info.push(strat.get_pemb_ref().clone());
             }
         }
 
@@ -237,6 +243,9 @@ impl Contract {
     //     farm_info.reward_token.into()
     // }
 
+    /// Return some ref finance strategy structure.
+    /// # Parameter example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     pub fn get_strategy_for_ref_finance(self, farm_id_str: String) -> AutoCompounderState {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -257,7 +266,9 @@ impl Contract {
         }
     }
 
-    // TODO
+    /// Return some Jumbo strategy structure.
+    /// # Parameter example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     pub fn get_strategy_for_jumbo(self, farm_id_str: String) -> JumboAutoCompounderState {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -267,8 +278,11 @@ impl Contract {
         farm_info.state
     }
 
+    /// Return some Pembrock strategy structure.
+    /// # Parameter example:
+    ///   farm_id_str: pembrock@token_name
     pub fn get_strategy_for_pembrock(self, strat_name: String) -> PembAutoCompounderState {
-        let compounder = self.get_strat(&strat_name).pemb_get();
+        let compounder = self.get_strat(&strat_name).get_pemb();
 
         compounder.state
     }
@@ -289,6 +303,8 @@ impl Contract {
     }
 
     ///Return the u128 number of strategies that we have for a specific seed_id.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn number_of_strategies_by_seed(&self, seed_id: String) -> String {
         let strat = self.get_strat(&seed_id);
 
@@ -324,6 +340,9 @@ impl Contract {
         U128(count)
     }
 
+    /// Return the fee for some specific strategy.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn check_fee_by_strategy(&self, seed_id: String) -> String {
         // let compounder = self.get_strat(&seed_id).get_compounder();
 
@@ -345,6 +364,9 @@ impl Contract {
         format!("{}%", fee)
     }
 
+    /// Return true if the strategy is active.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn is_strategy_active(&self, seed_id: String) -> bool {
         let strat = self.get_strat(&seed_id);
 
@@ -380,9 +402,13 @@ impl Contract {
         false
     }
 
+    /// Return the current harvest step for some strategy.
+    /// # Parameter example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   strat_name: "" or pembrock@token_name
     pub fn current_strat_step(&self, farm_id_str: String, strat_name: String) -> String {
         match strat_name.is_empty() {
-            false => String::from(&self.get_strat(&strat_name).pemb_get().cycle_stage),
+            false => String::from(&self.get_strat(&strat_name).get_pemb().cycle_stage),
             true => {
                 let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
                 let strat = self.get_strat(&seed_id);
@@ -422,6 +448,9 @@ impl Contract {
     //     strats
     // }
 
+    /// Return the harvest time_stamp for some strategy.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn get_harvest_timestamp(&self, seed_id: String) -> String {
         let strat = self.get_strat(&seed_id);
 
@@ -441,9 +470,85 @@ impl Contract {
         }
     }
 
+    /// Return the strategy kind.
+    /// # Parameter example:
+    ///   seed_id: exchange@pool_id
     pub fn get_strategy_kind(&self, seed_id: String) -> String {
         self.get_strat(&seed_id).kind()
     }
+
+    pub fn get_harvest_info(&self) -> Vec<StrategyInfo> {
+        let mut strat_farms: Vec<StrategyInfo> = Vec::new();
+
+        for (seed_id, strat) in self.data().strategies.iter() {
+            match strat {
+                VersionedStrategy::AutoCompounder(compounder) => {
+                    for strat_farm in compounder.farms.iter() {
+                        strat_farms.push(StrategyInfo {
+                            strat_kind: strat.kind(),
+                            seed_id: Some(seed_id.to_string()),
+                            strat_name: None,
+                            farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
+                            is_active: strat_farm.state == AutoCompounderState::Running,
+                            reward_tokens: strat_farm.reward_token.to_string(),
+                            fees: compounder.admin_fees.clone(),
+                        })
+                    }
+                }
+                VersionedStrategy::StableAutoCompounder(stable) => {
+                    for strat_farm in stable.farms.iter() {
+                        strat_farms.push(StrategyInfo {
+                            strat_kind: strat.kind(),
+                            seed_id: Some(seed_id.to_string()),
+                            strat_name: None,
+                            farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
+                            is_active: strat_farm.state == AutoCompounderState::Running,
+                            reward_tokens: strat_farm.reward_token.to_string(),
+                            fees: stable.admin_fees.clone(),
+                        })
+                    }
+                }
+                VersionedStrategy::JumboAutoCompounder(jumbo) => {
+                    for strat_farm in jumbo.farms.iter() {
+                        strat_farms.push(StrategyInfo {
+                            strat_kind: strat.kind(),
+                            seed_id: Some(seed_id.to_string()),
+                            strat_name: None,
+                            farm_id_str: Some(format!("{}#{}", seed_id, strat_farm.id)),
+                            is_active: strat_farm.state == JumboAutoCompounderState::Running,
+                            reward_tokens: strat_farm.reward_token.to_string(),
+                            fees: jumbo.admin_fees.clone(),
+                        })
+                    }
+                }
+                VersionedStrategy::PembrockAutoCompounder(pembrock) => {
+                    strat_farms.push(StrategyInfo {
+                        strat_kind: strat.kind(),
+                        seed_id: None,
+                        strat_name: Some(seed_id.to_string()),
+                        farm_id_str: None,
+                        is_active: pembrock.state == PembAutoCompounderState::Running,
+                        reward_tokens: pembrock.reward_token.to_string(),
+                        fees: pembrock.admin_fees.clone(),
+                    })
+                }
+            }
+        }
+
+        strat_farms
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct StrategyInfo {
+    pub strat_kind: String,
+    pub seed_id: Option<String>,
+    pub strat_name: Option<String>,
+    pub farm_id_str: Option<String>,
+    pub is_active: bool,
+    pub reward_tokens: String,
+    pub fees: AdminFees,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

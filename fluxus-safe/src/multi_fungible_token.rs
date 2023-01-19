@@ -27,18 +27,23 @@ pub const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(45_000_000_000_000);
 
 #[near_bindgen]
 impl Contract {
-    //Return the FFT token to a seed_id TODO: enhance name of fft tokens they should be named fft_seed_{seed_id}
+    ///Return the FFT token to a seed_id TODO: enhance name of fft tokens they should be named fft_seed_{seed_id}.
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     pub fn fft_token_seed_id(&self, seed_id: String) -> String {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
             fft_resp.to_owned()
         } else {
-            env::panic_str("E1: seed_id doesn't exist");
+            env::panic_str(ERR32_SEED_DOES_NOT_EXIST);
         };
         fft_name
     }
 
     ///Return the u128 amount of an user for an specific fft_share (ref lp token).
+    /// # Parameters example:
+    ///   fft_share: fft_share_1
+    ///   account_id: account.testnet
     pub fn users_fft_share_amount(&self, fft_share: String, account_id: String) -> u128 {
         let map = self.data().users_balance_by_fft_share.get(&fft_share);
         if let Some(shares) = map {
@@ -51,12 +56,15 @@ impl Contract {
     }
 
     /// Return the u128 amount a user has in seed_id.
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
+    ///   user: account.testnet
     pub fn user_share_seed_id(&self, seed_id: String, user: String) -> u128 {
         let data = self.data();
         let fft_name: String = if let Some(fft_resp) = data.fft_share_by_seed_id.get(&seed_id) {
             fft_resp.to_owned()
         } else {
-            env::panic_str("E1: seed_id doesn't exist");
+            env::panic_str(ERR32_SEED_DOES_NOT_EXIST);
         };
 
         let user_fft_shares = self.users_fft_share_amount(fft_name.clone(), user);
@@ -75,7 +83,9 @@ impl Contract {
         }
     }
 
-    ///Register a seed into the users_balance_by_fft_share
+    ///Register a seed into the users_balance_by_fft_share.
+    /// # Parameters example:
+    ///   fft_share: fft_share_1
     #[private]
     pub fn register_seed(&mut self, fft_share: String) {
         let temp = LookupMap::new(StorageKey::SeedRegister {
@@ -86,11 +96,16 @@ impl Contract {
             .insert(&fft_share, &temp);
     }
 
+    /// Return the total amount of a seed.
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     pub fn seed_total_amount(&self, seed_id: &String) -> u128 {
         self.data().seed_id_amount.get(seed_id).unwrap_or(0u128)
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
+    /// # Parameters example:
+    ///   fft_share: fft_share_1
     pub fn total_supply_amount(&self, fft_share: String) -> u128 {
         self.data()
             .total_supply_by_fft_share
@@ -99,6 +114,8 @@ impl Contract {
     }
 
     ///Return the total_supply of an specific fft_share (ref lp token).
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     #[private]
     pub fn total_supply_by_pool_id(&mut self, seed_id: String) -> u128 {
         let fft_share_id = self
@@ -116,6 +133,9 @@ impl Contract {
         }
     }
 
+    /// Return the correspondent fft_share of a seed.
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
     pub fn get_fft_share_id_from_seed(&self, seed_id: String) -> String {
         let fft_share_id = self
             .data()
@@ -132,6 +152,10 @@ impl Contract {
     ///Assigns a fft_share value to an user for a specific fft_share (ref lp token)
     /// and increment the total_supply of this seed's fft_share.
     /// It returns the user's new balance.
+    /// # Parameters example:
+    ///   fft_share: fft_share_1
+    ///   balance: 100000000
+    ///   user: account.testnet
     #[private]
     pub fn mft_mint(&mut self, fft_share: String, balance: u128, user: String) -> u128 {
         //Add balance to the user for this seed
@@ -143,7 +167,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&user, &new_balance);
 
@@ -164,6 +188,10 @@ impl Contract {
     ///Burn fft_share value for an user in a specific fft_share (ref lp token)
     /// and decrement the total_supply of this seed's fft_share.
     /// It returns the user's new balance.
+    /// # Parameters example:
+    ///   fft_share: fft_share_1
+    ///   balance: 100000000
+    ///   user: account.testnet
     #[private]
     pub fn mft_burn(&mut self, fft_share: String, balance: u128, user: String) -> u128 {
         //Sub balance to the user for this seed
@@ -176,7 +204,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&user, &new_balance);
 
@@ -194,8 +222,13 @@ impl Contract {
         new_balance
     }
 
-    /// Transfer fft_shares internally (user for user).
+    /// Call a function to transfer fft_shares internally (user for user).
     /// Token_id is a specific fft_share.
+    /// # Parameters example:
+    ///   token_id: fft_share_1,
+    ///   receiver_id: account.testnet,
+    ///   user: account.testnet,
+    ///   memo: None
     #[payable]
     pub fn mft_transfer(
         &mut self,
@@ -216,6 +249,13 @@ impl Contract {
         );
     }
 
+    /// Transfer fft_shares internally (user for user).
+    /// Token_id is a specific fft_share.
+    /// # Parameters example:
+    ///   token_id: fft_share_1,
+    ///   sender_id: account.testnet,
+    ///   amount: 10000000,
+    ///   memo: None
     fn internal_mft_transfer(
         &mut self,
         token_id: String,
@@ -224,7 +264,7 @@ impl Contract {
         amount: u128,
         memo: Option<String>,
     ) {
-        assert_ne!(sender_id, receiver_id, "{}", ERR33_TRANSFER_TO_SELF);
+        assert_ne!(sender_id, receiver_id, "{}", ERR43_TRANSFER_TO_SELF);
         self.share_transfer(
             token_id.clone(),
             sender_id.clone(),
@@ -245,6 +285,12 @@ impl Contract {
         }
     }
 
+    /// Internal transfer of shares.
+    /// # Parameters example:
+    ///   fft_share: fft_share_1,
+    ///   sender_id: account.testnet,
+    ///   receiver_id: account2.testnet,
+    ///   amount: 10000000,
     pub fn share_transfer(
         &mut self,
         fft_share: String,
@@ -261,7 +307,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&sender_id, &new_balance);
 
@@ -277,7 +323,7 @@ impl Contract {
             .data()
             .users_balance_by_fft_share
             .get(&fft_share)
-            .expect("err: fft does not exist");
+            .expect(ERR33_FFT_SHARE_DOES_NOT_EXIST);
 
         map_temp.insert(&receiver_id, &new_balance);
 
@@ -289,6 +335,12 @@ impl Contract {
     ///Transfer fft_shares internally (account to account),
     /// call mft_on_transfer in the receiver contract and
     /// refound something if it is necessary.
+    /// # Parameters example:
+    ///   token_id: :17,
+    ///   receiver_id: account.testnet,
+    ///   amount: 10000000,
+    ///   memo: None,
+    ///   msg: ""
     #[payable]
     pub fn mft_transfer_call(
         &mut self,
@@ -332,6 +384,11 @@ impl Contract {
     /// Returns how much was refunded back to the sender.
     /// If sender removed account in the meantime, the tokens are sent to the owner account.
     /// Tokens are never burnt.
+    /// # Parameters example:
+    ///   token_id: :17,
+    ///   sender_id: account1.testnet,
+    ///   receiver_id: account2.testnet,
+    ///   amount: 10000000,
     #[private]
     pub fn mft_resolve_transfer(
         &mut self,

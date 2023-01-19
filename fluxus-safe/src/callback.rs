@@ -39,11 +39,15 @@ pub trait RefExchangeAutoCompound {
     );
     fn callback_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        farm_id_str: String,
+    );
+    fn callback_register_lp(
+        #[callback_result] register_result: Result<(), PromiseError>,
     );
     fn callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,
-        seed_id: String,
+        farm_id_str: String,
     );
     fn callback_get_token_return(&self, common_token: u64, amount_token: U128) -> (U128, U128);
     fn callback_get_tokens_return(&self) -> (U128, U128);
@@ -190,11 +194,12 @@ pub trait RefExchangeStableAutoCompound {
     );
     fn stable_callback_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        farm_id_str: String,
     );
     fn stable_callback_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,
-        seed_id: String,
+        farm_id_str: String,
     );
     fn stable_callback_get_token_return(&self, farm_id_str: String, amount_token: U128) -> Promise;
     fn stable_callback_get_tokens_return(&self) -> (U128, U128);
@@ -385,6 +390,7 @@ pub trait JumboCallbacks {
     ) -> Promise;
     fn callback_jumbo_post_treasury_mft_transfer(
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        farm_id_str: String,
     );
     fn callback_jumbo_post_sentry_mft_transfer(
         &mut self,
@@ -450,7 +456,7 @@ pub trait JumboCallbacks {
     fn callback_jumbo_post_creator_ft_transfer(
         &mut self,
         #[callback_result] strat_creator_transfer_result: Result<U128, PromiseError>,
-        seed_id: String,
+        farm_id_str: String,
     );
     fn callback_jumbo_post_sentry(
         &self,
@@ -502,6 +508,7 @@ pub trait PembrockAutoCompound {
     fn callback_pembrock_post_treasury_transfer(
         &mut self,
         #[callback_result] transfer_result: Result<(), PromiseError>,
+        strat_name: String,
     );
     fn callback_pembrock_post_sentry(
         &self,

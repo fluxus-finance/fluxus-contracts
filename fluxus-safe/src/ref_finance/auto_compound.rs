@@ -7,7 +7,7 @@ const MIN_SLIPPAGE_ALLOWED: u128 = 1;
 #[near_bindgen]
 impl Contract {
     /// Check if farm still have rewards to distribute (status == Running)
-    /// Args:
+    /// # Parameters example:
     ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_list_farms_by_seed(
@@ -15,7 +15,7 @@ impl Contract {
         #[callback_result] farms_result: Result<Vec<FarmInfoBoost>, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<String> {
-        assert!(farms_result.is_ok(), "ERR_LIST_FARMS_FAILED");
+        assert!(farms_result.is_ok(), "{}", ERR01_LIST_FARMS_FAILED);
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.clone());
 
@@ -53,13 +53,16 @@ impl Contract {
         )
     }
 
+    /// Ensure that the get_rewards succeeded and claim the rewards.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_get_unclaimed_reward(
         &mut self,
         #[callback_result] reward_amount_result: Result<HashMap<String, U128>, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
-        assert!(reward_amount_result.is_ok(), "ERR_GET_REWARD_FAILED");
+        assert!(reward_amount_result.is_ok(), "{}", ERR02_GET_REWARD_FAILED);
 
         let mut rewards_map = reward_amount_result.unwrap();
 
@@ -67,7 +70,7 @@ impl Contract {
 
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
-        let farm_info = compounder.get_mut_farm_info(farm_id);
+        let farm_info = compounder.get_mut_farm_info(&farm_id);
 
         for (token, amount) in rewards_map.iter() {
             log!("token: {} amount: {}", token, amount.0);
@@ -88,7 +91,7 @@ impl Contract {
                 farm_info.state = AutoCompounderState::Cleared;
                 return PromiseOrValue::Value(0u128);
             } else {
-                panic!("ERR: zero rewards earned")
+                panic!("{}", ERR06_ZERO_REWARDS_EARNED)
             }
         }
 
@@ -110,6 +113,11 @@ impl Contract {
         )
     }
 
+    /// Check if the claim succeeded and update the reward_amount variable.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   reward_amount: U128(10000000),
+    ///   rewards_map: Hashmap{token1: U128(100000000)}
     #[private]
     pub fn callback_post_claim_reward(
         &mut self,
@@ -118,7 +126,11 @@ impl Contract {
         reward_amount: U128,
         rewards_map: HashMap<String, U128>,
     ) -> u128 {
-        assert!(claim_reward_result.is_ok(), "ERR_WITHDRAW_FAILED");
+        assert!(
+            claim_reward_result.is_ok(),
+            "{}",
+            ERR04_WITHDRAW_FROM_FARM_FAILED
+        );
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
@@ -127,7 +139,7 @@ impl Contract {
         compounder.update_strats_by_seed(rewards_map);
 
         // store the amount of reward earned
-        let farm_info = compounder.get_mut_farm_info(farm_id);
+        let farm_info = compounder.get_mut_farm_info(&farm_id);
         farm_info.last_reward_amount += reward_amount.0;
 
         farm_info.next_cycle();
@@ -135,13 +147,20 @@ impl Contract {
         reward_amount.0
     }
 
+    /// Ensure that the withdraw succeeded and then update balances earned.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_withdraw(
         &mut self,
         #[callback_result] withdraw_result: Result<bool, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<U128> {
-        assert!(withdraw_result.is_ok(), "ERR_WITHDRAW_FROM_FARM_FAILED");
+        assert!(
+            withdraw_result.is_ok(),
+            "{}",
+            ERR04_WITHDRAW_FROM_FARM_FAILED
+        );
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
 
@@ -150,18 +169,19 @@ impl Contract {
         let compounder = data_mut
             .strategies
             .get_mut(&seed_id)
-            .expect(ERR21_TOKEN_NOT_REG)
+            .expect(ERR42_TOKEN_NOT_REG)
             .get_compounder_mut();
 
-        let last_reward_amount = compounder
-            .get_mut_farm_info(farm_id.clone())
-            .last_reward_amount;
+        let last_reward_amount = compounder.get_mut_farm_info(&farm_id).last_reward_amount;
 
         let (remaining_amount, protocol_amount, sentry_amount, strat_creator_amount) =
             compounder.compute_fees(last_reward_amount);
 
         // storing the amount earned by the strat creator
-        compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
+        // compounder.admin_fees.strat_creator.current_amount += strat_creator_amount;
+        compounder
+            .get_mut_farm_info(&farm_id)
+            .strat_creator_fee_amount += strat_creator_amount;
 
         // store sentry amount under contract account id to be used in the last step
         compounder
@@ -170,12 +190,13 @@ impl Contract {
             .insert(env::current_account_id(), sentry_amount);
 
         // increase protocol amount to cover the case that the last transfer failed
-        data_mut.treasury.current_amount += protocol_amount;
+        compounder
+            .get_mut_farm_info(&farm_id)
+            .treasury
+            .current_amount += protocol_amount;
 
         // remaining amount to reinvest
-        compounder
-            .get_mut_farm_info(farm_id.clone())
-            .last_reward_amount = remaining_amount;
+        compounder.get_mut_farm_info(&farm_id).last_reward_amount = remaining_amount;
 
         // amount sent to ref, both remaining value and treasury
         let amount = remaining_amount + protocol_amount;
@@ -185,7 +206,7 @@ impl Contract {
                 compounder.exchange_contract_id.clone(),
                 U128(amount), //Amount after withdraw the rewards
                 "".to_string(),
-                compounder.get_mut_farm_info(farm_id).reward_token.clone(),
+                compounder.get_mut_farm_info(&farm_id).reward_token.clone(),
                 1,
                 Gas(40_000_000_000_000),
             )
@@ -198,21 +219,25 @@ impl Contract {
         )
     }
 
+    /// Ensure that the transfer was succeeded and update the compounder cycle.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_ft_transfer(
         &mut self,
         #[callback_result] exchange_transfer_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) {
-        if exchange_transfer_result.is_err() {
-            log!("ERR_TRANSFER_TO_EXCHANGE");
+
+        if exchange_transfer_result.is_err() || exchange_transfer_result.unwrap().0 == 0 {
+            log!(ERR07_TRANSFER_TO_EXCHANGE);
             return;
         }
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder.get_mut_farm_info(&farm_id);
 
         farm_info_mut.next_cycle();
     }
@@ -222,40 +247,57 @@ impl Contract {
     pub fn callback_post_treasury_mft_transfer(
         &mut self,
         #[callback_result] ft_transfer_result: Result<(), PromiseError>,
+        farm_id_str: String,
     ) {
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str.to_string());
+
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
-            log!("Transfer to treasure failed");
-            return;
-        }
-
-        let data_mut = self.data_mut();
-        let amount: u128 = data_mut.treasury.current_amount;
-
-        // reset treasury amount earned since tx was successful
-        data_mut.treasury.current_amount = 0;
-
-        log!("Transfer {} to treasure succeeded", amount)
-    }
-
-    #[private]
-    pub fn callback_post_creator_ft_transfer(
-        &mut self,
-        #[callback_result] strat_creator_transfer_result: Result<(), PromiseError>,
-        seed_id: String,
-    ) {
-        if strat_creator_transfer_result.is_err() {
-            log!("ERR_TRANSFER_TO_CREATOR");
+            log!(ERR08_TRANSFER_TO_TREASURE);
             return;
         }
 
         let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
+        let farm_info_mut = compounder.get_mut_farm_info(&farm_id);
+        let amount = farm_info_mut.treasury.current_amount;
 
-        compounder.admin_fees.strat_creator.current_amount = 0;
+        // reset treasury amount earned since tx was successful
+        farm_info_mut.treasury.current_amount = 0;
+
+        log!("Transfer {} to treasure succeeded", amount)
+    }
+
+    /// Ensure that the transfer was succeeded.
+    /// # Parameters example:
+    ///   seed_id: exchange@pool_id
+    #[private]
+    pub fn callback_post_creator_ft_transfer(
+        &mut self,
+        #[callback_result] strat_creator_transfer_result: Result<(), PromiseError>,
+        farm_id_str: String,
+    ) {
+        if strat_creator_transfer_result.is_err() {
+            log!(ERR09_TRANSFER_TO_CREATOR);
+            return;
+        }
+
+        let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
+
+        let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
+
+        compounder
+            .get_mut_farm_info(&farm_id)
+            .strat_creator_fee_amount = 0;
 
         log!("Transfer fees to the creator of the strategy succeeded");
     }
 
+    /// Returns how many tokens will be received swapping given amount of token_in for token_out.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_token_1: U128(10000000),
+    ///   amount_token_2: U128(10000000),
+    ///   common_token: 1
     #[private]
     pub fn get_tokens_return(
         &self,
@@ -331,6 +373,10 @@ impl Contract {
         }
     }
 
+    /// Ensure that the get_token succeeded.
+    /// # Parameters example:
+    ///   common_token: 1,
+    ///   amount_token: U128(10000000),
     #[private]
     pub fn callback_get_token_return(
         &self,
@@ -338,11 +384,15 @@ impl Contract {
         common_token: u64,
         amount_token: U128,
     ) -> (U128, U128) {
-        assert!(token_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_RETURN");
+        assert!(
+            token_out.is_ok(),
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
 
         let amount: U128 = token_out.unwrap();
 
-        assert!(amount.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_RETURN");
+        assert!(amount.0 > 0u128, "{}", ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN);
 
         if common_token == 1 {
             (amount_token, amount)
@@ -351,25 +401,47 @@ impl Contract {
         }
     }
 
+    /// Ensure that the get_tokens succeeded.
     #[private]
     pub fn callback_get_tokens_return(
         &self,
         #[callback_result] token1_out: Result<U128, PromiseError>,
         #[callback_result] token2_out: Result<U128, PromiseError>,
     ) -> (U128, U128) {
-        assert!(token1_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
-        assert!(token2_out.is_ok(), "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
+        assert!(
+            token1_out.is_ok(),
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
+        assert!(
+            token2_out.is_ok(),
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
 
         let amount_token1: U128 = token1_out.unwrap();
         let amount_token2: U128 = token2_out.unwrap();
 
-        assert!(amount_token1.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_1_RETURN");
-        assert!(amount_token2.0 > 0u128, "ERR_COULD_NOT_GET_TOKEN_2_RETURN");
+        assert!(
+            amount_token1.0 > 0u128,
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
+        assert!(
+            amount_token2.0 > 0u128,
+            "{}",
+            ERR05_COULD_NOT_GET_RETURN_FOR_TOKEN
+        );
 
         (amount_token1, amount_token2)
     }
 
     /// Swap the auto-compound rewards
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   amount_in_1: U128(10000000),
+    ///   amount_in_2: U128(10000000),
+    ///   common_token: 1
     #[private]
     pub fn swap_to_auto(
         &mut self,
@@ -386,7 +458,7 @@ impl Contract {
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
 
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         let pool_id_to_swap1 = farm_info_mut.pool_id_token1_reward;
         let pool_id_to_swap2 = farm_info_mut.pool_id_token2_reward;
@@ -466,6 +538,12 @@ impl Contract {
         }
     }
 
+    /// Ensure that the first swap succeeded and call the second one.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id,
+    ///   common_token: 1    
+    ///   amount_in: U128(10000000),
+    ///   token_min_out: U128(10000000),
     #[private]
     pub fn callback_post_first_swap(
         &mut self,
@@ -480,12 +558,12 @@ impl Contract {
 
         let exchange_contract_id: AccountId = compounder_mut.exchange_contract_id.clone();
 
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
             farm_info_mut.increase_slippage();
-            log!("ERR_FIRST_SWAP_FAILED");
+            log!(ERR10_SWAP_TOKEN);
 
             return PromiseOrValue::Value(0u64);
         }
@@ -522,6 +600,12 @@ impl Contract {
         )
     }
 
+    /// Ensure that the second swap succeeded and update the compounder cycle.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id,
+    ///   common_token: 1    
+    ///   amount_in: U128(10000000),
+    ///   token_min_out: U128(10000000),
     #[private]
     pub fn callback_post_swap(
         &mut self,
@@ -531,12 +615,12 @@ impl Contract {
     ) {
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         // Do not panic if err == true, otherwise the slippage update will not be applied
         if swap_result.is_err() {
             farm_info_mut.increase_slippage();
-            log!("ERR_SECOND_SWAP_FAILED");
+            log!(ERR10_SWAP_TOKEN);
             return;
         }
 
@@ -561,6 +645,11 @@ impl Contract {
         farm_info_mut.next_cycle();
     }
 
+    /// Make sure that the caller is register, has balance and then transfer to sentry.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_acc_id: sentry.testnet
+    ///   reward_token: reward.testnet
     #[private]
     pub fn callback_post_sentry(
         &mut self,
@@ -576,7 +665,7 @@ impl Contract {
                 _ => {
                     let msg = format!(
                         "{}{:#?}",
-                        "ERR: callback_post_sentry - not enough balance on storage",
+                        ERR11_NOT_ENOUGH_BALANCE,
                         balance_op
                             .unwrap_or(StorageBalance {
                                 total: U128(0),
@@ -587,9 +676,7 @@ impl Contract {
                     env::panic_str(msg.as_str());
                 }
             },
-            Err(_) => env::panic_str(
-                "ERR: callback post Sentry - caller not registered to Reward token contract",
-            ),
+            Err(_) => env::panic_str(ERR12_CALLER_NOT_REGISTER),
         }
 
         let (seed_id, _, _) = get_ids_from_farm(farm_id_str.clone());
@@ -622,7 +709,11 @@ impl Contract {
         ))
     }
 
-    /// Callback to verify that transfer to treasure succeeded
+    /// Make sure that the transfer succeeded and call add_liquidity.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
+    ///   sentry_id: sentry.testnet
+    ///   amount_earned: 10000    
     #[private]
     pub fn callback_post_sentry_mft_transfer(
         &mut self,
@@ -635,7 +726,7 @@ impl Contract {
 
         // in the case where the transfer failed, the next cycle will send it plus the new amount earned
         if ft_transfer_result.is_err() {
-            log!("Transfer to sentry failed".to_string());
+            log!(ERR13_TRANSFER_TO_SENTRY);
 
             let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
 
@@ -654,7 +745,7 @@ impl Contract {
         // if farm is ended, there is no more actions to do
         if farm_info.state == AutoCompounderState::Ended {
             let compounder = self.get_strat_mut(&seed_id).get_compounder_mut();
-            let farm_info = compounder.get_mut_farm_info(farm_id);
+            let farm_info = compounder.get_mut_farm_info(&farm_id);
             farm_info.state = AutoCompounderState::Cleared;
 
             log!("There farm {} ended. Strategy is now Cleared.", farm_id_str);
@@ -699,18 +790,21 @@ impl Contract {
         )
     }
 
+    /// Call add_liquidity.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_add_liquidity(
         &mut self,
         #[callback_result] shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> U128 {
-        assert!(shares_result.is_ok(), "ERR: failed to add liquidity");
+        assert!(shares_result.is_ok(), "{}", ERR14_ADD_LIQUIDITY);
 
         let (seed_id, _, farm_id) = get_ids_from_farm(farm_id_str);
 
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         // ensure that in the next run we won't have a balance unless previous steps succeeds
         farm_info_mut.available_balance[0] = 0u128;
@@ -735,18 +829,16 @@ impl Contract {
         U128(shares_received)
     }
 
-    /// Receives shares from auto-compound and stake it
-    /// Change the user_balance and the auto_compounder balance of lps/shares
+    /// Receives shares from auto-compound and stake it.
+    /// # Parameters example:
+    ///   farm_id_str: exchange@pool_id#farm_id
     #[private]
     pub fn callback_post_get_pool_shares(
         &mut self,
         #[callback_result] total_shares_result: Result<U128, PromiseError>,
         farm_id_str: String,
     ) -> PromiseOrValue<u128> {
-        assert!(
-            total_shares_result.is_ok(),
-            "ERR: failed to get shares from exchange"
-        );
+        assert!(total_shares_result.is_ok(), "{}", ERR17_GET_POOL_SHARES);
 
         let (seed_id, token_id, farm_id) = get_ids_from_farm(farm_id_str);
         let compounder_mut = self.get_strat_mut(&seed_id).get_compounder_mut();
@@ -756,7 +848,7 @@ impl Contract {
 
         compounder_mut.harvest_timestamp = env::block_timestamp_ms();
 
-        let farm_info_mut = compounder_mut.get_mut_farm_info(farm_id);
+        let farm_info_mut = compounder_mut.get_mut_farm_info(&farm_id);
 
         farm_info_mut.next_cycle();
 

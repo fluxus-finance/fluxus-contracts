@@ -48,6 +48,10 @@ pub trait MultiFungibleToken {
 impl FungibleTokenReceiver for Contract {
     /// Callback on receiving tokens by this contract.
     /// `msg` format is either "" for deposit or `TokenReceiverMessage`.
+    /// # Parameters example:
+    ///   sender_id: account.testnet,
+    ///   amount: U128(100000000),
+    ///   msg: ""
     #[allow(unreachable_code)]
     fn ft_on_transfer(
         &mut self,
@@ -62,7 +66,7 @@ impl FungibleTokenReceiver for Contract {
         //self.assert_strategy_is_running(&seed_id);
         let strat_name: String = format!("pembrock@{}", token_in);
 
-        let compounder = self.pemb_get_strat(&strat_name).pemb_get();
+        let compounder = self.get_strat(&strat_name).get_pemb();
 
         // initiate stake process
         let amount_in_u128: u128 = amount.into();
@@ -86,6 +90,11 @@ pub trait MFTTokenReceiver {
 #[near_bindgen]
 impl MFTTokenReceiver for Contract {
     /// Callback on receiving tokens by this contract.
+    /// # Parameters example:
+    ///   token_id: :17
+    ///   sender_id: account.testnet,
+    ///   amount: U128(100000000),
+    ///   msg: ""
     #[allow(unused)]
     fn mft_on_transfer(
         &mut self,

@@ -5,6 +5,11 @@ use crate::callback::*;
 /// Auto-compounder strategy methods
 #[near_bindgen]
 impl Contract {
+    /// Ensure that the stake succeeded and mint as amount to the user.
+    /// # Parameters example: 
+    /// seed_id: exchange_contract.testnet@17,
+    /// account_id: account.testnet
+    /// shares: 100000000
     #[private]
     pub fn callback_stake_result(
         &mut self,
@@ -14,9 +19,9 @@ impl Contract {
         shares: u128,
     ) -> String {
         if let Ok(amount) = transfer_result {
-            assert_eq!(amount.0, 0, "ERR_STAKE_FAILED");
+            assert_eq!(amount.0, 0, "{}", ERR16_STAKE_FAILED);
         } else {
-            panic!("ERR_STAKE_FAILED");
+            panic!("{}",ERR16_STAKE_FAILED);
         }
 
         //Total fft_share
@@ -53,7 +58,10 @@ impl Contract {
         )
     }
 
-    /// Withdraw user lps and send it to the contract.
+    /// Withdraw the caller's fft_shares.
+    /// # Parameters example: 
+    /// seed_id: exchange_contract.testnet@17,
+    /// account_id: U128(1000000) or none 
     pub fn unstake(&self, seed_id: String, amount_withdrawal: Option<U128>) -> Promise {
         let (caller_id, _) = get_predecessor_and_current_account();
 
@@ -65,10 +73,8 @@ impl Contract {
             self.users_fft_share_amount(fft_share_id.clone(), caller_id.to_string());
 
         assert!(
-            user_fft_shares > 0,
-            "err: {} does not have enough shares. Only has {} shares",
-            caller_id,
-            user_fft_shares
+            user_fft_shares > 0,"{}",
+            ERR04_WITHDRAW_FROM_FARM_FAILED
         );
 
         //Total fft_share
@@ -104,6 +110,13 @@ impl Contract {
         strat.unstake(seed_id, caller_id, amount.0, user_fft_shares)
     }
 
+    /// Ensure that it could get the shares from the exchange and then transfer to the receiver_id.
+    /// # Parameters example: 
+    /// token_id: 17,
+    /// seed_id: exchange_contract.testnet@17
+    /// receiver_id: receiver.testnet
+    /// withdraw_amount: 10000000
+    /// User_fft_shares: 10000000
     #[private]
     pub fn callback_get_pool_shares(
         &self,
@@ -115,8 +128,8 @@ impl Contract {
         user_fft_shares: u128,
     ) -> Promise {
         assert!(
-            shares_result.is_ok(),
-            "ERR: failed to get shares from exchange"
+            shares_result.is_ok(),"{}",
+            ERR17_GET_POOL_SHARES
         );
 
         let compounder = self.get_strat(&seed_id).get_compounder();
@@ -177,6 +190,12 @@ impl Contract {
         }
     }
 
+    /// Ensure that the transfer succeeded and burn the fft_shares amount.
+    /// # Parameters example: 
+    /// seed_id: exchange_contract.testnet@17
+    /// account_id: account.testnet
+    /// amount: 10000000
+    /// fft_shares: 10000000
     #[private]
     pub fn callback_withdraw_shares(
         &mut self,
@@ -188,8 +207,7 @@ impl Contract {
     ) {
         assert!(
             mft_transfer_result.is_ok(),
-            "ERR: failed to transfer shares to {}",
-            account_id
+            "{}",ERR04_WITHDRAW_FROM_FARM_FAILED
         );
 
         let data = self.data_mut();
@@ -209,6 +227,13 @@ impl Contract {
         self.mft_burn(fft_share_id, fft_shares, account_id.to_string());
     }
 
+    /// Ensure that it could get the shares from the exchange and then transfer to the receiver_id.
+    /// # Parameters example: 
+    /// token_id: 17,
+    /// seed_id: exchange_contract.testnet@17
+    /// receiver_id: receiver.testnet
+    /// withdraw_amount: 10000000
+    /// User_fft_shares: 10000000
     #[private]
     pub fn stable_callback_get_pool_shares(
         &self,
@@ -221,7 +246,7 @@ impl Contract {
     ) -> Promise {
         assert!(
             shares_result.is_ok(),
-            "ERR: failed to get shares from exchange"
+            "{}",ERR17_GET_POOL_SHARES
         );
 
         let stable_compounder = self.get_strat(&seed_id).get_stable_compounder();
@@ -286,6 +311,12 @@ impl Contract {
         }
     }
 
+    /// Ensure that the transfer succeeded and burn the fft_shares amount.
+    /// # Parameters example: 
+    /// seed_id: exchange_contract.testnet@17
+    /// account_id: account.testnet
+    /// amount: 10000000
+    /// fft_shares: 10000000
     #[private]
     pub fn stable_callback_withdraw_shares(
         &mut self,
@@ -297,8 +328,7 @@ impl Contract {
     ) {
         assert!(
             mft_transfer_result.is_ok(),
-            "ERR: failed to transfer shares to {}",
-            account_id
+            "{}",ERR04_WITHDRAW_FROM_FARM_FAILED
         );
 
         let data = self.data_mut();
@@ -323,6 +353,13 @@ impl Contract {
 #[near_bindgen]
 impl Contract {
     /// Call the swap function in the exchange. It can be used by itself or as a callback.
+    /// # Parameters example: 
+    /// exchange_contract_id: exchange_contract.testnet
+    /// pool_id: u64,
+    /// token_in: token_in.testnet,
+    /// token_out: token_out.testnet,
+    /// amount_in: U128(100000000) or None,
+    /// min_amount_out: U128(0),
     #[private]
     pub fn call_swap(
         &self,
@@ -348,6 +385,14 @@ impl Contract {
         )
     }
 
+    /// Call the swap function in the jumbo's exchange. It can be used by itself or as a callback.
+    /// # Parameters example: 
+    /// exchange_contract_id: exchange_contract.testnet
+    /// pool_id: u64,
+    /// token_in: token_in.testnet,
+    /// token_out: token_out.testnet,
+    /// amount_in: U128(100000000) or None,
+    /// min_amount_out: U128(0),
     #[private]
     pub fn jumbo_call_swap(
         &self,
@@ -374,6 +419,10 @@ impl Contract {
     }
 
     /// Call the ref get_pool_shares function.
+    /// # Parameters example: 
+    /// exchange_contract_id: exchange_contract.testnet
+    /// pool_id: u64,
+    /// account_id: account.testnet,
     #[private]
     pub fn call_get_pool_shares(
         &self,
@@ -392,6 +441,11 @@ impl Contract {
     }
 
     /// Ref function to add liquidity in the pool.
+    /// # Parameters example: 
+    /// exchange_contract_id: exchange_contract.testnet
+    /// pool_id: u64,
+    /// amounts: [U128(10000000), U128(10000000)],
+    /// min_amounts: [U128(10000000), U128(10000000] or None
     #[private]
     pub fn call_add_liquidity(
         &self,
@@ -411,6 +465,12 @@ impl Contract {
     }
 
     /// Ref function to stake the lps/shares.
+    /// # Parameters example: 
+    /// exchange_contract_id: exchange_contract.testnet
+    /// receiver_id: receiver.testnet,
+    /// token_id: 17,
+    /// amount: U128(10000000)
+    /// msg: ""
     #[private]
     pub fn call_stake(
         &self,
@@ -439,7 +499,7 @@ impl Contract {
     //         .data()
     //         .strategies
     //         .get(&token_id)
-    //         .expect(ERR21_TOKEN_NOT_REG);
+    //         .expect(ERR42_TOKEN_NOT_REG);
 
     //     let compounder = strat.get_ref();
 

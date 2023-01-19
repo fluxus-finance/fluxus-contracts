@@ -2,6 +2,11 @@ use crate::*;
 
 #[near_bindgen]
 impl StorageManagement for Contract {
+
+    /// Store an amount of near for some user in the contract. It also register the user if needed.
+    /// # Parameter example:
+    ///   account_id: account.testnet
+    ///   registration_only: True or None
     #[payable]
     fn storage_deposit(
         &mut self,
@@ -17,12 +22,12 @@ impl StorageManagement for Contract {
         let min_balance = self.storage_balance_bounds().min.0;
         let already_registered = self.data().accounts.contains_key(&account_id);
         if amount < min_balance && !already_registered {
-            env::panic_str("ERR_DEPOSIT_LESS_THAN_MIN_STORAGE");
+            env::panic_str(ERR38_LESS_THAN_MIN_STORAGE);
         }
         if registration_only {
             // Registration only setups the account but doesn't leave space for tokens.
             if already_registered {
-                log!("ERR_ACC_REGISTERED");
+                log!(ERR39_ACCOUNT_ALREADY_REGISTERED);
                 if amount > 0 {
                     Promise::new(env::predecessor_account_id()).transfer(amount);
                 }
@@ -61,6 +66,10 @@ impl StorageManagement for Contract {
         self.storage_balance_of(account_id.try_into().unwrap())
             .unwrap()
     }
+        
+    /// Withdraw an amount of near for some user in the contract.
+    /// # Parameter example:
+    ///   amount: U128(1000000) or None
     #[payable]
     fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
         //assert_one_yocto();
@@ -70,7 +79,7 @@ impl StorageManagement for Contract {
 
         require!(
             self.data().accounts.contains_key(&account_id),
-            "Account is not registered"
+            ERR36_ACCOUNT_DOES_NOT_EXIST
         );
 
         let amount_already_deposited = self
@@ -81,7 +90,7 @@ impl StorageManagement for Contract {
 
         require!(
             amount_already_deposited >= amount,
-            "You do not have enough balance"
+            ERR23_NOT_AVAILABLE_STORAGE
         );
 
         let available = u128::from(
@@ -108,6 +117,9 @@ impl StorageManagement for Contract {
             .unwrap()
     }
 
+    /// Unregister tokens of the caller account.
+    /// # Parameter example:
+    ///   force: True or None
     #[allow(unused_variables)]
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
@@ -118,7 +130,7 @@ impl StorageManagement for Contract {
             // TODO: figure out force option logic.
             assert!(
                 account_deposit.tokens.is_empty(),
-                "ERR_STORAGE_UNREGISTER_TOKENS_NOT_EMPTY"
+                "{}",ERR40_STORAGE_UNREGISTER_TOKENS_NOT_EMPTY
             );
             self.data_mut().accounts.remove(&account_id);
             Promise::new(account_id.clone()).transfer(account_deposit.near_amount);
@@ -128,6 +140,7 @@ impl StorageManagement for Contract {
         }
     }
 
+    // Return the account min_storage_usage.
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
         StorageBalanceBounds {
             min: Account::min_storage_usage().into(),
@@ -135,6 +148,9 @@ impl StorageManagement for Contract {
         }
     }
 
+    /// Return the balance of near storage for some account.
+    /// # Parameter example:
+    ///   account_id: account.testnet
     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
         self.internal_get_account(&account_id)
             .map(|account| StorageBalance {
